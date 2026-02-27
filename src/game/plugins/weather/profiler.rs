@@ -1,6 +1,5 @@
 use std::time::Instant;
 use bevy::prelude::*;
-use super::{WeatherState, WeatherEffects};
 
 pub struct WeatherProfiler {
     spawn_timer: Option<Instant>,
@@ -97,18 +96,10 @@ impl WeatherTransitionTracker {
 pub fn update_weather_transitions(
     time: Res<Time>,
     mut transition_tracker: ResMut<WeatherTransitionTracker>,
-    mut debug_state: ResMut<DebugState>,
 ) {
     if let Some(progress) = transition_tracker.update(time.delta_seconds()) {
         if let Some((from, to, _)) = transition_tracker.get_current_transition() {
-            debug_state.transition_history.push((
-                format!("{} -> {}", from, to),
-                progress
-            ));
-            
-            if debug_state.transition_history.len() > 50 {
-                debug_state.transition_history.remove(0);
-            }
+            // No need to push to debug_name.transition_history
         }
     }
 } 

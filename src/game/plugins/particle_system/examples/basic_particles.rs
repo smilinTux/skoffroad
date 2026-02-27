@@ -1,19 +1,17 @@
-use bevy::{
-    prelude::*,
-    render::{mesh::Mesh, render_resource::PrimitiveTopology},
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
-    gizmos::config::GizmoConfig,
-};
-use std::f32::consts::PI;
+use bevy::prelude::*;
+use bevy::render::mesh::Mesh;
+use bevy::diagnostic::FrameTimeDiagnosticsPlugin;
+use bevy::diagnostic::Diagnostics;
 
 use crate::game::plugins::particle_system::{
-    ParticleMaterial, ParticleProperties, ParticleSystem, ParticleSystemBundle,
-    ParticleSystemPlugin, spawn_basic_particle_effect,
-    Trail,
-    TrailPlugin,
+    ParticleMaterial,
+    ParticleSystem,
+    ParticleSystemPlugin,
+    spawn_basic_particle_effect,
     BasicParticleEffect,
     BasicParticleConfig,
 };
+use crate::game::plugins::particle_system::examples::advanced_features::Trail;
 
 /// Plugin that sets up the basic particle example scene and systems
 pub struct BasicParticleExamplePlugin;
@@ -22,7 +20,6 @@ impl Plugin for BasicParticleExamplePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
                 ParticleSystemPlugin,
-                TrailPlugin,
                 FrameTimeDiagnosticsPlugin::default(),
             ))
             .insert_resource(ParticleDebugConfig {
@@ -167,17 +164,6 @@ fn setup_example(
             effect_type: BasicParticleEffect::Fire,
             explosion_time: None,
         },
-    ));
-
-    // Add trail effect
-    commands.spawn((
-        Trail {
-            width: 0.2,
-            fade_time: 1.0,
-            point_distance: 0.1,
-            max_points: 50,
-        },
-        Transform::from_xyz(0.0, 0.5, 0.0),
     ));
 
     // Spawn initial effects
@@ -446,7 +432,7 @@ fn update_debug_gizmos(
 }
 
 fn update_debug_ui(
-    diagnostics: Res<Diagnostics>,
+    diagnostics: Res<bevy::diagnostic::DiagnosticsStore>,
     debug_config: Res<ParticleDebugConfig>,
     effect_config: Res<EffectConfig>,
     mut query: Query<&mut Text, With<DebugText>>,

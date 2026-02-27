@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy::render::camera::Camera3d;
+use crate::game::plugins::InputState;
 
 /// Camera settings for controlling behavior
 #[derive(Resource)]
@@ -113,7 +113,7 @@ fn update_camera_position(
 /// Updates camera rotation based on input
 fn update_camera_rotation(
     mut camera_query: Query<&mut GameCamera>,
-    input: Res<crate::InputState>,
+    input: Res<InputState>,
     settings: Res<CameraSettings>,
 ) {
     for mut game_camera in camera_query.iter_mut() {
@@ -129,7 +129,7 @@ fn update_camera_rotation(
 /// Updates camera zoom based on input
 fn update_camera_zoom(
     mut camera_query: Query<&mut GameCamera>,
-    input: Res<crate::InputState>,
+    input: Res<InputState>,
     settings: Res<CameraSettings>,
 ) {
     for mut game_camera in camera_query.iter_mut() {

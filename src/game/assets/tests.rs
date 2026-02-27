@@ -3,6 +3,11 @@ mod tests {
     use super::*;
     use bevy::prelude::*;
     use std::time::Duration;
+    use bevy::app::App;
+    use bevy::asset::AssetPlugin;
+    use std::fs;
+    use std::path::Path;
+    use tempfile::tempdir;
 
     fn setup_test_assets() -> (App, AssetServer, GameAssets) {
         let mut app = App::new();
@@ -224,10 +229,146 @@ mod tests {
         assert!(game_assets.ui_fonts.contains_key("critical.ttf"));
     }
 
+    #[test]
+    fn test_vehicle_config_loading() {
+        let mut app = setup_test_app();
+        
+        // Create a temporary directory for test assets
+        let temp_dir = tempdir().unwrap();
+        let config_path = temp_dir.path().join("test_vehicle.json");
+        
+        // Create a test vehicle config
+        let test_config = VehicleConfig {
+            name: "Test Vehicle".to_string(),
+            mass: 1500.0,
+            dimensions: Vec3::new(2.0, 1.5, 4.0),
+            suspension_config: SuspensionConfig {
+                spring_rate: 50000.0,
+                damping: 5000.0,
+                travel: 0.3,
+            },
+            engine_config: EngineConfig {
+                max_power: 300.0,
+                max_torque: 400.0,
+                redline: 7000.0,
+            },
+        };
+        
+        // Write config to file
+        fs::write(
+            &config_path,
+            serde_json::to_string(&test_config).unwrap(),
+        ).unwrap();
+        
+        // Get the GameAssets resource
+        let game_assets = app.world.resource_mut::<GameAssets>();
+        let asset_server = app.world.resource::<AssetServer>();
+        
+        // Load the config
+        let handle = game_assets.get_or_load::<VehicleConfig>(
+            config_path.to_str().unwrap(),
+            &asset_server,
+            LoadPriority::Critical,
+        );
+        
+        // Update the app to process asset loading
+        app.update();
+        
+        // Verify the config was loaded
+        assert!(game_assets.cached_handles.contains_key(config_path.to_str().unwrap()));
+    }
+
+    #[test]
+    fn test_asset_validation() {
+        let mut app = setup_test_app();
+        
+        // Create temporary test directories
+        let temp_dir = tempdir().unwrap();
+        let ui_textures_dir = temp_dir.path().join("ui/textures");
+        let vehicles_dir = temp_dir.path().join("vehicles/models");
+        
+        fs::create_dir_all(&ui_textures_dir).unwrap();
+        fs::create_dir_all(&vehicles_dir).unwrap();
+        
+        // Create some test files
+        fs::write(ui_textures_dir.join("button.png"), "dummy data").unwrap();
+        fs::write(vehicles_dir.join("jeep.glb"), "dummy data").unwrap();
+        
+        // Get the GameAssets resource
+        let mut game_assets = app.world.resource_mut::<GameAssets>();
+        let asset_server = app.world.resource::<AssetServer>();
+        
+        // Run validation
+        let errors = game_assets.validate_assets(&asset_server);
+        
+        // We expect errors since we haven't loaded the required assets
+        assert!(!errors.is_empty());
+        assert!(errors.iter().any(|e| e.contains("button.png")));
+        assert!(errors.iter().any(|e| e.contains("jeep.glb")));
+    }
+
+    #[test]
+    fn test_cache_management() {
+        let mut app = setup_test_app();
+        
+        // Get the GameAssets resource
+        let mut game_assets = app.world.resource_mut::<GameAssets>();
+        let asset_server = app.world.resource::<AssetServer>();
+        
+        // Load some test assets with different priorities
+        game_assets.get_or_load::<Scene>(
+            "test_high.glb",
+            &asset_server,
+            LoadPriority::High,
+        );
+        
+        game_assets.get_or_load::<Scene>(
+            "test_low.glb",
+            &asset_server,
+            LoadPriority::Low,
+        );
+        
+        // Clear low priority assets
+        game_assets.clear_unused_assets(LoadPriority::Medium);
+        
+        // Verify only high priority assets remain
+        assert!(game_assets.cached_handles.contains_key("test_high.glb"));
+        assert!(!game_assets.cached_handles.contains_key("test_low.glb"));
+    }
+
+    #[test]
+    fn test_loading_state_tracking() {
+        let mut app = setup_test_app();
+        
+        // Get the loading state
+        let mut loading_state = app.world.resource_mut::<AssetLoadingState>();
+        
+        // Add some test assets to the queue
+        loading_state.add_pending_asset("test1.png", LoadPriority::High);
+        loading_state.add_pending_asset("test2.png", LoadPriority::Medium);
+        
+        assert_eq!(loading_state.total_assets, 2);
+        assert_eq!(loading_state.loaded_assets, 0);
+        
+        // Simulate loading progress
+        loading_state.mark_asset_loaded("test1.png");
+        
+        assert_eq!(loading_state.loaded_assets, 1);
+        assert_eq!(loading_state.failed_assets, 0);
+    }
+
     // Cleanup after tests
     impl Drop for GameAssets {
         fn drop(&mut self) {
             std::fs::remove_dir_all("assets/test").unwrap_or_default();
         }
     }
+}
+
+// Helper function to create test directories
+fn create_test_directory(path: &Path) -> std::io::Result<()> {
+    if !path.exists() {
+        fs::create_dir_all(path)?;
+    }
+    Ok(())
 } 

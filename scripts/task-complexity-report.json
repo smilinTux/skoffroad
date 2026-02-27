@@ -1,0 +1,211 @@
+{
+  "meta": {
+    "generatedAt": "2025-04-26T05:52:54.566Z",
+    "tasksAnalyzed": 25,
+    "thresholdScore": 5,
+    "projectName": "Your Project Name",
+    "usedResearch": true
+  },
+  "complexityAnalysis": [
+    {
+      "taskId": 1,
+      "taskTitle": "Setup Project Repository and Development Environment",
+      "complexityScore": 5,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the setup of a new project repository and development environment into subtasks covering repository initialization, branching strategy, CI/CD configuration, coding standards documentation, and developer environment setup.",
+      "reasoning": "This task involves standard but essential setup steps. While each step is well-understood in the industry, coordination and ensuring consistency across the team adds moderate complexity."
+    },
+    {
+      "taskId": 2,
+      "taskTitle": "Implement Core Vehicle Physics Engine",
+      "complexityScore": 9,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Decompose the development of a core vehicle physics engine into subtasks for mass and inertia modeling, torque and power delivery, suspension geometry, wheel physics, drivetrain simulation, vehicle configuration support, and integration testing.",
+      "reasoning": "Developing a realistic vehicle physics engine is highly complex, requiring deep domain knowledge, mathematical modeling, and robust testing to ensure accurate and performant simulation."
+    },
+    {
+      "taskId": 3,
+      "taskTitle": "Develop Terrain Generation System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "List subtasks for procedural terrain generation, including heightmap generation, noise layering, terrain type support, difficulty scaling, feature placement, and system integration.",
+      "reasoning": "Procedural terrain generation with multiple terrain types and scalability introduces significant algorithmic and implementation challenges, especially for natural appearance and performance."
+    },
+    {
+      "taskId": 4,
+      "taskTitle": "Implement Advanced Suspension System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down the advanced suspension system into subtasks for multi-joint simulation, component modeling (control arms, springs, shocks), compression/rebound logic, articulation, support for multiple suspension types, and testing.",
+      "reasoning": "Simulating detailed suspension systems with realistic articulation and load handling is technically demanding, requiring accurate physical modeling and support for various configurations."
+    },
+    {
+      "taskId": 5,
+      "taskTitle": "Create Terrain Deformation System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Identify subtasks for implementing dynamic terrain deformation, including mesh deformation, displacement mapping, erosion simulation, compression effects, persistence, and multiplayer synchronization.",
+      "reasoning": "Dynamic terrain deformation is complex due to real-time mesh manipulation, visual fidelity, and the need for consistent multiplayer synchronization."
+    },
+    {
+      "taskId": 6,
+      "taskTitle": "Implement Collision Detection System",
+      "complexityScore": 9,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Divide the collision detection system into subtasks for broad-phase detection, narrow-phase detection, collision shape creation, spatial partitioning, collision response, performance optimization, and integration testing.",
+      "reasoning": "Robust collision detection is critical and challenging, especially with complex vehicle and terrain interactions, requiring efficient algorithms and high accuracy."
+    },
+    {
+      "taskId": 7,
+      "taskTitle": "Develop Winch System",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the winch system into subtasks for cable physics, tension and elasticity simulation, attachment logic, multi-point support, and configuration options.",
+      "reasoning": "A realistic winch system involves intricate physics and attachment logic, but is more contained in scope compared to core physics or collision systems."
+    },
+    {
+      "taskId": 8,
+      "taskTitle": "Implement Tire Deformation and Grip System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "List subtasks for tire deformation and grip, including sidewall flex simulation, tread deformation, air pressure modeling, grip coefficient calculation, terrain interaction, and support for multiple tire types.",
+      "reasoning": "Simulating tire deformation and variable grip is technically challenging, requiring real-time physics and integration with terrain and vehicle systems."
+    },
+    {
+      "taskId": 9,
+      "taskTitle": "Setup Advanced Rendering Pipeline",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Decompose the rendering pipeline setup into subtasks for PBR material support, dynamic lighting, shadow implementation, post-processing effects, rendering optimizations, and shader framework setup.",
+      "reasoning": "Implementing a modern rendering pipeline with advanced effects and optimizations is complex, involving graphics programming and performance considerations."
+    },
+    {
+      "taskId": 10,
+      "taskTitle": "Implement Adaptive Camera System",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the adaptive camera system into subtasks for multiple camera presets, obstacle avoidance, smooth transitions, per-wheel camera angles, and camera controls.",
+      "reasoning": "A versatile camera system requires careful design for usability and smooth operation, but leverages established patterns in game development."
+    },
+    {
+      "taskId": 11,
+      "taskTitle": "Create Water and Mud Physics System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "List subtasks for water and mud physics, including fluid dynamics, buoyancy and drag, mud viscosity simulation, displacement effects, vehicle interaction, and visual effects implementation.",
+      "reasoning": "Simulating water and mud with realistic physics and visuals is complex, requiring integration of fluid dynamics and terrain interaction."
+    },
+    {
+      "taskId": 12,
+      "taskTitle": "Implement Basic HUD and User Interface",
+      "complexityScore": 6,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the UI implementation into subtasks for HUD design, status indicators, navigation markers, menu creation, and debug visualization tools.",
+      "reasoning": "While UI systems are standard, integrating real-time vehicle data and modularity adds moderate complexity."
+    },
+    {
+      "taskId": 13,
+      "taskTitle": "Implement Audio System with Engine Sounds",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "List subtasks for the audio system, including 3D audio engine setup, engine sound modeling, environmental audio, sound effects for interactions, and audio mixing.",
+      "reasoning": "Realistic audio systems require careful sound modeling and integration, but follow established patterns in game development."
+    },
+    {
+      "taskId": 14,
+      "taskTitle": "Implement CB Radio and Communication System",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the CB radio system into subtasks for channel selection, audio effects, distance-based degradation, team/global channels, and music broadcasting.",
+      "reasoning": "Implementing in-game communication with realistic effects and channel management is moderately complex, especially with audio streaming."
+    },
+    {
+      "taskId": 15,
+      "taskTitle": "Develop In-Game Radio Stations",
+      "complexityScore": 6,
+      "recommendedSubtasks": 4,
+      "expansionPrompt": "List subtasks for in-game radio, including station creation, playlist management, DJ role assignment, broadcasting controls, and dynamic volume mixing.",
+      "reasoning": "Music and radio systems are well-understood, but require integration with audio and UI systems for seamless user experience."
+    },
+    {
+      "taskId": 16,
+      "taskTitle": "Implement Free Roam Game Mode",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down free roam mode into subtasks for single/multiplayer support, dynamic event system, challenge generation, player progress tracking, team drive implementation, and system integration.",
+      "reasoning": "Free roam modes involve complex state management, multiplayer support, and dynamic content generation."
+    },
+    {
+      "taskId": 17,
+      "taskTitle": "Implement Competitive Game Modes",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "List subtasks for competitive modes, including mode design, scoring systems, timers, victory conditions, and integration with core gameplay systems.",
+      "reasoning": "Competitive modes require additional logic for objectives and scoring, but build on existing gameplay systems."
+    },
+    {
+      "taskId": 18,
+      "taskTitle": "Develop Mission System",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the mission system into subtasks for mission framework, challenge creation, objective tracking, reward system, and event scheduling.",
+      "reasoning": "Mission systems require flexible frameworks and integration with progression and event systems, adding moderate complexity."
+    },
+    {
+      "taskId": 19,
+      "taskTitle": "Implement Core Multiplayer Functionality",
+      "complexityScore": 9,
+      "recommendedSubtasks": 7,
+      "expansionPrompt": "Decompose multiplayer functionality into subtasks for networking architecture, vehicle synchronization, lag compensation, team formation, player interaction systems, recovery/winch integration, and resource sharing.",
+      "reasoning": "Core multiplayer systems are highly complex, requiring robust networking, real-time synchronization, and support for diverse interactions."
+    },
+    {
+      "taskId": 20,
+      "taskTitle": "Create Vehicle Customization System",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "List subtasks for vehicle customization, including performance modifications, visual customization, equipment loadouts, parts system, and visual representation integration.",
+      "reasoning": "Customization systems require flexible data structures and UI integration, but follow established patterns in game development."
+    },
+    {
+      "taskId": 21,
+      "taskTitle": "Implement Aftermarket Parts Store",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down the parts store into subtasks for store interface, part categorization, compatibility checking, purchasing system, and token economy integration.",
+      "reasoning": "In-game stores are standard but require careful integration with customization and economy systems."
+    },
+    {
+      "taskId": 22,
+      "taskTitle": "Develop Vehicle Marketplace",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "List subtasks for the vehicle marketplace, including listing creation, token-based transactions, rating/review system, featured vehicles curation, and search/filter functionality.",
+      "reasoning": "Player-to-player marketplaces add complexity with user-generated content, transactions, and moderation."
+    },
+    {
+      "taskId": 23,
+      "taskTitle": "Implement Progression and Token Economy",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "Break down progression and economy into subtasks for ranking system, experience tracking, token earning/spending, team reputation, and secret features/easter eggs.",
+      "reasoning": "Progression and economy systems require careful balance and integration, but are well-understood in game development."
+    },
+    {
+      "taskId": 24,
+      "taskTitle": "Develop Social and Community Features",
+      "complexityScore": 7,
+      "recommendedSubtasks": 5,
+      "expansionPrompt": "List subtasks for social/community features, including team management, statistics/achievements, trail rating, vehicle showcase, chat system, and social media integration.",
+      "reasoning": "Community features require integration with backend systems and external APIs, adding moderate complexity."
+    },
+    {
+      "taskId": 25,
+      "taskTitle": "Implement Spectator and Replay System",
+      "complexityScore": 8,
+      "recommendedSubtasks": 6,
+      "expansionPrompt": "Break down spectator and replay system into subtasks for live spectating, camera controls, director mode, broadcasting tools, session recording, and replay playback/highlights.",
+      "reasoning": "Spectator and replay systems are complex due to real-time data capture, playback accuracy, and user controls."
+    }
+  ]
+}

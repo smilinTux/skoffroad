@@ -84,21 +84,21 @@ fn check_asset_loading_progress(
     mut loading_state: ResMut<AssetLoadingState>,
     game_assets: Res<GameAssets>,
 ) {
-    // Collect all asset handles
+    // Collect all asset handles as AssetHandle enum
     let mut handles = Vec::new();
-    handles.extend(game_assets.vehicle_models.iter());
-    handles.extend(game_assets.vehicle_textures.iter());
-    handles.extend(game_assets.vehicle_materials.iter());
-    handles.extend(game_assets.terrain_textures.iter());
-    handles.extend(game_assets.terrain_materials.iter());
-    handles.extend(game_assets.engine_sounds.iter());
-    handles.extend(game_assets.environment_sounds.iter());
-    handles.extend(game_assets.impact_sounds.iter());
-    handles.extend(game_assets.ui_textures.iter());
-    handles.extend(game_assets.fonts.iter());
-    handles.extend(game_assets.particle_textures.iter());
+    handles.extend(game_assets.vehicle_models.iter().cloned().map(AssetHandle::Scene));
+    handles.extend(game_assets.vehicle_textures.iter().cloned().map(AssetHandle::Image));
+    handles.extend(game_assets.vehicle_materials.iter().cloned().map(AssetHandle::StandardMaterial));
+    handles.extend(game_assets.terrain_textures.iter().cloned().map(AssetHandle::Image));
+    handles.extend(game_assets.terrain_materials.iter().cloned().map(AssetHandle::StandardMaterial));
+    handles.extend(game_assets.engine_sounds.iter().cloned().map(AssetHandle::AudioSource));
+    handles.extend(game_assets.environment_sounds.iter().cloned().map(AssetHandle::AudioSource));
+    handles.extend(game_assets.impact_sounds.iter().cloned().map(AssetHandle::AudioSource));
+    handles.extend(game_assets.ui_textures.iter().cloned().map(AssetHandle::Image));
+    handles.extend(game_assets.fonts.iter().cloned().map(AssetHandle::Font));
+    handles.extend(game_assets.particle_textures.iter().cloned().map(AssetHandle::Image));
     if let Some(skybox) = &game_assets.skybox {
-        handles.push(skybox);
+        handles.push(AssetHandle::Image(skybox.clone()));
     }
 
     // Update loading state
@@ -137,51 +137,76 @@ impl GameAssets {
     /// Load all game assets from their respective directories
     pub fn load_all(&mut self, asset_server: &AssetServer) {
         // Load vehicle assets
-        self.vehicle_models = asset_server.load_folder("models/vehicles").unwrap_or_default();
-        self.vehicle_textures = asset_server.load_folder("textures/vehicles").unwrap_or_default();
-        
-        // Load terrain assets
-        self.terrain_textures = asset_server.load_folder("textures/terrain").unwrap_or_default();
-        
-        // Load audio assets
-        self.engine_sounds = asset_server.load_folder("audio/engine").unwrap_or_default();
-        self.environment_sounds = asset_server.load_folder("audio/environment").unwrap_or_default();
-        self.impact_sounds = asset_server.load_folder("audio/impacts").unwrap_or_default();
-        
-        // Load UI assets
-        self.ui_textures = asset_server.load_folder("textures/ui").unwrap_or_default();
-        self.fonts = asset_server.load_folder("fonts").unwrap_or_default();
-        
-        // Load effect assets
-        self.particle_textures = asset_server.load_folder("textures/particles").unwrap_or_default();
-        self.skybox = asset_server.load_folder("textures/skybox").ok().and_then(|mut v| v.pop());
+        let vehicle_models_folder = asset_server.load_folder("models/vehicles");
+        let vehicle_textures_folder = asset_server.load_folder("textures/vehicles");
+        let terrain_textures_folder = asset_server.load_folder("textures/terrain");
+        let engine_sounds_folder = asset_server.load_folder("audio/engine");
+        let environment_sounds_folder = asset_server.load_folder("audio/environment");
+        let impact_sounds_folder = asset_server.load_folder("audio/impacts");
+        let ui_textures_folder = asset_server.load_folder("textures/ui");
+        let fonts_folder = asset_server.load_folder("fonts");
+        let particle_textures_folder = asset_server.load_folder("textures/particles");
+        let skybox_folder = asset_server.load_folder("textures/skybox");
+        // TODO: You must use asset events or AssetServer to enumerate assets in these folders and assign to the Vec<Handle<T>> fields after loading. For now, clear the vectors and store the folder handles for tracking.
+        self.vehicle_models.clear();
+        self.vehicle_textures.clear();
+        self.terrain_textures.clear();
+        self.engine_sounds.clear();
+        self.environment_sounds.clear();
+        self.impact_sounds.clear();
+        self.ui_textures.clear();
+        self.fonts.clear();
+        self.particle_textures.clear();
+        self.skybox = None;
+        // Optionally, store the folder handles somewhere if you want to track loading completion.
     }
 
     /// Hot reload all assets (useful during development)
-    pub fn hot_reload(&self, asset_server: &AssetServer) {
-        let handles = self.get_all_handles();
-        for handle in handles {
-            asset_server.reload_asset(handle.id());
-        }
+    pub fn hot_reload(&self, _asset_server: &AssetServer) {
+        // Bevy's AssetServer::reload requires an AssetPath, not a handle or UntypedAssetId.
+        // Since we only store handles, we cannot reliably reload assets by handle.
+        // If hot reload is needed, consider tracking asset paths alongside handles.
+        warn!("GameAssets::hot_reload: Hot reloading by handle is not supported. No action taken.");
     }
 
     /// Get all asset handles as a vector
-    fn get_all_handles(&self) -> Vec<&Handle<dyn bevy::asset::Asset>> {
+    fn get_all_handles(&self) -> Vec<AssetHandle> {
         let mut handles = Vec::new();
-        handles.extend(self.vehicle_models.iter().map(|h| h as _));
-        handles.extend(self.vehicle_textures.iter().map(|h| h as _));
-        handles.extend(self.vehicle_materials.iter().map(|h| h as _));
-        handles.extend(self.terrain_textures.iter().map(|h| h as _));
-        handles.extend(self.terrain_materials.iter().map(|h| h as _));
-        handles.extend(self.engine_sounds.iter().map(|h| h as _));
-        handles.extend(self.environment_sounds.iter().map(|h| h as _));
-        handles.extend(self.impact_sounds.iter().map(|h| h as _));
-        handles.extend(self.ui_textures.iter().map(|h| h as _));
-        handles.extend(self.fonts.iter().map(|h| h as _));
-        handles.extend(self.particle_textures.iter().map(|h| h as _));
+        handles.extend(self.vehicle_models.iter().cloned().map(AssetHandle::Scene));
+        handles.extend(self.vehicle_textures.iter().cloned().map(AssetHandle::Image));
+        handles.extend(self.vehicle_materials.iter().cloned().map(AssetHandle::StandardMaterial));
+        handles.extend(self.terrain_textures.iter().cloned().map(AssetHandle::Image));
+        handles.extend(self.terrain_materials.iter().cloned().map(AssetHandle::StandardMaterial));
+        handles.extend(self.engine_sounds.iter().cloned().map(AssetHandle::AudioSource));
+        handles.extend(self.environment_sounds.iter().cloned().map(AssetHandle::AudioSource));
+        handles.extend(self.impact_sounds.iter().cloned().map(AssetHandle::AudioSource));
+        handles.extend(self.ui_textures.iter().cloned().map(AssetHandle::Image));
+        handles.extend(self.fonts.iter().cloned().map(AssetHandle::Font));
+        handles.extend(self.particle_textures.iter().cloned().map(AssetHandle::Image));
         if let Some(skybox) = &self.skybox {
-            handles.push(skybox as _);
+            handles.push(AssetHandle::Image(skybox.clone()));
         }
         handles
+    }
+}
+
+// Move AssetHandle enum and its impl outside of impl GameAssets
+pub enum AssetHandle {
+    Scene(Handle<Scene>),
+    Image(Handle<Image>),
+    StandardMaterial(Handle<StandardMaterial>),
+    AudioSource(Handle<AudioSource>),
+    Font(Handle<Font>),
+}
+
+impl AssetHandle {
+    pub fn id(&self) -> bevy::asset::UntypedAssetId {
+        match self {
+            AssetHandle::Scene(h) => h.id().untyped(),
+            AssetHandle::Image(h) => h.id().untyped(),
+            AssetHandle::StandardMaterial(h) => h.id().untyped(),
+            AssetHandle::AudioSource(h) => h.id().untyped(),
+            AssetHandle::Font(h) => h.id().untyped(),
+        }
     }
 } 

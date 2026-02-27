@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use super::WeatherState;
 use std::f32::consts::PI;
 
 /// Represents different times of day with their associated lighting parameters
@@ -133,6 +134,6 @@ impl TimeManager {
         let weather_color = weather_state.ambient_color_modifier();
         let intensity = weather_state.ambient_intensity_modifier();
 
-        (base_color * weather_color, intensity)
+        (base_color * [weather_color.r(), weather_color.g(), weather_color.b()], intensity)
     }
 } 

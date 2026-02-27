@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use rand::Rng;
-use super::particle::{ParticleSystem, SimulationParams};
+use super::particle::ParticleSystem;
 
 /// Animation playback pattern
 #[derive(Clone, Copy, Debug)]

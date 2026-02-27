@@ -1,13 +1,19 @@
 use bevy::prelude::*;
+use bevy::app::PluginGroupBuilder;
+use bevy::input::mouse::MouseMotion;
+use crate::game::state::GameState;
+use crate::game::state::StatePlugin;
+// use crate::game::plugins::ui::UiPlugin;
 
 mod camera;
 mod debug;
 mod input;
-mod lighting;
+// pub use lighting::LightingPlugin; // TODO: Fix or implement LightingPlugin
 mod particle_system;
-mod physics;
+// pub use physics::PhysicsPlugin; // TODO: Fix or implement PhysicsPlugin
 mod post_process;
 mod state;
+// pub use state::StatePlugin; // TODO: Fix or implement StatePlugin
 mod ui;
 mod vehicle;
 mod terrain;
@@ -16,11 +22,11 @@ mod weather;
 pub use camera::CameraPlugin;
 pub use debug::DebugPlugin;
 pub use input::InputPlugin;
-pub use lighting::LightingPlugin;
+// pub use lighting::LightingPlugin; // TODO: Fix or implement LightingPlugin
 pub use particle_system::ParticleSystemPlugin;
-pub use physics::PhysicsPlugin;
+// pub use physics::PhysicsPlugin; // TODO: Fix or implement PhysicsPlugin
 pub use post_process::PostProcessPlugin;
-pub use state::StatePlugin;
+// pub use state::StatePlugin; // TODO: Fix or implement StatePlugin
 pub use ui::UiPlugin;
 pub use vehicle::VehiclePlugin;
 pub use terrain::TerrainPlugin;
@@ -34,11 +40,11 @@ impl PluginGroup for GamePluginGroup {
         PluginGroupBuilder::start::<Self>()
             .add(StatePlugin)
             .add(InputPlugin)
-            .add(PhysicsPlugin)
             .add(VehiclePlugin)
             .add(CameraPlugin)
             .add(UiPlugin)
-            .add(LightingPlugin)
+            // .add(LightingPlugin)
+            // .add(PhysicsPlugin)
             .add(ParticleSystemPlugin)
             .add(PostProcessPlugin)
             .add(DebugPlugin)
@@ -55,17 +61,14 @@ impl Plugin for GamePlugin {
         app.add_plugins(GamePluginGroup)
             .init_resource::<Time>()
             .init_resource::<InputState>()
-            .init_resource::<GameState>()
             .init_resource::<DebugInfo>()
             .add_systems(Startup, setup_game)
-            .add_systems(Update, (
-                update_game_state,
-                handle_input,
-                update_physics,
-                update_vehicles,
-                update_camera,
-                update_ui,
-            ));
+            .add_systems(Update, update_game_state)
+            .add_systems(Update, handle_input)
+            .add_systems(Update, update_physics)
+            .add_systems(Update, update_vehicles)
+            .add_systems(Update, update_camera)
+            .add_systems(Update, update_ui);
     }
 }
 
@@ -82,41 +85,34 @@ pub struct InputState {
     pub camera_zoom: f32,
 }
 
-#[derive(States, Debug, Clone, Copy, Default, Eq, PartialEq, Hash)]
-pub enum GameState {
-    #[default]
-    Loading,
-    Menu,
-    Playing,
-    Paused,
-}
+#[derive(Resource, Default)]
+pub struct DebugInfo;
 
 // Systems
 fn setup_game(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Load initial assets
-    asset_server.load_folder("textures").expect("Failed to load textures");
-    asset_server.load_folder("models").expect("Failed to load models");
-    asset_server.load_folder("audio").expect("Failed to load audio");
-
-    // Set up initial game state
-    commands.insert_resource(GameState::Loading);
+    asset_server.load_folder("textures");
+    asset_server.load_folder("models");
+    asset_server.load_folder("audio");
+    // No need to insert GameState as a resource
 }
 
 fn update_game_state(
-    mut game_state: ResMut<State<GameState>>,
+    state: Res<State<GameState>>,
+    mut next_state: ResMut<NextState<GameState>>,
     time: Res<Time>,
     input: Res<InputState>,
 ) {
     // Handle game state transitions based on input and conditions
-    match game_state.get() {
+    match state.get() {
         GameState::Loading => {
             // Transition to menu when assets are loaded
-            game_state.set(GameState::Menu);
+            next_state.set(GameState::MainMenu);
         }
-        GameState::Menu => {
+        GameState::MainMenu => {
             // Handle menu state logic
         }
-        GameState::Playing => {
+        GameState::InGame => {
             // Handle gameplay state logic
         }
         GameState::Paused => {
@@ -128,7 +124,6 @@ fn update_game_state(
 fn handle_input(
     mut input_state: ResMut<InputState>,
     keyboard: Res<Input<KeyCode>>,
-    mouse: Res<Input<MouseButton>>,
     mut mouse_motion: EventReader<MouseMotion>,
 ) {
     // Update input state based on keyboard and mouse input
@@ -143,7 +138,6 @@ fn handle_input(
     for motion in mouse_motion.read() {
         input_state.camera_rotate = motion.delta;
     }
-    input_state.camera_zoom += mouse.scroll_wheel().y;
 }
 
 fn update_physics(/* physics parameters */) {
@@ -168,11 +162,10 @@ pub struct CorePlugins;
 impl PluginGroup for CorePlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
         bevy::app::PluginGroupBuilder::start::<Self>()
-            .add(physics::PhysicsPlugin)
             .add(vehicle::VehiclePlugin)
             .add(terrain::TerrainPlugin)
             .add(camera::CameraPlugin)
-            .add(ui::UIPlugin)
+            .add(ui::UiPlugin)
             .add(weather::WeatherPlugin)
             .add(particle_system::ParticleSystemPlugin)
     }

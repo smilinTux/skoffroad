@@ -69,9 +69,6 @@
 use bevy::{
     prelude::*,
     render::{
-        mesh::MeshVertexBufferLayout,
-        render_asset::RenderAssets,
-        render_phase::{DrawFunctions, RenderPhase, SetItemPipeline},
         render_resource::{
             BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
             BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType,
@@ -83,16 +80,27 @@ use bevy::{
             VertexAttribute, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
             BufferInitDescriptor,
         },
-        renderer::{RenderDevice, RenderQueue},
+        renderer::RenderDevice,
         texture::BevyDefault,
-        view::{ViewUniform, ViewUniformOffset, ViewUniforms},
+        view::ViewUniform,
     },
 };
 
 use super::{
-    buffer::ParticleBufferManager,
     particle::ParticleSystem,
 };
+
+use bevy::reflect::TypePath;
+
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+
+use bevy::math::Vec3;
+use bevy::render::primitives::Aabb;
+
+use bevy::render::render_resource::{RenderPipeline, TextureView, Sampler};
+
+use bevy::render::render_asset::RenderAssets;
 
 /// Blend modes for particle rendering
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -104,7 +112,7 @@ pub enum BlendMode {
 }
 
 /// Material parameters for particle rendering
-#[derive(Clone, Copy, Default, ShaderType)]
+#[derive(Clone, Copy, ShaderType)]
 pub struct MaterialParams {
     /// View-projection matrix
     pub view_proj: Mat4,
@@ -173,7 +181,7 @@ impl Default for MaterialParams {
 }
 
 /// Component for particle material configuration
-#[derive(Component)]
+#[derive(Component, Clone, Default, TypePath)]
 pub struct ParticleMaterial {
     /// Texture atlas handle
     pub texture: Handle<Image>,
@@ -225,6 +233,8 @@ pub struct ParticleMaterial {
     /// Bind group for material
     pub bind_group: Option<BindGroup>,
 }
+
+impl bevy::asset::Asset for ParticleMaterial {}
 
 /// Settings for Level of Detail (LOD) management
 #[derive(Clone, Copy, Debug)]
@@ -278,7 +288,7 @@ impl Default for PerformanceSettings {
 }
 
 /// Performance metrics for particle materials
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Component)]
 pub struct ParticlePerformanceMetrics {
     /// Number of active particles
     pub active_particles: u32,
@@ -753,14 +763,6 @@ impl ParticleMaterial {
     }
 
     /// Set performance parameters
-    pub fn with_performance_settings(mut self, max_particles: f32, lod_bias: f32, quality: f32) -> Self {
-        self.max_visible_particles = max_particles;
-        self.lod_bias = lod_bias;
-        self.quality_level = quality;
-        self
-    }
-
-    /// Set performance settings for this material
     pub fn with_performance_settings(mut self, settings: PerformanceSettings) -> Self {
         self.performance_settings = settings;
         self
@@ -835,7 +837,7 @@ impl ParticleMaterial {
 
     /// Calculate GPU memory usage
     fn calculate_gpu_memory_usage(&self) -> u64 {
-        let particle_size = std::mem::size_of::<ParticleData>();
+        let particle_size = std::mem::size_of::<ParticleBatch>();
         let instance_size = std::mem::size_of::<InstanceData>();
         let buffer_size = self.advanced_performance_settings.base.max_particles as u64 * 
                          (particle_size + instance_size) as u64;
@@ -1298,10 +1300,10 @@ impl ParticleMaterial {
         // Adjust based on frame time
         if frame_time_factor < 0.9 {
             // Reduce batch size if we're missing performance target
-            new_batch_size *= (0.9 + (frame_time_factor - 0.9) * settings.adjustment_speed);
+            new_batch_size *= 0.9 + (frame_time_factor - 0.9) * settings.adjustment_speed;
         } else if frame_time_factor > 1.1 && batch_efficiency > 0.8 {
             // Increase batch size if we have performance headroom and good efficiency
-            new_batch_size *= (1.1 + (frame_time_factor - 1.1) * settings.adjustment_speed);
+            new_batch_size *= 1.1 + (frame_time_factor - 1.1) * settings.adjustment_speed;
         }
         
         // Adjust based on memory usage
@@ -1593,11 +1595,11 @@ impl ParticleMaterialPipeline {
         &self,
         render_device: &RenderDevice,
         material_buffer: &Buffer,
-        texture_view: &bevy::render::texture::TextureView,
-        sampler: &bevy::render::texture::Sampler,
+        texture_view: &TextureView,
+        sampler: &Sampler,
         particle_buffer: &Buffer,
         index_buffer: &Buffer,
-        depth_texture_view: &bevy::render::texture::TextureView,
+        depth_texture_view: &TextureView,
     ) -> BindGroup {
         render_device.create_bind_group(&BindGroupDescriptor {
             label: Some("particle_material_bind_group"),
@@ -2239,5 +2241,22 @@ fn update_trail_settings(
         if let Some(pipeline) = &material.pipeline {
             pipeline.set_uniform("trail", UniformData::from(trail.as_ref()));
         }
+    }
+}
+
+// Temporary placeholder for missing types
+#[derive(Resource)]
+struct FrameStats;
+#[derive(Component)]
+struct ParticleInstance;
+#[derive(Component)]
+struct SimulationParams;
+#[derive(Component)]
+struct Velocity;
+
+// Correct Bevy 0.12 VisitAssetDependencies implementation
+impl bevy::asset::VisitAssetDependencies for ParticleMaterial {
+    fn visit_dependencies(&self, _visit: &mut impl FnMut(bevy::asset::UntypedAssetId)) {
+        // No dependencies for ParticleMaterial
     }
 }

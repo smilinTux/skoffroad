@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use bevy::audio::*;
 use bevy::math::Vec3;
-use crate::game::Vehicle;
+// use crate::physics::vehicle::Vehicle;
 use bevy_rapier3d::prelude::CollisionEvent;
+use bevy_rapier3d::prelude::Velocity;
 use std::collections::HashMap;
 
 pub struct AudioPlugin;
@@ -99,65 +100,62 @@ enum SoundCategory {
 
 fn update_vehicle_sounds(
     mut commands: Commands,
-    vehicle_query: Query<(&Vehicle, &Transform, &Velocity)>,
+    // vehicle_query: Query<(&Vehicle, &Transform, &Velocity)>,
     audio_assets: Res<AudioAssets>,
     settings: Res<AudioSettings>,
     mut sound_pool: ResMut<SoundEffectPool>,
     time: Res<Time>,
 ) {
-    for (vehicle, transform, velocity) in vehicle_query.iter() {
-        let speed = velocity.linvel.length();
-        let rpm_factor = vehicle.engine.current_rpm / vehicle.engine.max_rpm;
-        
-        // Engine sound modulation
-        let volume = (rpm_factor * 0.8 + 0.2) * settings.engine_volume * settings.master_volume;
-        let base_pitch = rpm_factor * 0.5 + 0.75;
-        let load_pitch = if vehicle.engine.throttle > 0.1 { 1.1 } else { 1.0 };
-        let final_pitch = base_pitch * load_pitch;
-
-        spawn_or_update_sound(
-            &mut commands,
-            &mut sound_pool,
-            audio_assets.engine_sound.clone(),
-            transform.translation,
-            volume,
-            final_pitch,
-            SoundCategory::Engine,
-            true,
-            None,
-        );
-
-        // Tire squeal based on lateral force
-        if vehicle.wheels.iter().any(|w| w.slip_ratio.abs() > 0.2) {
-            spawn_or_update_sound(
-                &mut commands,
-                &mut sound_pool,
-                audio_assets.tire_squeal.clone(),
-                transform.translation,
-                0.4 * settings.effects_volume * settings.master_volume,
-                1.0,
-                SoundCategory::Effect,
-                true,
-                None,
-            );
-        }
-
-        // Wind sound based on speed
-        if speed > 10.0 {
-            let wind_volume = (speed / 100.0).min(1.0) * 0.3;
-            spawn_or_update_sound(
-                &mut commands,
-                &mut sound_pool,
-                audio_assets.wind.clone(),
-                transform.translation,
-                wind_volume * settings.effects_volume * settings.master_volume,
-                1.0,
-                SoundCategory::Ambient,
-                true,
-                None,
-            );
-        }
-    }
+    // Vehicle sound logic removed: No vehicle data available
+    // for (vehicle, transform, velocity) in vehicle_query.iter() {
+    //     let speed = velocity.linvel.length();
+    //     let rpm_factor = vehicle.engine.current_rpm / vehicle.engine.max_rpm;
+    //     // Engine sound modulation
+    //     let volume = (rpm_factor * 0.8 + 0.2) * settings.engine_volume * settings.master_volume;
+    //     let base_pitch = rpm_factor * 0.5 + 0.75;
+    //     let load_pitch = if vehicle.engine.throttle > 0.1 { 1.1 } else { 1.0 };
+    //     let final_pitch = base_pitch * load_pitch;
+    //     spawn_or_update_sound(
+    //         &mut commands,
+    //         &mut sound_pool,
+    //         audio_assets.engine_sound.clone(),
+    //         transform.translation,
+    //         volume,
+    //         final_pitch,
+    //         SoundCategory::Engine,
+    //         true,
+    //         None,
+    //     );
+    //     // Tire squeal based on lateral force
+    //     if vehicle.wheels.iter().any(|w| w.slip_ratio.abs() > 0.2) {
+    //         spawn_or_update_sound(
+    //             &mut commands,
+    //             &mut sound_pool,
+    //             audio_assets.tire_squeal.clone(),
+    //             transform.translation,
+    //             0.4 * settings.effects_volume * settings.master_volume,
+    //             1.0,
+    //             SoundCategory::Effect,
+    //             true,
+    //             None,
+    //         );
+    //     }
+    //     // Wind sound based on speed
+    //     if speed > 10.0 {
+    //         let wind_volume = (speed / 100.0).min(1.0) * 0.3;
+    //         spawn_or_update_sound(
+    //             &mut commands,
+    //             &mut sound_pool,
+    //             audio_assets.wind.clone(),
+    //             transform.translation,
+    //             wind_volume * settings.effects_volume * settings.master_volume,
+    //             1.0,
+    //             SoundCategory::Ambient,
+    //             true,
+    //             None,
+    //         );
+    //     }
+    // }
 }
 
 fn handle_environment_sounds(
@@ -168,12 +166,12 @@ fn handle_environment_sounds(
     mut sound_pool: ResMut<SoundEffectPool>,
     query: Query<&Transform>,
 ) {
-    for event in collision_events.iter() {
+    for event in collision_events.read() {
         if let CollisionEvent::Started(entity1, entity2, _) = event {
             // Get collision position from either entity
             if let Ok(transform) = query.get(*entity1) {
                 let impact_velocity = 10.0; // TODO: Calculate from actual collision
-                let volume = (impact_velocity / 20.0).min(1.0) * 0.5;
+                let volume = f32::min(impact_velocity / 20.0, 1.0) * 0.5;
                 
                 spawn_or_update_sound(
                     &mut commands,
@@ -196,7 +194,7 @@ fn update_spatial_audio(
     camera_query: Query<&Transform, With<Camera>>,
     settings: Res<AudioSettings>,
 ) {
-    if let Ok(camera_transform) = camera_query.single() {
+    if let Ok(camera_transform) = camera_query.get_single() {
         for (mut transform, _sink) in audio_query.iter_mut() {
             if settings.spatial_scale > 0.0 {
                 let distance = transform.translation.distance(camera_transform.translation);
@@ -213,17 +211,19 @@ fn cleanup_finished_sounds(
     mut sound_pool: ResMut<SoundEffectPool>,
     time: Res<Time>,
 ) {
-    sound_pool.active_sounds.retain(|entity, sound| {
+    let mut to_remove = Vec::new();
+    for (entity, sound) in sound_pool.active_sounds.iter_mut() {
         sound.elapsed += time.delta_seconds();
-        if let Some(duration) = sound.duration {
-            if sound.elapsed >= duration {
-                commands.entity(*entity).despawn();
-                sound_pool.available_entities.push(*entity);
-                return false;
-            }
+        let duration = sound.duration;
+        if sound.elapsed >= duration {
+            to_remove.push(*entity);
         }
-        true
-    });
+    }
+    for entity in &to_remove {
+        commands.entity(*entity).despawn();
+        sound_pool.available_entities.push(*entity);
+        sound_pool.active_sounds.remove(entity);
+    }
 }
 
 fn spawn_or_update_sound(

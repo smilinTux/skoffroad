@@ -1,6 +1,14 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 
+mod wheel;
+mod terrain_properties;
+mod tire_temperature;
+
+pub use wheel::{Wheel, WheelForces, WheelPhysicsPlugin};
+pub use terrain_properties::{TerrainProperties, PhysicsTerrainType};
+pub use tire_temperature::{TireTemperature, TireTemperatureState};
+
 pub struct PhysicsPlugin;
 
 impl Plugin for PhysicsPlugin {

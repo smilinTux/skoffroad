@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use sandk_offroad::game::{
-    resources::GameState,
     plugins::weather::{WeatherState, WeatherManager},
+    state::GameState,
 };
 
 fn bench_weather_system(c: &mut Criterion) {

@@ -1,189 +1,252 @@
-# Asset Management System Documentation
+# Asset Management System
 
-## Overview
-
-The asset management system is responsible for loading, managing, and hot-reloading game assets. It supports prioritized loading, multiple asset types, and provides detailed loading state information.
-
-## Asset Types
-
-The system supports the following asset types:
-
-### Vehicle Assets
-- Models (`.gltf`, `.glb`)
-- Textures (`.png`, `.jpg`)
-- Configurations (`.json`)
-
-### Audio Assets
-- Engine sounds (`.ogg`, `.wav`)
-- Environment sounds
-- Music tracks
-- UI sounds
-- Radio stations
-- Voice lines
-
-### UI Assets
-- Textures
-- Fonts
-- Icons
-- Animations
-
-### Terrain Assets
-- Textures
-- Heightmaps
-- Objects
-
-### Effect Assets
-- Particle textures
-- Weather effects
-
-### Shader Assets
-- Custom shaders
-- Material definitions
-
-## Loading Priority System
-
-Assets are loaded in the following priority order:
-
-1. **Critical Priority**
-   - UI elements required for loading screen
-   - Essential fonts
-   - Core game systems
-
-2. **High Priority**
-   - Vehicle assets
-   - Player-related content
-   - Main menu assets
-
-3. **Medium Priority**
-   - Terrain assets
-   - Environment objects
-   - Common effects
-
-4. **Low Priority**
-   - Audio assets
-   - Background content
-   - Optional content
-
-## Asset Loading State
-
-The `AssetLoadingState` struct provides detailed information about the loading process:
-
-```rust
-pub struct AssetLoadingState {
-    pub total_assets: usize,
-    pub loaded_assets: usize,
-    pub failed_assets: usize,
-    pub is_complete: bool,
-    pub current_priority: LoadPriority,
-    pub loading_queue: Vec<HandleId>,
-}
-```
-
-## Usage Examples
-
-### Loading Assets
-
-```rust
-// Get the GameAssets resource
-let game_assets = world.get_resource::<GameAssets>();
-
-// Load all assets
-game_assets.load_all(&asset_server);
-
-// Check loading progress
-if let Some(loading_state) = world.get_resource::<AssetLoadingState>() {
-    println!("Loading progress: {}/{}", 
-        loading_state.loaded_assets,
-        loading_state.total_assets
-    );
-}
-```
-
-### Hot Reloading (Debug Mode)
-
-```rust
-#[cfg(debug_assertions)]
-game_assets.hot_reload(&asset_server);
-```
+This document outlines the asset management system for the SandK Offroad game project.
 
 ## Directory Structure
 
 ```
 assets/
 ├── vehicles/
-│   ├── models/
-│   ├── textures/
-│   └── configs/
-├── audio/
-│   ├── engine/
-│   ├── environment/
-│   ├── music/
-│   ├── ui/
-│   ├── radio/
-│   └── voice/
-├── ui/
-│   ├── textures/
-│   ├── fonts/
-│   └── icons/
-├── effects/
-│   ├── particles/
-│   └── weather/
+│   ├── configs/           # Vehicle configuration files
+│   ├── models/           # 3D models for vehicles
+│   └── textures/         # Vehicle textures
 ├── terrain/
-│   ├── textures/
-│   ├── heightmaps/
-│   └── objects/
-└── shaders/
-    ├── custom/
-    └── materials/
+│   ├── heightmaps/      # Terrain height data
+│   ├── textures/        # Terrain textures
+│   └── props/           # Environmental props
+├── ui/
+│   ├── fonts/           # UI fonts
+│   ├── icons/           # UI icons
+│   └── themes/          # UI theme configurations
+└── audio/
+    ├── music/           # Background music
+    ├── sfx/             # Sound effects
+    └── ambient/         # Ambient sounds
 ```
 
-## Best Practices
+## Asset Types
 
-1. **Asset Organization**
-   - Keep assets in their appropriate directories
-   - Use consistent naming conventions
-   - Include version numbers in filenames when applicable
+### Vehicle Assets
 
-2. **Loading Optimization**
-   - Prioritize essential assets
-   - Use appropriate file formats for each asset type
-   - Compress assets when possible
+#### VehicleConfig
+```rust
+struct VehicleConfig {
+    name: String,
+    mass: f32,
+    suspension: SuspensionConfig,
+    engine: EngineConfig,
+    // ... other vehicle properties
+}
+```
 
-3. **Error Handling**
-   - Always check for failed assets
-   - Provide fallback assets for critical content
-   - Log loading errors appropriately
+- Location: `assets/vehicles/configs/*.json`
+- Format: JSON configuration files
+- Validation: Automated validation during loading
+- Hot-reloading: Supported for quick iteration
 
-4. **Hot Reloading**
-   - Only enable in debug builds
-   - Ensure assets are properly cleaned up
-   - Handle state transitions smoothly
+#### Vehicle Models
+- Location: `assets/vehicles/models/*.glb`
+- Format: GLTF/GLB (preferred) or FBX
+- Requirements:
+  - Proper scale (1 unit = 1 meter)
+  - Named bones for suspension points
+  - Collision mesh marked with "_col" suffix
+
+### Terrain Assets
+
+#### Heightmaps
+- Location: `assets/terrain/heightmaps/*.r16`
+- Format: 16-bit raw heightmap data
+- Size: Must be power of 2 + 1 (e.g., 513x513)
+- Scale: Height values 0-65535 mapped to terrain height
+
+#### Terrain Textures
+- Location: `assets/terrain/textures/*.ktx2`
+- Format: KTX2 with mipmap chain
+- Requirements:
+  - Power of 2 dimensions
+  - Splatmap alpha channels
+  - Normal maps for each texture
+
+### UI Assets
+
+#### Fonts
+- Location: `assets/ui/fonts/*.ttf`
+- Format: TrueType fonts
+- Requirements:
+  - Include required character ranges
+  - Multiple weights when needed
+
+#### UI Themes
+- Location: `assets/ui/themes/*.json`
+- Format: JSON theme configuration
+- Hot-reloading: Supported
+- Validation: Schema-based validation
+
+### Audio Assets
+
+#### Sound Effects
+- Location: `assets/audio/sfx/*.ogg`
+- Format: Ogg Vorbis
+- Requirements:
+  - 44.1kHz sample rate
+  - Normalized volume levels
+  - Proper looping points if needed
+
+## Asset Loading System
+
+### Loading Process
+
+1. Asset Discovery
+   - Scan asset directories
+   - Match files to registered loaders
+   - Build asset dependency graph
+
+2. Validation
+   - Check file formats
+   - Validate configurations
+   - Verify dependencies
+
+3. Loading
+   - Parallel asset loading
+   - Progress tracking
+   - Error handling
+
+4. Hot Reloading
+   - Watch for file changes
+   - Reload modified assets
+   - Update dependent systems
+
+### Usage Example
+
+```rust
+// Register asset types
+app.add_asset::<VehicleConfig>();
+app.init_asset_loader::<VehicleConfigLoader>();
+
+// Load assets
+fn load_vehicle(asset_server: Res<AssetServer>) -> Handle<VehicleConfig> {
+    asset_server.load("vehicles/configs/jeep.json")
+}
+
+// Use loaded assets
+fn spawn_vehicle(
+    vehicles: Res<Assets<VehicleConfig>>,
+    handle: Handle<VehicleConfig>
+) {
+    if let Some(config) = vehicles.get(&handle) {
+        // Use the config to spawn vehicle
+    }
+}
+```
+
+## Asset Optimization
+
+### Texture Optimization
+- Use KTX2 format with supercompression
+- Generate mipmaps
+- Compress normal maps
+- Atlas small textures
+
+### Model Optimization
+- Remove unused vertices/faces
+- Optimize mesh for GPU
+- Use LOD levels
+- Share materials
+
+### Audio Optimization
+- Proper compression settings
+- Stream large audio files
+- Use spatial audio zones
+- Pool sound instances
+
+## Asset Creation Guidelines
+
+### Textures
+- Power of 2 dimensions
+- Maximum size: 4096x4096
+- Proper UV mapping
+- PBR material workflow
+
+### Models
+- Clean topology
+- Proper UV unwrapping
+- Named materials
+- Collision meshes
+- LOD setup
+
+### Audio
+- Normalized levels
+- Proper looping points
+- Consistent sample rates
+- Spatial audio setup
+
+## Version Control
+
+### Large File Storage
+- Use Git LFS for:
+  - Textures
+  - Models
+  - Audio files
+  - Large configs
+
+### Asset Tracking
+- Track binary files
+- Version assets with code
+- Document major changes
+
+## Tools and Utilities
+
+### Asset Processing
+- Texture compression
+- Model optimization
+- Audio conversion
+- Config validation
+
+### Development Tools
+- Asset preview
+- Hot reload system
+- Validation checks
+- Asset browser
 
 ## Troubleshooting
 
-Common issues and solutions:
+### Common Issues
 
 1. **Missing Assets**
-   - Check file paths and naming
-   - Verify asset directories exist
-   - Check file permissions
+   - Check file paths
+   - Verify asset registration
+   - Check case sensitivity
+   - Validate dependencies
 
-2. **Loading Failures**
-   - Verify file formats
-   - Check for corrupted files
-   - Monitor memory usage
+2. **Loading Errors**
+   - Verify file format
+   - Check asset validation
+   - Review error logs
+   - Test dependencies
 
 3. **Performance Issues**
-   - Review asset sizes
-   - Check loading priorities
-   - Monitor loading queue size
+   - Monitor memory usage
+   - Check asset sizes
+   - Review loading order
+   - Optimize assets
 
-## Contributing
+## Best Practices
 
-When adding new asset types:
+1. **Asset Creation**
+   - Follow naming conventions
+   - Maintain consistent scale
+   - Document special requirements
+   - Test before commit
 
-1. Update the `GameAssets` struct
-2. Add appropriate loading priority
-3. Update tests
-4. Document the new asset type
-5. Update the directory structure if needed 
+2. **Asset Usage**
+   - Load assets asynchronously
+   - Implement proper cleanup
+   - Handle loading errors
+   - Use asset references
+
+3. **Maintenance**
+   - Regular cleanup
+   - Version control
+   - Documentation updates
+   - Performance monitoring

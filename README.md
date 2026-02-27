@@ -4,6 +4,25 @@ A photorealistic off-road vehicle simulation game built with Rust, featuring cut
 
 ## Features
 
+### Core Systems
+- ✅ Advanced Vehicle Physics
+  - Realistic suspension and wheel physics
+  - Dynamic terrain interaction
+  - Advanced vehicle dynamics with weight transfer
+  - Configurable vehicle parameters
+  
+- ✅ Terrain System
+  - Procedural terrain generation
+  - Dynamic terrain deformation
+  - Varied difficulty levels
+  - Optimized LOD system
+  
+- ✅ Vehicle Systems
+  - Realistic winch physics
+  - Vehicle damage system
+  - Tire deformation and temperature effects
+  - Advanced wheel physics
+
 ### Graphics & Rendering
 - ✅ Photorealistic PBR rendering with ray tracing support
 - ✅ Dynamic terrain deformation with high-resolution displacement
@@ -61,6 +80,46 @@ A photorealistic off-road vehicle simulation game built with Rust, featuring cut
 - ✅ Comprehensive benchmarking suite
 - ✅ Asset validation system
 
+### Graphics and Camera (🔄 In Progress)
+- Photorealistic graphics with dynamic lighting
+- Multiple camera views (chase, cockpit, drone)
+- Advanced camera controls with obstacle avoidance
+- Per-wheel camera views for technical driving
+
+### Audio and Communication
+- ✅ 3D Audio Engine
+  - Spatial audio processing
+  - Dynamic sound mixing
+  - Environmental effects
+  
+- ✅ Vehicle Audio
+  - Dynamic engine sounds based on RPM and load
+  - Realistic suspension and collision sounds
+  - Environmental interaction audio
+  
+- 🔄 CB Radio System
+  - Multiple channels with realistic effects
+  - Distance-based signal degradation
+  - Voice chat integration with CB radio effects
+  - Emergency services coordination
+  - Dynamic AI conversations
+  
+- 🔄 Emergency Services Integration
+  - Real-time emergency response system
+  - Dynamic hazard management
+  - Victim assistance framework
+  - Unit effectiveness calculations
+  - Experience-based performance
+  - Intelligent dispatch system
+
+### Planned Features
+- 📅 In-game radio stations with custom playlists
+- 📅 Comprehensive UI/HUD system
+- 📅 Multiple game modes and missions
+- 📅 Multiplayer and social features
+- 📅 Vehicle customization and marketplace
+- 📅 Spectator and replay systems
+
 ## Development Setup
 
 ### Prerequisites
@@ -70,6 +129,9 @@ A photorealistic off-road vehicle simulation game built with Rust, featuring cut
 - CMake
 - Git
 - (Optional) Ray tracing capable GPU
+- Cargo package manager
+- GPU with Vulkan support
+- OpenAL for audio processing
 
 ### Installation
 
@@ -135,6 +197,7 @@ sandk-offroad/
 - [Asset Pipeline](docs/assets.md)
 - [Modding Guide](docs/modding.md)
 - [Audio System](docs/audio.md)
+- [Emergency Services](docs/emergency.md)
 
 ### Building
 

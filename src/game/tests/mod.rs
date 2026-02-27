@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
     use bevy::prelude::*;
-    use crate::game::{GamePlugin, resources::GameState};
+    use crate::game::{GamePlugin};
+    use crate::game::state::GameState;
 
     fn setup_test_app() -> App {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins)
-            .add_plugin(GamePlugin)
-            .init_resource::<GameState>();
+            .add_plugin(GamePlugin);
         app
     }
 

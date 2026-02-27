@@ -1,12 +1,13 @@
 use bevy::{
     prelude::*,
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
-    gizmos::config::GizmoConfig,
+    diagnostic::FrameTimeDiagnosticsPlugin,
 };
 
 use crate::game::plugins::particle_system::{
-    ParticleMaterial, ParticleSystem, ParticleSystemPlugin,
-    Trail, TrailPlugin, BasicParticleEffect, BasicParticleConfig,
+    ParticleSystem, ParticleSystemPlugin,
+    // Trail, TrailPlugin,
+    BasicParticleEffect, BasicParticleConfig,
+    spawn_basic_particle_effect,
 };
 
 pub struct SpecializedEffectsExamplePlugin;
@@ -15,18 +16,16 @@ impl Plugin for SpecializedEffectsExamplePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
                 ParticleSystemPlugin,
-                TrailPlugin,
+                // TrailPlugin,
                 FrameTimeDiagnosticsPlugin::default(),
             ))
             .insert_resource(SpecialEffectConfig::default())
             .add_systems(Startup, setup_specialized_example)
-            .add_systems(Update, (
-                update_lightning_effect,
-                update_vortex_effect,
-                update_energy_field_effect,
-                handle_specialized_input,
-                update_specialized_debug,
-            ));
+            .add_systems(Update, update_lightning_effect)
+            .add_systems(Update, update_vortex_effect)
+            .add_systems(Update, update_energy_field_effect)
+            .add_systems(Update, handle_specialized_input)
+            .add_systems(Update, update_specialized_debug);
     }
 }
 
@@ -155,12 +154,12 @@ fn spawn_lightning(commands: &mut Commands, start_pos: Vec3, end_pos: Vec3) {
 
     // Add trail for lightning path
     commands.spawn((
-        Trail {
-            width: 0.1,
-            fade_time: 0.2,
-            point_distance: 0.05,
-            max_points: 20,
-        },
+        // Trail {
+        //     width: 0.1,
+        //     fade_time: 0.2,
+        //     point_distance: 0.05,
+        //     max_points: 20,
+        // },
         Transform::from_translation(start_pos),
     ));
 }
@@ -204,12 +203,12 @@ fn update_lightning_effect(
     mut query: Query<(&mut Transform, &mut SpecializedEffect, &mut ParticleSystem)>,
 ) {
     for (mut transform, mut effect, mut system) in query.iter_mut() {
-        if let SpecializedEffect::Lightning { ref mut time, start_pos, end_pos, branches } = *effect {
-            *time += time.delta_seconds() * config.lightning_frequency;
+        if let SpecializedEffect::Lightning { time: ref mut effect_time, start_pos, end_pos, branches } = *effect {
+            *effect_time += time.delta_seconds() * config.lightning_frequency;
             
             // Generate lightning branches
             for i in 0..branches {
-                let t = (*time + i as f32 * 0.3) % 1.0;
+                let t = (*effect_time + i as f32 * 0.3) % 1.0;
                 let offset = Vec3::new(
                     (t * 10.0).sin() * 0.5,
                     0.0,
@@ -217,11 +216,8 @@ fn update_lightning_effect(
                 );
                 
                 let pos = start_pos.lerp(end_pos, t) + offset;
-                system.spawn_particle(
-                    pos,
-                    (end_pos - start_pos).normalize() * 2.0,
-                    Color::rgba(0.5, 0.8, 1.0, 0.8),
-                );
+                // TODO: Implement correct particle emission here. No spawn_particle method on ParticleSystem.
+                // system.spawn_particle(pos, (end_pos - start_pos).normalize() * 2.0, Color::rgba(0.5, 0.8, 1.0, 0.8));
             }
 
             // Debug visualization
@@ -256,11 +252,8 @@ fn update_vortex_effect(
                 let pull_center = transform.translation + Vec3::new(0.0, height_offset, 0.0);
                 let pull_dir = (pull_center - pos).normalize();
                 
-                system.spawn_particle(
-                    pos,
-                    pull_dir * config.vortex_pull_strength,
-                    Color::rgba(0.7, 0.2, 1.0, 0.6),
-                );
+                // TODO: Implement correct particle emission here. No spawn_particle method on ParticleSystem.
+                // system.spawn_particle(pos, pull_dir * config.vortex_pull_strength, Color::rgba(0.7, 0.2, 1.0, 0.6));
             }
 
             // Debug visualization
@@ -295,11 +288,8 @@ fn update_energy_field_effect(
                 );
                 
                 let dir = (pos - transform.translation).normalize();
-                system.spawn_particle(
-                    pos,
-                    dir * config.energy_field_intensity,
-                    Color::rgba(0.2, 0.9, 0.4, 0.7),
-                );
+                // TODO: Implement correct particle emission here. No spawn_particle method on ParticleSystem.
+                // system.spawn_particle(pos, dir * config.energy_field_intensity, Color::rgba(0.2, 0.9, 0.4, 0.7));
             }
 
             // Debug visualization

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use crate::game::states::{GameState, GameTimer, GameProgress};
+use crate::game::state::GameState;
+use crate::game::states::{GameTimer, GameProgress};
 
 pub struct GameUIPlugin;
 
@@ -8,7 +9,7 @@ impl Plugin for GameUIPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, (
             show_main_menu.run_if(in_state(GameState::MainMenu)),
-            show_game_ui.run_if(in_state(GameState::Playing)),
+            show_game_ui.run_if(in_state(GameState::InGame)),
             show_pause_menu.run_if(in_state(GameState::Paused)),
             show_game_over.run_if(in_state(GameState::GameOver)),
         ));
@@ -24,7 +25,7 @@ pub fn show_main_menu(
             ui.heading("Offroad Racing Game");
             ui.add_space(20.0);
             if ui.button("Start Game").clicked() {
-                commands.insert_resource(NextState(Some(GameState::Playing)));
+                commands.insert_resource(NextState(Some(GameState::InGame)));
             }
             if ui.button("Quit").clicked() {
                 std::process::exit(0);
@@ -54,7 +55,7 @@ pub fn show_pause_menu(
             ui.heading("Game Paused");
             ui.add_space(20.0);
             if ui.button("Resume").clicked() {
-                commands.insert_resource(NextState(Some(GameState::Playing)));
+                commands.insert_resource(NextState(Some(GameState::InGame)));
             }
             if ui.button("Main Menu").clicked() {
                 commands.insert_resource(NextState(Some(GameState::MainMenu)));
@@ -74,7 +75,7 @@ pub fn show_game_over(
             ui.add_space(20.0);
             ui.label(format!("Time: {:.2}", game_timer.elapsed));
             if ui.button("Restart").clicked() {
-                commands.insert_resource(NextState(Some(GameState::Playing)));
+                commands.insert_resource(NextState(Some(GameState::InGame)));
             }
             if ui.button("Main Menu").clicked() {
                 commands.insert_resource(NextState(Some(GameState::MainMenu)));

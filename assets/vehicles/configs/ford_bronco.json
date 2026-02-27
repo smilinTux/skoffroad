@@ -1,0 +1,15 @@
+{
+    "name": "Ford Bronco Wildtrak",
+    "mass": 2049.0,
+    "dimensions": [1.928, 1.851, 4.412],
+    "suspension_config": {
+        "spring_rate": 58000.0,
+        "damping": 5800.0,
+        "travel": 0.246
+    },
+    "engine_config": {
+        "max_power": 330.0,
+        "max_torque": 415.0,
+        "redline": 6000.0
+    }
+} 

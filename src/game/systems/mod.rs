@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use crate::game::{
-    resources::{GameState, InputState, VehicleState, DebugInfo},
+    resources::{InputState, VehicleState, DebugInfo},
     constants::*,
+    state::GameState,
 };
 
 pub mod loading;
@@ -129,6 +130,6 @@ impl Plugin for GameSystemsPlugin {
                 update_vehicle_physics,
                 update_game_state,
                 update_debug_info,
-            ).chain());
+            ));
     }
 } 

@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts, EguiPlugin};
-use crate::game::Vehicle;
-use crate::core::GameState;
+use crate::game::state::GameState;
+// use crate::physics::vehicle::Vehicle;
+// use crate::game::state::GameState;
 
 pub struct UiPlugin;
 
@@ -23,22 +24,23 @@ pub struct UiState {
 
 fn update_hud(
     mut contexts: EguiContexts,
-    vehicle_query: Query<&Vehicle>,
+    // vehicle_query: Query<&Vehicle>,
     state: Res<State<GameState>>,
     ui_state: Res<UiState>,
 ) {
-    if state.get() != &GameState::Playing || ui_state.show_menu {
+    if state.get() != &GameState::InGame || ui_state.show_menu {
         return;
     }
 
     egui::Window::new("HUD")
         .fixed_pos((10.0, 10.0))
         .show(contexts.ctx_mut(), |ui| {
-            if let Ok(vehicle) = vehicle_query.get_single() {
-                let speed_percentage = (vehicle.speed / vehicle.max_speed).min(1.0);
-                ui.add(egui::ProgressBar::new(speed_percentage)
-                    .text(format!("Speed: {:.0} km/h", vehicle.speed * 3.6)));
-            }
+            // Vehicle HUD removed: No vehicle data available
+            // if let Ok(vehicle) = vehicle_query.get_single() {
+            //     let speed_percentage = (vehicle.speed / vehicle.max_speed).min(1.0);
+            //     ui.add(egui::ProgressBar::new(speed_percentage)
+            //         .text(format!("Speed: {:.0} km/h", vehicle.speed * 3.6)));
+            // }
         });
 }
 

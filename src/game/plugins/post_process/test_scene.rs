@@ -4,14 +4,13 @@ use bevy::{
         camera::Camera,
         mesh::{Indices, Mesh},
         render_resource::PrimitiveTopology,
-        settings::WgpuSettings,
         render_resource::WgpuFeatures,
         renderer::RenderDevice,
     },
     input::mouse::MouseMotion,
     text::{Text2dBundle, TextAlignment, TextStyle},
     diagnostic::{
-        Diagnostics, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin,
+        DiagnosticsStore, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin,
         EntityCountDiagnosticsPlugin, SystemInformationDiagnosticsPlugin,
     },
 };
@@ -24,7 +23,8 @@ use std::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::settings::PostProcessSettings;
+use super::settings::{PostProcessSettings, ToneMapping};
+// use crate::game::plugins::wgpu_settings::WgpuSettings; // TODO: Fix or implement wgpu_settings module
 
 /// Plugin that sets up a test scene for demonstrating post-processing effects
 pub struct PostProcessTestPlugin;
@@ -88,7 +88,6 @@ enum PostProcessControl {
     Exposure,
     Bloom,
     ChromaticAberration,
-    VignetteStrength,
     Contrast,
     Saturation,
     Brightness,
@@ -163,10 +162,6 @@ impl Default for MouseControlState {
 impl Default for EffectPresets {
     fn default() -> Self {
         let mut presets = Vec::new();
-        
-        // ... existing presets ...
-
-        // Add new testing-focused presets
         presets.extend([
             (
                 "HDR Test".to_string(),
@@ -177,10 +172,11 @@ impl Default for EffectPresets {
                     saturation: 1.0,
                     brightness: 1.0,
                     bloom_intensity: 0.0,
+                    bloom_threshold: 1.0,
                     chromatic_aberration: 0.0,
                     vignette_strength: 0.0,
                     vignette_radius: 1.0,
-                    tone_mapping: ToneMapping::Aces,
+                    tone_mapping: ToneMapping::ACES as u32,
                 }
             ),
             (
@@ -192,10 +188,11 @@ impl Default for EffectPresets {
                     saturation: 1.0,
                     brightness: 1.0,
                     bloom_intensity: 1.0,
+                    bloom_threshold: 1.0,
                     chromatic_aberration: 0.0,
                     vignette_strength: 0.0,
                     vignette_radius: 1.0,
-                    tone_mapping: ToneMapping::None,
+                    tone_mapping: ToneMapping::None as u32,
                 }
             ),
             (
@@ -207,10 +204,11 @@ impl Default for EffectPresets {
                     saturation: 1.0,
                     brightness: 1.0,
                     bloom_intensity: 0.0,
+                    bloom_threshold: 1.0,
                     chromatic_aberration: 0.05,
                     vignette_strength: 0.0,
                     vignette_radius: 1.0,
-                    tone_mapping: ToneMapping::None,
+                    tone_mapping: ToneMapping::None as u32,
                 }
             ),
         ]);
@@ -218,7 +216,7 @@ impl Default for EffectPresets {
         Self {
             presets,
             current: 0,
-            custom_slots: vec![None; 3],
+            custom_slots: [None, None, None],
             auto_animate: false,
             animation_time: 0.0,
         }
@@ -284,10 +282,6 @@ impl Plugin for PostProcessTestPlugin {
                 EntityCountDiagnosticsPlugin::default(),
                 SystemInformationDiagnosticsPlugin::default(),
             ))
-            .insert_resource(WgpuSettings {
-                features: WgpuFeatures::TIMESTAMP_QUERY,
-                ..default()
-            })
             .add_systems(Startup, (setup_test_scene, setup_help_text, setup_performance_text))
             .add_systems(Update, (
                 update_settings,
@@ -321,7 +315,7 @@ fn update_settings(
         settings.exposure = 1.0 + (t * 0.5).sin() * 0.5;
         settings.bloom_intensity = 0.5 + (t * 0.3).sin() * 0.3;
         settings.chromatic_aberration = ((t * 0.2).sin() * 0.5 + 0.5).max(0.0);
-        settings.vignette_strength = ((t * 0.15).sin() * 0.3 + 0.3).max(0.0);
+        settings.vignette_radius = ((t * 0.15).sin() * 0.3 + 0.3).max(0.0);
         settings.tone_mapping = (((t / 5.0).floor() as u32) % 3) + 1;
         settings.contrast = 1.0 + (t * 0.25).sin() * 0.2;
         settings.saturation = 1.0 + (t * 0.4).sin() * 0.3;
@@ -1066,7 +1060,6 @@ fn update_help_text(
                 PostProcessControl::Exposure => "Exposure",
                 PostProcessControl::Bloom => "Bloom",
                 PostProcessControl::ChromaticAberration => "Chromatic",
-                PostProcessControl::VignetteStrength => "Vignette",
                 PostProcessControl::Contrast => "Contrast",
                 PostProcessControl::Saturation => "Saturation",
                 PostProcessControl::Brightness => "Brightness",
@@ -1119,27 +1112,32 @@ fn update_help_text(
             "\nNo Custom Preset Active".to_string()
         };
 
+        let slot_name = |slot: &Option<(String, PostProcessSettings)>| -> String {
+            slot.as_ref().map(|(n, _)| n.clone()).unwrap_or_else(|| "".to_string())
+        };
+        let slot0 = slot_name(&presets.custom_slots[0]);
+        let slot1 = slot_name(&presets.custom_slots[1]);
+        let slot2 = slot_name(&presets.custom_slots[2]);
         text.sections[0].value = format!(
             "Controls:\n\
             Hold number + Up/Down:\n\
             1: Exposure ({:.2})\n\
             2: Bloom ({:.2})\n\
             3: Chromatic ({:.2})\n\
-            4: Vignette ({:.2})\n\
-            5: Contrast ({:.2})\n\
-            6: Saturation ({:.2})\n\
-            7: Brightness ({:.2})\n\
-            8: Vignette Radius ({:.2})\n\n\
-            Mouse Controls:\n\
+            4: Contrast ({:.2})\n\
+            5: Saturation ({:.2})\n\
+            6: Brightness ({:.2})\n\
+            7: Vignette Radius ({:.2})\n\
+            \nMouse Controls:\n\
             Hold number + Left Click: Fine-tune value\n\
-            Active Control: {}\n\n\
-            Presets:\n\
+            Active Control: {}\n\
+            \nPresets:\n\
             P: Cycle Presets ({})\n\
             Ctrl + F1-F3: Save custom preset\n\
-            {}\n\
-            {}\n\
-            {}\n\n\
-            T: Cycle Tone Mapping ({})\n\
+            Custom Slot 1: {}\n\
+            Custom Slot 2: {}\n\
+            Custom Slot 3: {}\n\
+            \nT: Cycle Tone Mapping ({})\n\
             Space: Toggle Auto-Animate\n\
             R: Reset to Default\n\
             {}\n\
@@ -1156,25 +1154,24 @@ fn update_help_text(
             Ctrl + I: Import preset\n\
             Ctrl + B: Start preset blending\n\
             Left/Right: Adjust blend\n\
-            Escape: Cancel blend{}",
+            Escape: Cancel blend",
             settings.exposure,
             settings.bloom_intensity,
             settings.chromatic_aberration,
-            settings.vignette_strength,
             settings.contrast,
             settings.saturation,
             settings.brightness,
             settings.vignette_radius,
             mouse_control,
             preset_name,
-            custom_slots[0],
-            custom_slots[1],
-            custom_slots[2],
+            slot0,
+            slot1,
+            slot2,
             match settings.tone_mapping {
-                1 => "ACES",
-                2 => "Reinhard",
-                3 => "Uncharted2",
-                _ => "Unknown",
+                x if x == ToneMapping::ACES as u32 => "ACES",
+                x if x == ToneMapping::Reinhard as u32 => "Reinhard",
+                x if x == ToneMapping::Uncharted2 as u32 => "Uncharted2",
+                _ => "None",
             },
             scene_config_status,
             preset_status,
@@ -1272,46 +1269,39 @@ fn handle_user_controls(
             if keyboard.pressed(KeyCode::Down) { settings.chromatic_aberration -= dt; }
         }
         
-        // Vignette strength controls (4)
+        // Contrast controls (4)
         if keyboard.pressed(KeyCode::Key4) {
-            if keyboard.pressed(KeyCode::Up) { settings.vignette_strength += dt; }
-            if keyboard.pressed(KeyCode::Down) { settings.vignette_strength -= dt; }
-        }
-
-        // Contrast controls (5)
-        if keyboard.pressed(KeyCode::Key5) {
             if keyboard.pressed(KeyCode::Up) { settings.contrast += dt; }
             if keyboard.pressed(KeyCode::Down) { settings.contrast -= dt; }
         }
 
-        // Saturation controls (6)
-        if keyboard.pressed(KeyCode::Key6) {
+        // Saturation controls (5)
+        if keyboard.pressed(KeyCode::Key5) {
             if keyboard.pressed(KeyCode::Up) { settings.saturation += dt; }
             if keyboard.pressed(KeyCode::Down) { settings.saturation -= dt; }
         }
 
-        // Brightness controls (7)
-        if keyboard.pressed(KeyCode::Key7) {
+        // Brightness controls (6)
+        if keyboard.pressed(KeyCode::Key6) {
             if keyboard.pressed(KeyCode::Up) { settings.brightness += dt; }
             if keyboard.pressed(KeyCode::Down) { settings.brightness -= dt; }
         }
 
-        // Vignette radius controls (8)
-        if keyboard.pressed(KeyCode::Key8) {
+        // Vignette radius controls (7)
+        if keyboard.pressed(KeyCode::Key7) {
             if keyboard.pressed(KeyCode::Up) { settings.vignette_radius += dt; }
             if keyboard.pressed(KeyCode::Down) { settings.vignette_radius -= dt; }
         }
         
         // Tone mapping cycling (T)
         if keyboard.just_pressed(KeyCode::T) {
-            settings.tone_mapping = (settings.tone_mapping % 3) + 1;
+            settings.tone_mapping = (settings.tone_mapping + 1) % 4;
         }
 
         // Clamp values
         settings.exposure = settings.exposure.clamp(0.0, 3.0);
         settings.bloom_intensity = settings.bloom_intensity.clamp(0.0, 2.0);
         settings.chromatic_aberration = settings.chromatic_aberration.clamp(0.0, 1.0);
-        settings.vignette_strength = settings.vignette_strength.clamp(0.0, 1.0);
         settings.vignette_radius = settings.vignette_radius.clamp(0.0, 1.0);
         settings.contrast = settings.contrast.clamp(0.5, 2.0);
         settings.saturation = settings.saturation.clamp(0.0, 2.0);
@@ -1322,8 +1312,8 @@ fn handle_user_controls(
         settings.exposure = 1.0 + (t * 0.5).sin() * 0.5;
         settings.bloom_intensity = 0.5 + (t * 0.3).sin() * 0.3;
         settings.chromatic_aberration = ((t * 0.2).sin() * 0.5 + 0.5).max(0.0);
-        settings.vignette_strength = ((t * 0.15).sin() * 0.3 + 0.3).max(0.0);
-        settings.tone_mapping = (((t / 5.0).floor() as u32) % 3) + 1;
+        settings.vignette_radius = ((t * 0.15).sin() * 0.3 + 0.3).max(0.0);
+        settings.tone_mapping = (settings.tone_mapping + 1) % 4;
         settings.contrast = 1.0 + (t * 0.25).sin() * 0.2;
         settings.saturation = 1.0 + (t * 0.4).sin() * 0.3;
         settings.brightness = 1.0 + (t * 0.35).sin() * 0.2;
@@ -1349,14 +1339,12 @@ fn handle_mouse_controls(
         } else if keyboard.pressed(KeyCode::Key3) {
             Some(PostProcessControl::ChromaticAberration)
         } else if keyboard.pressed(KeyCode::Key4) {
-            Some(PostProcessControl::VignetteStrength)
-        } else if keyboard.pressed(KeyCode::Key5) {
             Some(PostProcessControl::Contrast)
-        } else if keyboard.pressed(KeyCode::Key6) {
+        } else if keyboard.pressed(KeyCode::Key5) {
             Some(PostProcessControl::Saturation)
-        } else if keyboard.pressed(KeyCode::Key7) {
+        } else if keyboard.pressed(KeyCode::Key6) {
             Some(PostProcessControl::Brightness)
-        } else if keyboard.pressed(KeyCode::Key8) {
+        } else if keyboard.pressed(KeyCode::Key7) {
             Some(PostProcessControl::VignetteRadius)
         } else {
             None
@@ -1370,7 +1358,6 @@ fn handle_mouse_controls(
                     PostProcessControl::Exposure => settings.exposure,
                     PostProcessControl::Bloom => settings.bloom_intensity,
                     PostProcessControl::ChromaticAberration => settings.chromatic_aberration,
-                    PostProcessControl::VignetteStrength => settings.vignette_strength,
                     PostProcessControl::Contrast => settings.contrast,
                     PostProcessControl::Saturation => settings.saturation,
                     PostProcessControl::Brightness => settings.brightness,
@@ -1387,7 +1374,7 @@ fn handle_mouse_controls(
 
     // Apply mouse control
     if let Some(control) = mouse_state.active_control {
-        let motion: Vec2 = mouse_motion.iter().map(|m| Vec2::new(m.delta.x, m.delta.y)).sum();
+        let motion: Vec2 = mouse_motion.read().map(|m| Vec2::new(m.delta.x, m.delta.y)).sum();
         let sensitivity = 0.005;
         let delta = motion.x * sensitivity;
 
@@ -1396,7 +1383,6 @@ fn handle_mouse_controls(
             PostProcessControl::Exposure => settings.exposure = new_value.clamp(0.0, 3.0),
             PostProcessControl::Bloom => settings.bloom_intensity = new_value.clamp(0.0, 2.0),
             PostProcessControl::ChromaticAberration => settings.chromatic_aberration = new_value.clamp(0.0, 1.0),
-            PostProcessControl::VignetteStrength => settings.vignette_strength = new_value.clamp(0.0, 1.0),
             PostProcessControl::Contrast => settings.contrast = new_value.clamp(0.5, 2.0),
             PostProcessControl::Saturation => settings.saturation = new_value.clamp(0.0, 2.0),
             PostProcessControl::Brightness => settings.brightness = new_value.clamp(0.0, 2.0),
@@ -1429,7 +1415,7 @@ fn handle_comparison_controls(
 
         // Adjust split position with mouse drag
         if mouse.pressed(MouseButton::Left) && keyboard.pressed(KeyCode::ControlLeft) {
-            let motion: Vec2 = mouse_motion.iter().map(|m| Vec2::new(m.delta.x, m.delta.y)).sum();
+            let motion: Vec2 = mouse_motion.read().map(|m| Vec2::new(m.delta.x, m.delta.y)).sum();
             comparison.split_position = (comparison.split_position + motion.x * 0.001).clamp(0.1, 0.9);
         }
     }
@@ -1445,7 +1431,7 @@ fn handle_scene_configs(
     if keyboard.pressed(KeyCode::ControlLeft) && keyboard.just_pressed(KeyCode::S) {
         if let Ok((camera_transform, settings)) = camera_query.get_single() {
             let config = SceneConfiguration {
-                name: format!("scene_config_{}", chrono::Local::now().format("%Y%m%d_%H%M%S")),
+                name: "scene_config".to_string(),
                 camera_position: camera_transform.translation,
                 camera_rotation: camera_transform.rotation,
                 post_process_settings: settings.clone(),
@@ -1509,7 +1495,7 @@ fn handle_scene_configs(
 fn handle_preset_manager(
     keyboard: Res<Input<KeyCode>>,
     mut preset_manager: ResMut<PresetManager>,
-    settings: Res<PostProcessSettings>,
+    mut settings: ResMut<PostProcessSettings>,
     mut presets: ResMut<EffectPresets>,
     time: Res<Time>,
 ) {
@@ -1522,20 +1508,21 @@ fn handle_preset_manager(
     }
 
     // Confirm rename (Enter)
-    if let Some((old_name, new_name)) = &preset_manager.rename_mode {
+    let rename_mode = preset_manager.rename_mode.clone();
+    if let Some((old_name, new_name)) = rename_mode {
         if keyboard.just_pressed(KeyCode::Return) {
             if !new_name.is_empty() {
                 // Rename file
                 let old_path = preset_manager.save_directory.join(format!("{}.json", old_name));
                 let new_path = preset_manager.save_directory.join(format!("{}.json", new_name));
-                if let Ok(_) = fs::rename(old_path, new_path) {
+                if let Ok(_) = std::fs::rename(&old_path, &new_path) {
                     // Update in-memory presets
-                    if let Some(index) = presets.presets.iter().position(|(name, _)| name == old_name) {
+                    if let Some(index) = presets.presets.iter().position(|(name, _)| name == &old_name) {
                         presets.presets[index].0 = new_name.clone();
                         preset_manager.current_preset = Some(new_name.clone());
-                        
                         // Update tags
-                        if let Some(tags) = preset_manager.tags.remove(old_name) {
+                        let tags = preset_manager.tags.remove(&old_name);
+                        if let Some(tags) = tags {
                             preset_manager.tags.insert(new_name.clone(), tags);
                         }
                     }
@@ -1546,8 +1533,9 @@ fn handle_preset_manager(
     }
 
     // Add/remove tags (Ctrl + T)
+    let current_preset = preset_manager.current_preset.clone();
     if keyboard.pressed(KeyCode::ControlLeft) && keyboard.just_pressed(KeyCode::T) {
-        if let Some(current) = &preset_manager.current_preset {
+        if let Some(current) = current_preset {
             let tags = preset_manager.tags.entry(current.clone()).or_insert_with(Vec::new);
             // TODO: Show tag input UI
             tags.push("new_tag".to_string());
@@ -1564,12 +1552,10 @@ fn handle_preset_manager(
                     tags: preset_manager.tags.get(current).cloned().unwrap_or_default(),
                     settings: preset.clone(),
                 };
-                
                 let export_path = preset_manager.save_directory.join("exports");
-                fs::create_dir_all(&export_path).unwrap_or_default();
+                std::fs::create_dir_all(&export_path).unwrap_or_default();
                 let file_path = export_path.join(format!("{}_export.json", current));
-                
-                if let Ok(mut file) = File::create(&file_path) {
+                if let Ok(mut file) = std::fs::File::create(&file_path) {
                     if let Ok(json) = serde_json::to_string_pretty(&metadata) {
                         let _ = file.write_all(json.as_bytes());
                     }
@@ -1581,9 +1567,9 @@ fn handle_preset_manager(
     // Import preset (Ctrl + I)
     if keyboard.pressed(KeyCode::ControlLeft) && keyboard.just_pressed(KeyCode::I) {
         let import_path = preset_manager.save_directory.join("imports");
-        if let Ok(entries) = fs::read_dir(import_path) {
+        if let Ok(entries) = std::fs::read_dir(import_path) {
             for entry in entries.filter_map(|e| e.ok()) {
-                if let Ok(mut file) = File::open(entry.path()) {
+                if let Ok(mut file) = std::fs::File::open(entry.path()) {
                     let mut contents = String::new();
                     if file.read_to_string(&mut contents).is_ok() {
                         if let Ok(metadata) = serde_json::from_str::<PresetMetadata>(&contents) {
@@ -1608,21 +1594,22 @@ fn handle_preset_manager(
     }
 
     // Update blend factor
-    if let Some((name, source, factor)) = &mut preset_manager.blend_source {
+    let current_preset = preset_manager.current_preset.clone();
+    if let Some((_, source, factor)) = &mut preset_manager.blend_source {
         if keyboard.pressed(KeyCode::Left) {
             *factor = (*factor - time.delta_seconds()).max(0.0);
         }
         if keyboard.pressed(KeyCode::Right) {
             *factor = (*factor + time.delta_seconds()).min(1.0);
         }
-        
         // Apply blend
-        if let Some((_, target)) = presets.presets.iter().find(|(n, _)| n == &preset_manager.current_preset.clone().unwrap_or_default()) {
-            let mut blended = source.clone();
-            blend_settings(&mut blended, target, *factor);
-            *settings = blended;
+        if let Some(current) = current_preset {
+            if let Some((_, target)) = presets.presets.iter().find(|(n, _)| n == &current) {
+                let mut blended = source.clone();
+                blend_settings(&mut blended, target, *factor);
+                *settings = blended;
+            }
         }
-        
         // End blend mode
         if keyboard.just_pressed(KeyCode::Escape) {
             preset_manager.blend_source = None;
@@ -1646,12 +1633,10 @@ fn handle_preset_manager(
             }) {
                 let preset_name = format!("Custom Preset {}", i);
                 let file_path = preset_manager.save_directory.join(format!("{}.json", preset_name));
-                
-                if let Ok(mut file) = File::create(&file_path) {
-                    if let Ok(json) = serde_json::to_string_pretty(&settings) {
+                if let Ok(mut file) = std::fs::File::create(&file_path) {
+                    if let Ok(json) = serde_json::to_string_pretty(&*settings) {
                         let _ = file.write_all(json.as_bytes());
                         preset_manager.current_preset = Some(preset_name.clone());
-                        
                         // Add to presets list if not already present
                         if !presets.presets.iter().any(|(name, _)| name == &preset_name) {
                             presets.presets.push((preset_name.clone(), settings.clone()));
@@ -1680,20 +1665,20 @@ fn handle_preset_manager(
             }) {
                 let preset_name = format!("Custom Preset {}", i);
                 let file_path = preset_manager.save_directory.join(format!("{}.json", preset_name));
-                
-                if let Ok(mut file) = File::open(&file_path) {
+                if let Ok(mut file) = std::fs::File::open(&file_path) {
                     let mut contents = String::new();
                     if file.read_to_string(&mut contents).is_ok() {
                         if let Ok(loaded_settings) = serde_json::from_str::<PostProcessSettings>(&contents) {
                             // Find or add preset
                             if let Some(index) = presets.presets.iter().position(|(name, _)| name == &preset_name) {
-                                presets.presets[index].1 = loaded_settings;
+                                presets.presets[index].1 = loaded_settings.clone();
                                 presets.current = index;
                             } else {
-                                presets.presets.push((preset_name.clone(), loaded_settings));
+                                presets.presets.push((preset_name.clone(), loaded_settings.clone()));
                                 presets.current = presets.presets.len() - 1;
                             }
                             preset_manager.current_preset = Some(preset_name);
+                            *settings = loaded_settings;
                         }
                     }
                 }
@@ -1710,7 +1695,6 @@ fn blend_settings(source: &mut PostProcessSettings, target: &PostProcessSettings
     source.brightness = lerp(source.brightness, target.brightness, factor);
     source.bloom_intensity = lerp(source.bloom_intensity, target.bloom_intensity, factor);
     source.chromatic_aberration = lerp(source.chromatic_aberration, target.chromatic_aberration, factor);
-    source.vignette_strength = lerp(source.vignette_strength, target.vignette_strength, factor);
     source.vignette_radius = lerp(source.vignette_radius, target.vignette_radius, factor);
     
     // Discrete values like tone_mapping use step function
@@ -1727,69 +1711,76 @@ fn update_performance_metrics(
     time: Res<Time>,
     render_device: Res<RenderDevice>,
     mut metrics: ResMut<PerformanceMetrics>,
-    diagnostics: Res<Diagnostics>,
+    diagnostics: Res<DiagnosticsStore>,
 ) {
     // Update every 0.5 seconds
     if time.elapsed_seconds() - metrics.last_update >= 0.5 {
         metrics.last_update = time.elapsed_seconds();
 
         // Get GPU time (if available)
-        if let Some(gpu_time) = render_device.features().contains(WgpuFeatures::TIMESTAMP_QUERY) {
+        if render_device.features().contains(WgpuFeatures::TIMESTAMP_QUERY) {
             metrics.gpu_time = time.delta_seconds() * 1000.0; // Approximate for now
         }
 
         // Get memory usage from system information diagnostics
-        if let Some(memory) = diagnostics.get_measurement("memory_usage") {
-            metrics.memory_usage = memory.value as u64;
+        if let Some(memory_diag) = diagnostics.get(SystemInformationDiagnosticsPlugin::MEM_USAGE) {
+            if let Some(memory) = memory_diag.value() {
+                metrics.memory_usage = memory as u64;
+            }
         }
 
-        // Get draw calls from frame diagnostics
-        if let Some(draw_calls) = diagnostics.get_measurement("draw_calls") {
-            metrics.draw_calls = draw_calls.value as u32;
-        }
+        // Draw calls: Bevy 0.12+ does not provide a built-in diagnostic for draw calls by default.
+        // If you have a custom diagnostic, use it here. Otherwise, comment out or remove this section.
+        // metrics.draw_calls = 0; // Placeholder or remove if not used.
     }
 }
 
 fn update_performance_text(
-    diagnostics: Res<Diagnostics>,
+    diagnostics: Res<DiagnosticsStore>,
     metrics: Res<PerformanceMetrics>,
     settings: Res<PostProcessSettings>,
     mut query: Query<&mut Text, With<PerformanceText>>,
 ) {
     if let Ok(mut text) = query.get_single_mut() {
-        if let Some(fps) = diagnostics.get_measurement("fps") {
-            text.sections[0].value = format!(
-                "Performance Metrics:\n\
-                FPS: {:.1} ({:.1}ms)\n\
-                GPU Time: {:.2}ms\n\
-                Memory: {:.1} MB\n\
-                Draw Calls: {}\n\
-                Entities: {}\n\n\
-                Active Effects:\n\
-                - Bloom: {}\n\
-                - Chromatic: {}\n\
-                - Vignette: {}\n\
-                - Tone Map: {}",
-                fps.value,
-                1000.0 / fps.value,
-                metrics.gpu_time,
-                metrics.memory_usage as f32 / (1024.0 * 1024.0),
-                metrics.draw_calls,
-                if let Some(count) = diagnostics.get_measurement("entity_count") {
-                    count.value as u32
-                } else {
-                    0
-                },
-                settings.bloom_intensity > 0.0,
-                settings.chromatic_aberration > 0.0,
-                settings.vignette_strength > 0.0,
-                match settings.tone_mapping {
-                    1 => "ACES",
-                    2 => "Reinhard",
-                    3 => "Uncharted2",
-                    _ => "None",
-                },
-            );
+        if let Some(fps_diag) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+            if let Some(fps) = fps_diag.smoothed() {
+                text.sections[0].value = format!(
+                    "Performance Metrics:\n\
+                    FPS: {:.1} ({:.1}ms)\n\
+                    GPU Time: {:.2}ms\n\
+                    Memory: {:.1} MB\n\
+                    Draw Calls: {}\n\
+                    Entities: {}\n\n\
+                    Active Effects:\n\
+                    - Bloom: {}\n\
+                    - Chromatic: {}\n\
+                    - Vignette: {}\n\
+                    - Tone Map: {}",
+                    fps,
+                    1000.0 / fps,
+                    metrics.gpu_time,
+                    metrics.memory_usage as f32 / (1024.0 * 1024.0),
+                    metrics.draw_calls,
+                    if let Some(count_diag) = diagnostics.get(EntityCountDiagnosticsPlugin::ENTITY_COUNT) {
+                        if let Some(count) = count_diag.value() {
+                            count as u32
+                        } else {
+                            0
+                        }
+                    } else {
+                        0
+                    },
+                    settings.bloom_intensity > 0.0,
+                    settings.chromatic_aberration > 0.0,
+                    settings.vignette_radius > 0.0,
+                    match settings.tone_mapping {
+                        x if x == ToneMapping::ACES as u32 => "ACES",
+                        x if x == ToneMapping::Reinhard as u32 => "Reinhard",
+                        x if x == ToneMapping::Uncharted2 as u32 => "Uncharted2",
+                        _ => "None",
+                    },
+                );
+            }
         }
     }
 }
@@ -1957,7 +1948,7 @@ fn create_depth_test_pattern(
 
         commands.spawn((
             PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Plane { size: 2.0 })),
+                mesh: meshes.add(Mesh::from(shape::Plane { size: 2.0, subdivisions: 1 })),
                 material: materials.add(StandardMaterial {
                     base_color: color,
                     alpha_mode: AlphaMode::Blend,
@@ -2196,7 +2187,7 @@ mod tests {
 
         app.update();
 
-        let query = app.world.query::<&Text>();
+        let mut query = app.world.query::<&Text>();
         assert_eq!(query.iter(&app.world).count(), 1);
     }
 }

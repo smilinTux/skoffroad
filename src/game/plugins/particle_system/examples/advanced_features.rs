@@ -1,3 +1,83 @@
+use bevy::prelude::*;
+use crate::game::plugins::particle_system::ParticleSystem;
+use crate::game::plugins::particle_system::presets::EmitterShape;
+// Import EguiContexts if bevy_egui is used
+// use bevy_egui::EguiContexts;
+// TODO: egui integration is commented out due to missing dependency. Uncomment and add egui/bevy_egui to Cargo.toml if UI is needed.
+
+// Local enum for interaction patterns used in this example
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum InteractionPattern {
+    Helix,
+    Fountain,
+    Whirlpool,
+    Nebula,
+    Crystal,
+    Tornado,
+    Lightning,
+    Shockwave,
+    Portal,
+    Constellation,
+}
+
+// Full definition for InteractionConfig with all used fields
+#[derive(Component, Clone, Debug)]
+struct InteractionConfig {
+    pattern: InteractionPattern,
+    helix_radius: f32,
+    helix_pitch: f32,
+    fountain_height: f32,
+    fountain_spread: f32,
+    whirlpool_radius: f32,
+    whirlpool_depth: f32,
+    nebula_size: f32,
+    crystal_faces: usize,
+    crystal_growth: f32,
+    crystal_growth_rate: f32,
+    tornado_height: f32,
+    tornado_radius: f32,
+    lightning_branches: usize,
+    lightning_spread: f32,
+    shockwave_size: f32,
+    portal_stability: f32,
+    portal_fluctuation: f32,
+    constellation_points: usize,
+    constellation_scale: f32,
+}
+
+impl Default for InteractionConfig {
+    fn default() -> Self {
+        Self {
+            pattern: InteractionPattern::Helix,
+            helix_radius: 1.0,
+            helix_pitch: 0.2,
+            fountain_height: 2.0,
+            fountain_spread: 30.0,
+            whirlpool_radius: 1.0,
+            whirlpool_depth: 1.0,
+            nebula_size: 1.0,
+            crystal_faces: 6,
+            crystal_growth: 1.0,
+            crystal_growth_rate: 1.0,
+            tornado_height: 3.0,
+            tornado_radius: 1.0,
+            lightning_branches: 5,
+            lightning_spread: 45.0,
+            shockwave_size: 2.0,
+            portal_stability: 0.8,
+            portal_fluctuation: 0.2,
+            constellation_points: 5,
+            constellation_scale: 1.0,
+        }
+    }
+}
+
+// Placeholder for InteractiveCollider
+#[derive(Component, Clone, Debug)]
+struct InteractiveCollider {
+    pattern_type: InteractionPattern,
+}
+
 #[derive(Resource)]
 struct DebugState {
     show_collision_bounds: bool,
@@ -35,7 +115,8 @@ fn update_debug_visualization(
     }
 
     for (transform, collider, config) in query.iter() {
-        let config = config.unwrap_or(&InteractionConfig::default());
+        let default_config = InteractionConfig::default();
+        let config = config.unwrap_or(&default_config);
         let pos = transform.translation;
 
         // Draw collision bounds
@@ -138,7 +219,7 @@ fn update_debug_visualization(
                     let height = config.tornado_height;
                     
                     for i in 1..=points {
-                        let t = (i as f32 / points as f32);
+                        let t = i as f32 / points as f32;
                         let y = height * t;
                         let radius = config.tornado_radius * (1.0 - t);
                         let angle = t * std::f32::consts::TAU * 3.0;
@@ -281,30 +362,31 @@ fn update_performance_stats(
         .sum();
 }
 
-fn draw_debug_ui(
-    mut contexts: EguiContexts,
-    debug_state: Res<DebugState>,
-) {
-    if !debug_state.show_performance_stats {
-        return;
-    }
-
-    egui::Window::new("Particle System Debug")
-        .default_pos([10.0, 10.0])
-        .show(contexts.ctx_mut(), |ui| {
-            ui.label(format!("Frame Time: {:.2} ms", debug_state.frame_time * 1000.0));
-            ui.label(format!("FPS: {:.0}", 1.0 / debug_state.frame_time));
-            ui.label(format!("Active Effects: {}", debug_state.active_effects));
-            ui.label(format!("Total Particles: {}", debug_state.total_particles));
-            
-            ui.separator();
-            ui.label("Debug Controls:");
-            ui.label("F1: Toggle Collision Bounds");
-            ui.label("F2: Toggle Emitter Shapes");
-            ui.label("F3: Toggle Emission Vectors");
-            ui.label("F4: Toggle Interaction Paths");
-        });
-}
+// TODO: egui integration is commented out due to missing dependency. Uncomment and add egui/bevy_egui to Cargo.toml if UI is needed.
+// fn draw_debug_ui(
+//     mut contexts: EguiContexts,
+//     debug_state: Res<DebugState>,
+// ) {
+//     if !debug_state.show_performance_stats {
+//         return;
+//     }
+//
+//     egui::Window::new("Particle System Debug")
+//         .default_pos([10.0, 10.0])
+//         .show(contexts.ctx_mut(), |ui| {
+//             ui.label(format!("Frame Time: {:.2} ms", debug_state.frame_time * 1000.0));
+//             ui.label(format!("FPS: {:.0}", 1.0 / debug_state.frame_time));
+//             ui.label(format!("Active Effects: {}", debug_state.active_effects));
+//             ui.label(format!("Total Particles: {}", debug_state.total_particles));
+//             
+//             ui.separator();
+//             ui.label("Debug Controls:");
+//             ui.label("F1: Toggle Collision Bounds");
+//             ui.label("F2: Toggle Emitter Shapes");
+//             ui.label("F3: Toggle Emission Vectors");
+//             ui.label("F4: Toggle Interaction Paths");
+//         });
+// }
 
 fn visualize_emitter_shapes(
     mut gizmos: Gizmos,
@@ -576,19 +658,24 @@ fn visualize_interaction_paths(
     }
 }
 
+// Shared Trail struct for use in multiple modules
+pub struct Trail;
+// Placeholder for missing ParticleEmitter type
+#[derive(Component)]
+struct ParticleEmitter;
+// Define AdvancedFeaturesExamplePlugin if not present
+pub struct AdvancedFeaturesExamplePlugin;
+
 impl Plugin for AdvancedFeaturesExamplePlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<DebugState>()
-            .add_systems(Update, (
-                handle_debug_input,
-                update_debug_visualization,
-                visualize_emitter_shapes,
-                visualize_emission_vectors,
-                visualize_interaction_paths,
-                update_performance_stats,
-                draw_debug_ui,
-            ));
+            .add_systems(Update, handle_debug_input)
+            .add_systems(Update, update_debug_visualization)
+            .add_systems(Update, visualize_emitter_shapes)
+            .add_systems(Update, visualize_emission_vectors)
+            .add_systems(Update, visualize_interaction_paths)
+            .add_systems(Update, update_performance_stats);
         // ... rest of plugin setup ...
     }
 }

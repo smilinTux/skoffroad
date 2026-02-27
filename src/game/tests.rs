@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use crate::game::states::{GameState, GameTimer, GameProgress};
+use crate::game::state::GameState;
+use crate::game::states::{GameTimer, GameProgress};
 
 #[test]
 fn test_game_state_transitions() {

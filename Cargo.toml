@@ -8,19 +8,21 @@ repository = "https://github.com/sandk/offroad"
 license = "MIT"
 
 [workspace]
-members = ["."]
+members = ["scripts"]
 
 [dependencies]
 # Core game engine
-bevy = { version = "0.12", features = ["bevy_pbr", "bevy_render", "bevy_asset", "bevy_core_pipeline", "dynamic_linking"] }
+bevy = { version = "0.12", features = ["bevy_pbr", "bevy_render", "bevy_asset", "bevy_core_pipeline", "dynamic_linking", "wayland"] }
+bevy_egui = "0.24"
+bevy_kira_audio = "0.18"
 
 # Graphics and shaders
 wgpu = "0.17"
 bytemuck = { version = "1.14", features = ["derive"] }
-glam = "0.24"
+glam = "0.25"
 
 # Physics
-bevy_rapier3d = "0.22.0"
+bevy_rapier3d = "0.23"
 nalgebra = "0.32"
 
 # Asset handling
@@ -40,12 +42,25 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"
 thiserror = "1.0"
 
+# Noise
+noise = "0.8"
+
+# Voice chat and audio processing
+cpal = "0.15"
+ringbuf = "0.4"
+dasp_signal = "0.11"
+dasp_interpolate = "0.11"
+dasp_window = "0.11"
+dasp_ring_buffer = "0.11"
+fastrand = "2.0"
+rand = "0.8"
+
 [dev-dependencies]
 # Development tools
-bevy-inspector-egui = "0.21.0"
-bevy_mod_debugdump = "0.8.0"
+bevy-inspector-egui = "0.22"
+bevy_mod_debugdump = "0.9"
 criterion = { version = "0.5", features = ["html_reports"] }
-tempfile = "3.8.1"
+tempfile = "3.8"
 mockall = "0.11"
 test-case = "3.3"
 rstest = "0.18"

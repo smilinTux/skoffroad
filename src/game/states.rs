@@ -1,13 +1,5 @@
 use bevy::prelude::*;
-
-#[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
-pub enum GameState {
-    #[default]
-    MainMenu,
-    Playing,
-    Paused,
-    GameOver,
-}
+use crate::game::state::GameState;
 
 #[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
 pub enum GameMode {

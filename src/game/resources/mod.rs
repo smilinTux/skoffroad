@@ -2,15 +2,15 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-mod game_state;
+mod game_status;
 mod game_settings;
 
-pub use game_state::*;
+pub use game_status::*;
 pub use game_settings::*;
 
 /// Represents the current state of the game
 #[derive(Resource, Debug, Clone, Default)]
-pub struct GameState {
+pub struct GameStatus {
     /// Current game mode (e.g., FreeRoam, Race, etc.)
     pub mode: GameMode,
     /// Whether the game is paused
@@ -222,7 +222,7 @@ pub enum Difficulty {
     Expert,
 }
 
-impl GameState {
+impl GameStatus {
     /// Toggle the pause state
     pub fn toggle_pause(&mut self) {
         self.paused = !self.paused;

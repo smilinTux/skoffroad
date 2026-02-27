@@ -8,6 +8,7 @@ use bevy::window::WindowPlugin;
 use bevy::prelude::{Camera3dBundle, Transform, GlobalTransform};
 use bevy::render::camera::Camera3d;
 use bevy::render::view::VisibilityPlugin;
+use noise::MultiFractal;
 
 #[test]
 fn test_terrain_chunk_generation() {

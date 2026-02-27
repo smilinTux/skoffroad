@@ -5,6 +5,7 @@ use bevy::{
         renderer::{RenderDevice, RenderQueue},
     },
 };
+use std::borrow::Cow;
 
 use super::{
     buffer::ParticleBufferManager,
@@ -108,7 +109,7 @@ impl FromWorld for ParticleSortPipeline {
                 push_constant_ranges: &[],
             })),
             module: &shader,
-            entry_point: "sort",
+            entry_point: Cow::Borrowed("sort"),
         });
 
         Self {

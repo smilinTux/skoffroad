@@ -1,13 +1,9 @@
 use bevy::prelude::*;
-use super::{
-    material::{ParticleMaterial, BlendMode},
-    particle::{ParticleSystem, SimulationParams},
-    emitter::{Emitter, EmitterConfig, EmitterShape},
-    presets::{ParticlePresets, PresetConfig},
-};
+use crate::game::plugins::particle_system::presets::{PresetConfig, ParticlePresets, Emitter, EmitterConfig, EmitterShape, SimulationParams};
+use super::particle::ParticleSystem;
 
 /// Basic particle effect types
-#[derive(Debug, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy)]
 pub enum BasicParticleEffect {
     Fire,
     Smoke,
@@ -56,12 +52,6 @@ impl Default for BasicParticleConfig {
     }
 }
 
-/// Component to mark basic particle effects
-#[derive(Component)]
-pub struct BasicParticleEffect {
-    pub config: BasicParticleConfig,
-}
-
 /// System to spawn basic particle effects
 pub fn spawn_basic_particle_effect(
     commands: &mut Commands,
@@ -95,7 +85,6 @@ pub fn spawn_basic_particle_effect(
                     ..Default::default()
                 }),
                 config.transform,
-                BasicParticleEffect { config: config.clone() },
             )).id()
         },
         BasicParticleEffect::Water => {
@@ -115,7 +104,6 @@ pub fn spawn_basic_particle_effect(
                     ..Default::default()
                 }),
                 config.transform,
-                BasicParticleEffect { config: config.clone() },
             )).id()
         },
         BasicParticleEffect::Heal => ParticlePresets::heal(commands, config.transform, Some(preset_config)),
@@ -123,7 +111,7 @@ pub fn spawn_basic_particle_effect(
 
     // Add the BasicParticleEffect component to presets that don't add it themselves
     if matches!(config.effect_type, BasicParticleEffect::Fire | BasicParticleEffect::Smoke | BasicParticleEffect::Dust | BasicParticleEffect::Heal) {
-        commands.entity(entity).insert(BasicParticleEffect { config });
+        commands.entity(entity).insert(config.effect_type.clone());
     }
 
     entity

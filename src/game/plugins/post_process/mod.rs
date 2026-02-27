@@ -44,18 +44,12 @@
 use bevy::{
     prelude::*,
     render::{
-        render_asset::RenderAssets,
-        render_graph::{Node, NodeRunError, RenderGraphContext},
-        render_resource::*,
-        renderer::{RenderContext, RenderDevice},
-        view::{ViewTarget, ViewUniform},
-        Extract,
+        renderer::RenderDevice,
+        RenderApp,
         render_graph::RenderGraph,
-        renderer::RenderApp,
-        Render,
-        RenderSet,
     },
 };
+use bytemuck::{Pod, Zeroable};
 
 mod effects;
 mod pipeline;
@@ -64,21 +58,22 @@ mod ui;
 mod node;
 mod test_scene;
 
-pub use effects::*;
-pub use pipeline::*;
-pub use settings::*;
-pub use ui::PerformanceDisplayPlugin;
+// pub use effects::*;
+// pub use settings::*;
+// pub use ui::PerformanceDisplayPlugin;
 use node::PostProcessNode;
+use crate::game::plugins::post_process::pipeline::PostProcessPipeline;
 
 /// Post-processing settings that control various visual effects in the rendering pipeline.
 /// These settings can be modified in real-time to adjust the visual appearance of the game.
-#[derive(Resource, Clone, Debug)]
+#[derive(Resource, Clone, Debug, Copy, Pod, Zeroable)]
+#[repr(C)]
 pub struct PostProcessSettings {
     /// The type of tone mapping to apply. Options include:
     /// - "Reinhard": Classic tone mapping, good for HDR scenes
     /// - "ACES": Industry standard cinematic tone mapping
     /// - "AgX": Modern filmic tone mapping with natural response
-    pub tone_mapping_type: String,
+    pub tone_mapping: u32, // Use a u32 to represent the enum discriminant
 
     /// Global exposure adjustment. Higher values make the scene brighter.
     /// Range: [0.0, 10.0]
@@ -120,7 +115,7 @@ pub struct PostProcessSettings {
 impl Default for PostProcessSettings {
     fn default() -> Self {
         Self {
-            tone_mapping_type: "ACES".to_string(),
+            tone_mapping: 0, // Default to ACES
             exposure: 1.0,
             gamma: 2.2,
             bloom_intensity: 0.5,
@@ -138,7 +133,7 @@ impl PostProcessSettings {
     /// Creates a cinematic preset with strong bloom and contrast
     pub fn cinematic() -> Self {
         Self {
-            tone_mapping_type: "ACES".to_string(),
+            tone_mapping: 0, // Default to ACES
             exposure: 1.1,
             gamma: 2.2,
             bloom_intensity: 0.8,
@@ -154,7 +149,7 @@ impl PostProcessSettings {
     /// Creates a bright, vibrant preset
     pub fn vibrant() -> Self {
         Self {
-            tone_mapping_type: "AgX".to_string(),
+            tone_mapping: 2, // Default to AgX
             exposure: 1.2,
             gamma: 2.2,
             bloom_intensity: 0.6,
@@ -170,7 +165,7 @@ impl PostProcessSettings {
     /// Creates a moody, desaturated preset
     pub fn moody() -> Self {
         Self {
-            tone_mapping_type: "Reinhard".to_string(),
+            tone_mapping: 1, // Default to Reinhard
             exposure: 0.9,
             gamma: 2.3,
             bloom_intensity: 0.4,

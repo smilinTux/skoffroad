@@ -1,33 +1,24 @@
 use bevy::{
     prelude::*,
     render::{
-        render_graph::{Node, NodeRunError, RenderGraphContext},
         render_resource::{
-            BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
-            BindGroupLayoutDescriptor, BindGroupLayoutEntry, BufferBindingType, 
-            PipelineCache, RenderPipeline, SamplerBindingType, ShaderStages,
-            TextureSampleType, TextureViewDimension,
+            BindGroup, BindGroupLayout, BindGroupLayoutDescriptor, BindGroupLayoutEntry,
+            BindGroupEntry, BufferBindingType, Buffer, BufferDescriptor, BufferUsages,
+            BindingResource, RenderPipeline, ShaderStages, BindingType, TextureSampleType, TextureViewDimension, SamplerBindingType,
         },
-        renderer::{RenderContext, RenderDevice},
-        texture::BevyDefault,
-        view::ViewTarget,
+        renderer::{RenderDevice, RenderQueue},
     },
 };
-use std::num::NonZeroU64;
 
 use super::settings::PostProcessSettings;
-use crate::game::plugins::post_process::{
-    settings::PostProcessSettings,
-    bind_group::PostProcessBindGroup,
-};
+// use crate::game::plugins::post_process::bind_group::PostProcessBindGroup; // TODO: Fix or implement bind_group module
 
 /// Plugin that sets up the post-processing render pipeline
 pub struct PostProcessPipelinePlugin;
 
 impl Plugin for PostProcessPipelinePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PostProcessPipeline>()
-            .add_systems(Update, prepare_post_process_pipeline);
+        app.init_resource::<PostProcessPipeline>();
     }
 }
 
@@ -85,7 +76,7 @@ impl FromWorld for PostProcessPipeline {
                     BindGroupLayoutEntry {
                         binding: 0,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindGroupLayoutEntry::Texture {
+                        ty: BindingType::Texture {
                             sample_type: TextureSampleType::Float { filterable: true },
                             view_dimension: TextureViewDimension::D2,
                             multisampled: false,
@@ -96,14 +87,14 @@ impl FromWorld for PostProcessPipeline {
                     BindGroupLayoutEntry {
                         binding: 1,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindGroupLayoutEntry::Sampler(SamplerBindingType::Filtering),
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
                         count: None,
                     },
                     // Settings uniform buffer
                     BindGroupLayoutEntry {
                         binding: 2,
                         visibility: ShaderStages::FRAGMENT,
-                        ty: BindGroupLayoutEntry::Buffer {
+                        ty: BindingType::Buffer {
                             ty: BufferBindingType::Uniform,
                             has_dynamic_offset: false,
                             min_binding_size: None,
@@ -132,8 +123,8 @@ impl FromWorld for PostProcessPipeline {
 
 impl PostProcessPipeline {
     /// Updates the settings buffer with new post-processing parameters
-    pub fn update_settings(&self, render_device: &RenderDevice, settings: &PostProcessSettings) {
-        render_device.queue().write_buffer(
+    pub fn update_settings(&self, render_queue: &bevy::render::renderer::RenderQueue, settings: &PostProcessSettings) {
+        render_queue.write_buffer(
             &self.settings_buffer,
             0,
             bytemuck::cast_slice(&[*settings]),
@@ -144,86 +135,38 @@ impl PostProcessPipeline {
     pub fn create_bind_group(
         &self,
         render_device: &RenderDevice,
-        view_target: &ViewTarget,
+        texture_view: &bevy::render::render_resource::TextureView,
+        sampler: &bevy::render::render_resource::Sampler,
     ) -> BindGroup {
-        render_device.create_bind_group(&BindGroupDescriptor {
-            label: Some("post_process_bind_group"),
-            layout: &self.bind_group_layout,
-            entries: &[
+        render_device.create_bind_group(
+            Some("post_process_bind_group"),
+            &self.bind_group_layout,
+            &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(view_target.main_texture()),
+                    resource: BindingResource::TextureView(texture_view),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(view_target.sampler()),
+                    resource: BindingResource::Sampler(sampler),
                 },
                 BindGroupEntry {
                     binding: 2,
                     resource: self.settings_buffer.as_entire_binding(),
                 },
             ],
-        })
+        )
     }
-}
 
-/// Node that handles post-processing in the render graph
-pub struct PostProcessNode {
-    query: QueryState<&'static ViewTarget>,
-}
-
-impl Node for PostProcessNode {
-    fn run(
-        &self,
-        _graph: &mut RenderGraph,
-        render_context: &mut RenderContext,
-        world: &World,
-    ) -> Result<(), NodeRunError> {
-        // Get view target
-        let view_target = self.query.get_single(world)?;
-        
-        // Get pipeline
-        let post_process_pipeline = world.resource::<PostProcessPipeline>();
-        let pipeline_cache = world.resource::<PipelineCache>();
-        let pipeline = pipeline_cache
-            .get_render_pipeline(post_process_pipeline.pipeline_id)
-            .ok_or(NodeRunError::InvalidPipeline)?;
-
-        // Begin render pass
-        let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("post_process_pass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: view_target.main_texture(),
-                resolve_target: None,
-                ops: Operations {
-                    load: LoadOp::Load,
-                    store: true,
-                },
-            })],
-            depth_stencil_attachment: None,
-        });
-
-        // Set pipeline and bind group
-        render_pass.set_pipeline(pipeline);
-        // TODO: Set bind group with screen texture and settings
-
-        // Draw fullscreen quad
-        render_pass.draw(0..3, 0..1);
-
-        Ok(())
+    /// Public getter for bind_group_layout
+    pub fn bind_group_layout(&self) -> &BindGroupLayout {
+        &self.bind_group_layout
     }
-}
 
-/// System that prepares resources for post-processing each frame
-fn prepare_post_process_pipeline(
-    render_device: Res<RenderDevice>,
-    post_process_pipeline: Res<PostProcessPipeline>,
-    settings: Res<PostProcessSettings>,
-    // Add other resources needed for preparation
-) {
-    // Create bind group with screen texture and settings
-    // Update settings buffer
-    todo!("Implement pipeline preparation");
+    /// Public getter for pipeline
+    pub fn pipeline(&self) -> Option<&RenderPipeline> {
+        self.pipeline.as_ref()
+    }
 }
 
 /// Updates the post-process settings buffer with current settings
@@ -236,7 +179,7 @@ pub fn prepare_post_process(
     render_queue.write_buffer(
         &settings_buffer.buffer,
         0,
-        bytemuck::cast_slice(&[settings.to_raw()]),
+        bytemuck::cast_slice(&[*settings]),
     );
 }
 
@@ -263,7 +206,7 @@ mod tests {
         let render_device = world.resource::<RenderDevice>();
         
         let settings = PostProcessSettings::default();
-        pipeline.update_settings(render_device, &settings);
+        pipeline.update_settings(world.resource::<RenderQueue>(), &settings);
         // Buffer update successful if no panic occurs
     }
 } 

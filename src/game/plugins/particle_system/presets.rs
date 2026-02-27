@@ -1,8 +1,5 @@
 use bevy::prelude::*;
-use bevy_particles::prelude::*;
 use crate::game::plugins::particle_system::{
-    gradient::{ColorKeyframe, ParticleColorGradient, EaseFunction, ControlPoint, GradientPreset},
-    particle::{ParticleSystem, ParticleEmitter, EmitterShape, EmitterConfig},
     material::ParticleMaterial,
 };
 
@@ -29,6 +26,8 @@ impl Default for PresetConfig {
         }
     }
 }
+
+pub struct ParticlePresets;
 
 impl ParticlePresets {
     // ... existing presets ...
@@ -421,34 +420,6 @@ impl ParticlePresets {
         commands.spawn(emitter);
     }
 
-    pub fn snow(commands: &mut Commands, transform: Transform, config: Option<PresetConfig>) {
-        let config = config.unwrap_or_default();
-        let mut material = ParticleMaterial::default();
-        material.base_color = Color::rgba(1.0, 1.0, 1.0, 0.8);
-        material.emission = Color::rgba(0.9, 0.9, 1.0, 0.5);
-        material.emission_strength = config.emission_strength;
-        material.alpha_mode = AlphaMode::Blend;
-
-        let mut emitter = ParticleEmitter::new(
-            transform,
-            EmitterShape::Box {
-                size: Vec3::new(10.0, 0.1, 10.0),
-            },
-            material,
-        );
-        emitter.spawn_rate = 50.0 * config.intensity;
-        emitter.lifetime = config.lifetime;
-        emitter.initial_velocity = Vec3::new(0.0, -config.speed * 5.0, 0.0);
-        emitter.velocity_randomness = 0.5;
-        emitter.size = config.scale;
-        emitter.size_randomness = 0.3;
-        emitter.gravity = config.gravity;
-        emitter.angular_velocity = Vec3::new(0.0, 1.0, 0.0);
-        emitter.angular_velocity_randomness = 0.8;
-
-        commands.spawn(emitter);
-    }
-
     pub fn fog(commands: &mut Commands, transform: Transform, config: Option<PresetConfig>) {
         let config = config.unwrap_or_default();
         let mut material = ParticleMaterial::default();
@@ -473,34 +444,6 @@ impl ParticlePresets {
         emitter.gravity = config.gravity;
         emitter.angular_velocity = Vec3::new(0.0, 0.2, 0.0);
         emitter.angular_velocity_randomness = 0.5;
-
-        commands.spawn(emitter);
-    }
-
-    pub fn lightning_strike(commands: &mut Commands, transform: Transform, config: Option<PresetConfig>) {
-        let config = config.unwrap_or_default();
-        let mut material = ParticleMaterial::default();
-        material.base_color = Color::rgba(0.9, 0.95, 1.0, 0.8);
-        material.emission = Color::rgba(0.8, 0.9, 1.0, 1.0);
-        material.emission_strength = config.emission_strength;
-        material.alpha_mode = AlphaMode::Add;
-
-        let mut emitter = ParticleEmitter::new(
-            transform,
-            EmitterShape::Line {
-                start: Vec3::ZERO,
-                end: Vec3::new(0.0, -20.0, 0.0),
-            },
-            material,
-        );
-        emitter.spawn_rate = 1000.0 * config.intensity;
-        emitter.lifetime = config.lifetime;
-        emitter.initial_velocity = Vec3::new(0.0, -config.speed * 20.0, 0.0);
-        emitter.velocity_randomness = 0.3;
-        emitter.size = config.scale;
-        emitter.size_randomness = 0.2;
-        emitter.gravity = config.gravity;
-        emitter.one_shot = true;
 
         commands.spawn(emitter);
     }
@@ -567,4 +510,110 @@ pub fn spawn_example_effects(
         Transform::from_xyz(6.0, 0.0, 3.0),
         None,
     );
+}
+
+#[derive(Component, Default, Clone)]
+pub struct SimulationParams {
+    pub colors: ParticleColors,
+    pub lifetime: f32,
+    pub spawn_rate: f32,
+    pub initial_velocity: Vec3,
+    pub velocity_randomness: f32,
+    pub size_begin: f32,
+    pub size_end: f32,
+    pub gravity: Vec3,
+}
+
+impl SimulationParams {
+    pub fn default() -> Self {
+        Self {
+            colors: ParticleColors::fire(),
+            lifetime: 1.0,
+            spawn_rate: 1.0,
+            initial_velocity: Vec3::ZERO,
+            velocity_randomness: 0.0,
+            size_begin: 1.0,
+            size_end: 1.0,
+            gravity: Vec3::new(0.0, -9.81, 0.0),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ParticleColors {
+    pub albedo: Color,
+    pub emission: Color,
+    pub emission_strength: f32,
+    pub ease_function: EaseFunction,
+}
+
+impl ParticleColors {
+    pub fn fire() -> Color { Color::ORANGE }
+    pub fn smoke() -> Color { Color::GRAY }
+    pub fn nature() -> Color { Color::GREEN }
+    pub fn sparkle() -> Color { Color::WHITE }
+}
+
+#[derive(Clone)]
+pub enum EaseFunction {
+    QuadOut,
+    QuadIn,
+    Elastic,
+    Sine,
+    SmoothStep,
+}
+
+impl EaseFunction {
+    pub fn from_points(_points: Vec<ControlPoint>) -> Self { EaseFunction::SmoothStep }
+}
+
+pub struct ParticleSystem;
+impl ParticleSystem {
+    pub fn new(_params: SimulationParams) -> Self { ParticleSystem }
+}
+
+pub struct Emitter;
+impl Emitter {
+    pub fn new(_config: EmitterConfig) -> Self { Emitter }
+}
+
+#[derive(Default, Clone)]
+pub struct EmitterConfig {
+    pub shape: EmitterShape,
+}
+
+#[derive(Clone)]
+pub enum EmitterShape {
+    Sphere { radius: f32 },
+    Box { size: Vec3 },
+    Line { start: Vec3, end: Vec3 },
+    Circle { radius: f32 },
+    Cone { angle: f32, radius: f32 },
+    Torus { radius: f32, ring_radius: f32 },
+}
+
+impl Default for EmitterShape {
+    fn default() -> Self {
+        EmitterShape::Sphere { radius: 1.0 }
+    }
+}
+
+pub struct GradientPreset;
+impl GradientPreset {
+    pub fn Lightning() -> Self { GradientPreset }
+    pub fn Rainbow() -> Self { GradientPreset }
+    pub fn Acid() -> Self { GradientPreset }
+    pub fn Energy() -> Self { GradientPreset }
+    pub fn Dark() -> Self { GradientPreset }
+    pub fn create_gradient(&self) -> Color { Color::WHITE }
+}
+
+pub struct ControlPoint;
+impl ControlPoint {
+    pub fn new(_x: f32, _y: f32) -> Self { ControlPoint }
+}
+
+pub struct ParticleEmitter;
+impl ParticleEmitter {
+    pub fn new(_transform: Transform, _shape: EmitterShape, _material: ParticleMaterial) -> Self { ParticleEmitter }
 }

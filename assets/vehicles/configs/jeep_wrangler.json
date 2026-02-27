@@ -1,0 +1,15 @@
+{
+    "name": "Jeep Wrangler Rubicon",
+    "mass": 1850.0,
+    "dimensions": [1.875, 1.868, 4.237],
+    "suspension_config": {
+        "spring_rate": 55000.0,
+        "damping": 5500.0,
+        "travel": 0.254
+    },
+    "engine_config": {
+        "max_power": 285.0,
+        "max_torque": 353.0,
+        "redline": 6600.0
+    }
+} 

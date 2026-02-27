@@ -693,7 +693,7 @@ fn draw_emitter_bounds(gizmos: &mut Gizmos, transform: &Transform, emitter: &Par
                 color,
             );
         }
-        EmitterShape::Plane { size } => {
+        EmitterShape::Plane { size, subdivisions: _ } => {
             let corners = [
                 Vec3::new(-size.x/2.0, 0.0, -size.y/2.0),
                 Vec3::new(size.x/2.0, 0.0, -size.y/2.0),

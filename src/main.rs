@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::WindowMode;
-use crate::core::GameState;
+use crate::game::state::GameState;
+use bevy_egui::EguiPlugin;
 
 mod game;
 mod core;
@@ -26,16 +27,17 @@ fn main() {
             ..default()
         }))
         .add_plugins((
+            EguiPlugin,
             game::GamePlugin,
             core::CorePlugin,
             physics::PhysicsPlugin,
             rendering::RenderingPlugin,
-            // audio::AudioPlugin, // Temporarily disabled
+            audio::AudioPlugin,
         ))
         .add_systems(Startup, setup_initial_state)
         .run();
 }
 
 fn setup_initial_state(mut next_state: ResMut<NextState<GameState>>) {
-    next_state.set(GameState::Playing);
+    next_state.set(GameState::InGame);
 } 

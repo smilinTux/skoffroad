@@ -4,6 +4,7 @@ use bevy::{
         render_resource::{Extent3d, TextureDescriptor, TextureFormat, TextureUsages},
         texture::BevyDefault,
     },
+    asset::AssetPath,
 };
 use noise::{NoiseFn, Perlin};
 

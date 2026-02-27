@@ -4,9 +4,11 @@ use bevy::{
     render::render_resource::{
         AsBindGroup, ShaderRef, ShaderType,
     },
+    asset::Asset,
 };
+use super::Weather;
 
-#[derive(AsBindGroup, TypeUuid, Debug, Clone)]
+#[derive(Asset, AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
 #[uuid = "f690fdae-d598-45ab-8225-97e2a3f056e0"]
 pub struct CloudMaterial {
     #[uniform(0)]

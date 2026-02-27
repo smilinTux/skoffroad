@@ -2,9 +2,9 @@ use bevy::{
     prelude::*,
     render::{
         render_resource::{
-            BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
+            BindGroupDescriptor, BindGroupEntry, BindGroupLayout,
             BindGroupLayoutDescriptor, BindGroupLayoutEntry, BufferBindingType, ComputePipeline,
-            PipelineCache, ShaderStages, StorageTextureAccess, TextureFormat, TextureViewDimension,
+            PipelineCache, ShaderStages,
         },
         renderer::RenderDevice,
     },
@@ -12,7 +12,8 @@ use bevy::{
 
 use super::{
     buffer::ParticleBufferManager,
-    particle::{ParticleSystem, SimulationParams},
+    particle::ParticleSystem,
+    presets::SimulationParams,
 };
 
 /// Resource for managing the particle compute pipeline
@@ -95,15 +96,15 @@ pub fn dispatch_particle_compute(
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: buffer_manager.get_read_buffer().as_entire_binding(),
+                    resource: buffer_manager.read_buffer().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: buffer_manager.get_write_buffer().as_entire_binding(),
+                    resource: buffer_manager.write_buffer().as_entire_binding(),
                 },
                 BindGroupEntry {
                     binding: 2,
-                    resource: particle_system.simulation_params.as_entire_binding(),
+                    resource: particle_system.params.as_entire_binding(),
                 },
             ],
         });

@@ -1,8 +1,6 @@
 use bevy::prelude::*;
-use super::{
-    presets::{ParticlePresets, PresetConfig},
-    particle::{ParticleSystem, ParticleEmitter, EmitterShape, EmitterConfig},
-};
+use crate::game::plugins::particle_system::presets::PresetConfig;
+use crate::game::plugins::particle_system::presets::ParticlePresets;
 
 /// Collection of specialized particle effect combinations
 pub struct SpecialEffects;

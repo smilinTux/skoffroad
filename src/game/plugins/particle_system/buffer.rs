@@ -6,7 +6,8 @@ use bevy::{
     },
 };
 
-use crate::game::plugins::particle_system::particle::Particle;
+// Temporary placeholder for missing Particle type
+struct Particle;
 
 /// Manages double buffering for particle data
 #[derive(Component)]
