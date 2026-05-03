@@ -1,5 +1,6 @@
 # Rust build artifacts
 /target/
+next/target/
 **/*.rs.bk
 Cargo.lock
 
@@ -39,7 +40,12 @@ coverage/
 # Temporary files
 *.tmp
 *.bak
+*.bak/
 *.log
+
+# Cargo build/check artifacts
+cargo-*.log
+cargo-*.txt
 
 # Game-specific
 saves/

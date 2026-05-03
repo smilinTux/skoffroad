@@ -1,7 +1,0 @@
-feat: Release v2.0.0 - Comprehensive Streaming & Content Creation Update
-
-Major Features: - Added WebRTC-based peer-to-peer streaming with custom TURN server support - Implemented multi-platform streaming (Twitch, YouTube, Rumble) - Enhanced video capture system with hardware acceleration - Added advanced stream management and overlay tools - Integrated Task Master for project management
-
-Technical Improvements: - Added comprehensive WebRTC configuration system - Implemented hardware-accelerated video encoding - Added performance optimization for streaming and recording - Enhanced audio mixing system with multi-track support - Added stream quality auto-adjustment
-
-Documentation & Configuration: - Updated README with detailed streaming configuration - Added WebRTC and streaming platform configurations - Enhanced project documentation and PRD - Added Task Master integration
