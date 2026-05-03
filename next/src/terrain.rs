@@ -17,6 +17,7 @@ impl Plugin for TerrainPlugin {
 const GRID: usize = 128; // vertices per side (128x128 = ~16k tris)
 const SIZE: f32 = 200.0; // world-space width/depth in metres
 const HEIGHT_SCALE: f32 = 12.0;
+pub const TERRAIN_SEED: u32 = 42;
 
 // Sample the layered heightmap at normalised [0,1] coords.
 fn sample_height(fbm: &Fbm<Perlin>, nx: f64, nz: f64) -> f32 {
@@ -24,6 +25,15 @@ fn sample_height(fbm: &Fbm<Perlin>, nx: f64, nz: f64) -> f32 {
     let coarse = fbm.get([nx * 2.0, nz * 2.0]) as f32;
     let fine   = fbm.get([nx * 8.0, nz * 8.0]) as f32 * 0.25;
     (coarse + fine) * HEIGHT_SCALE
+}
+
+/// Public helper used by the headless harness to replicate the terrain height
+/// at an arbitrary world-space (x, z) position without spawning any entities.
+pub fn terrain_height_at(x: f32, z: f32) -> f32 {
+    let fbm: Fbm<Perlin> = Fbm::<Perlin>::new(TERRAIN_SEED);
+    let nx = (x / SIZE + 0.5) as f64;
+    let nz = (z / SIZE + 0.5) as f64;
+    sample_height(&fbm, nx, nz)
 }
 
 fn spawn_terrain(

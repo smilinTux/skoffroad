@@ -9,12 +9,25 @@ pub struct VehiclePlugin;
 
 impl Plugin for VehiclePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_vehicle)
-           .add_systems(Update, drive_input);
+        app.init_resource::<DriveInput>()
+           .add_systems(Startup, spawn_vehicle)
+           .add_systems(Update, drive_input_keyboard.before(apply_drive_input))
+           .add_systems(Update, apply_drive_input);
     }
 }
 
-// ---- Components ----
+// Headless variant: skips the keyboard system so the harness controls DriveInput directly.
+pub struct VehiclePluginHeadless;
+
+impl Plugin for VehiclePluginHeadless {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<DriveInput>()
+           .add_systems(Startup, spawn_vehicle)
+           .add_systems(Update, apply_drive_input);
+    }
+}
+
+// ---- Components / Resources ----
 
 #[derive(Component)]
 pub struct Chassis;
@@ -29,6 +42,17 @@ pub struct Wheel {
 #[derive(Resource)]
 pub struct VehicleRoot {
     pub chassis: Entity,
+}
+
+/// Scriptable drive state written each tick by the keyboard system (interactive)
+/// or directly by the headless harness.
+#[derive(Resource, Default)]
+pub struct DriveInput {
+    /// -1.0 = full reverse, 1.0 = full forward
+    pub drive: f32,
+    /// -1.0 = full right, 1.0 = full left
+    pub steer: f32,
+    pub brake: bool,
 }
 
 // ---- Constants ----
@@ -83,7 +107,7 @@ fn spawn_vehicle(
         AngularDamping(2.0),
         // SleepingDisabled keeps the chassis always awake so input is never dropped.
         SleepingDisabled,
-        // Initial zero forces; drive_input will overwrite them each frame.
+        // Initial zero forces; apply_drive_input will overwrite them each frame.
         ConstantForce::new(0.0, 0.0, 0.0),
         ConstantTorque::new(0.0, 0.0, 0.0),
     )).id();
@@ -117,10 +141,26 @@ fn spawn_vehicle(
     commands.insert_resource(VehicleRoot { chassis: chassis_id });
 }
 
-// ---- Input ----
+// ---- Input systems ----
 
-fn drive_input(
+/// Reads keyboard state and populates DriveInput. Only registered by VehiclePlugin (interactive).
+pub fn drive_input_keyboard(
     keys: Res<ButtonInput<KeyCode>>,
+    mut input: ResMut<DriveInput>,
+) {
+    input.drive = 0.0;
+    input.steer = 0.0;
+    input.brake = keys.pressed(KeyCode::Space);
+
+    if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp)    { input.drive += 1.0; }
+    if keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown)  { input.drive -= 1.0; }
+    if keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft)  { input.steer += 1.0; }
+    if keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight) { input.steer -= 1.0; }
+}
+
+/// Applies the current DriveInput to chassis forces. Registered by both plugin variants.
+pub fn apply_drive_input(
+    input: Res<DriveInput>,
     vehicle: Option<Res<VehicleRoot>>,
     mut chassis_q: Query<
         (&mut ConstantForce, &mut ConstantTorque, &Transform),
@@ -132,22 +172,17 @@ fn drive_input(
 
     let forward = transform.forward();
 
-    let mut drive = 0.0_f32;
-    let mut steer = 0.0_f32;
-    let braking = keys.pressed(KeyCode::Space);
-
-    if keys.pressed(KeyCode::KeyW) || keys.pressed(KeyCode::ArrowUp)    { drive += 1.0; }
-    if keys.pressed(KeyCode::KeyS) || keys.pressed(KeyCode::ArrowDown)  { drive -= 1.0; }
-    if keys.pressed(KeyCode::KeyA) || keys.pressed(KeyCode::ArrowLeft)  { steer += 1.0; }
-    if keys.pressed(KeyCode::KeyD) || keys.pressed(KeyCode::ArrowRight) { steer -= 1.0; }
-
     const DRIVE_FORCE:  f32 = 3500.0;
     const STEER_TORQUE: f32 = 1200.0;
     const BRAKE_FORCE:  f32 = 2000.0;
 
-    let drive_vec = forward.as_vec3() * drive * DRIVE_FORCE
-        - if braking { forward.as_vec3() * BRAKE_FORCE * drive.signum().max(0.0) } else { Vec3::ZERO };
+    let drive_vec = forward.as_vec3() * input.drive * DRIVE_FORCE
+        - if input.brake {
+            forward.as_vec3() * BRAKE_FORCE * input.drive.signum().max(0.0)
+        } else {
+            Vec3::ZERO
+        };
 
     *force  = ConstantForce::new(drive_vec.x, drive_vec.y, drive_vec.z);
-    *torque = ConstantTorque::new(0.0, steer * STEER_TORQUE, 0.0);
+    *torque = ConstantTorque::new(0.0, input.steer * STEER_TORQUE, 0.0);
 }

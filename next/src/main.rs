@@ -1,10 +1,6 @@
-mod camera;
-mod particles;
-mod terrain;
-mod vehicle;
-
 use bevy::prelude::*;
 use avian3d::prelude::*;
+use sandk_offroad_next::{CameraPlugin, DustPlugin, TerrainPlugin, VehiclePlugin};
 
 fn main() {
     let mut app = App::new();
@@ -21,10 +17,10 @@ fn main() {
         .add_plugins(PhysicsPlugins::default())
         .insert_resource(ClearColor(Color::srgb(0.53, 0.81, 0.98)))
         .add_plugins((
-            terrain::TerrainPlugin,
-            vehicle::VehiclePlugin,
-            camera::CameraPlugin,
-            particles::DustPlugin,
+            TerrainPlugin,
+            VehiclePlugin,
+            CameraPlugin,
+            DustPlugin,
         ))
         .add_systems(Startup, setup_lighting);
 
