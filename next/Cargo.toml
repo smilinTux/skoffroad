@@ -1,0 +1,27 @@
+[workspace]
+
+[package]
+name = "sandk-offroad-next"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+dev = ["bevy/dynamic_linking", "dep:bevy-inspector-egui"]
+
+[dependencies]
+bevy = { version = "0.18.1", default-features = true }
+avian3d = { version = "0.6.1", features = ["collider-from-mesh"] }
+bevy_hanabi = { version = "0.18.0" }
+noise = "0.9.0"
+bevy-inspector-egui = { version = "0.36.0", optional = true }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
