@@ -47,6 +47,7 @@ fn spawn_terrain(
     let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vcount * vcount);
     let mut normals:   Vec<[f32; 3]> = Vec::with_capacity(vcount * vcount);
     let mut uvs:       Vec<[f32; 2]> = Vec::with_capacity(vcount * vcount);
+    let mut colors:    Vec<[f32; 4]> = Vec::with_capacity(vcount * vcount);
 
     // Height values kept separately for collider construction.
     let mut heights: Vec<f32> = Vec::with_capacity(vcount * vcount);
@@ -81,6 +82,29 @@ fn spawn_terrain(
         }
     }
 
+    // Slope-based vertex colors:
+    //   flat  (slope < 0.15) -> grass green  srgb(0.32, 0.50, 0.20)
+    //   mid   (slope 0.15-0.45) -> dirt brown srgb(0.45, 0.38, 0.25)
+    //   steep (slope > 0.45) -> rock grey    srgb(0.42, 0.42, 0.45)
+    // Smooth-stepped to avoid harsh banding.
+    const GRASS: [f32; 3] = [0.32, 0.50, 0.20];
+    const DIRT:  [f32; 3] = [0.45, 0.38, 0.25];
+    const ROCK:  [f32; 3] = [0.42, 0.42, 0.45];
+
+    for i in 0..(vcount * vcount) {
+        let [nx, ny, nz] = normals[i];
+        let normal = Vec3::new(nx, ny, nz);
+        // slope = 0 on flat ground, 1 on vertical face.
+        let slope = 1.0 - normal.dot(Vec3::Y).clamp(0.0, 1.0);
+
+        // Blend grass->dirt over slope range 0.10..0.25, dirt->rock over 0.30..0.55
+        let t_gd = slope_smooth_step(slope, 0.10, 0.25);
+        let t_dr = slope_smooth_step(slope, 0.30, 0.55);
+
+        let c = lerp3(lerp3(GRASS, DIRT, t_gd), ROCK, t_dr);
+        colors.push([c[0], c[1], c[2], 1.0]);
+    }
+
     let mut indices: Vec<u32> = Vec::with_capacity(GRID * GRID * 6);
     for z in 0..GRID {
         for x in 0..GRID {
@@ -97,14 +121,15 @@ fn spawn_terrain(
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
     mesh.insert_indices(Indices::U32(indices));
 
     let mesh_handle = meshes.add(mesh);
 
-    // Build a trimesh collider from the mesh asset.
-    // collider-from-mesh feature enables Collider::trimesh_from_mesh.
+    // base_color WHITE so vertex colors aren't tinted (Bevy 0.18 samples
+    // ATTRIBUTE_COLOR automatically when present on the mesh).
     let material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.35, 0.55, 0.25),
+        base_color: Color::WHITE,
         perceptual_roughness: 0.9,
         ..default()
     });
@@ -116,4 +141,23 @@ fn spawn_terrain(
         RigidBody::Static,
         ColliderConstructor::TrimeshFromMesh,
     ));
+}
+
+// ---------------------------------------------------------------------------
+// Colour helpers (used only during mesh build, no runtime cost)
+// ---------------------------------------------------------------------------
+
+/// Smooth cubic ease mapping a value in [lo, hi] to [0, 1].
+fn slope_smooth_step(x: f32, lo: f32, hi: f32) -> f32 {
+    let t = ((x - lo) / (hi - lo)).clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// Linear interpolate between two RGB triples.
+fn lerp3(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ]
 }

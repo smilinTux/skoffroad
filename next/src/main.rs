@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 use avian3d::prelude::*;
-use sandk_offroad_next::{CameraPlugin, DustPlugin, TerrainPlugin, VehiclePlugin};
+use sandk_offroad_next::{
+    CameraPlugin, DustPlugin, SkyPlugin, TerrainPlugin, VehiclePlugin,
+    hud::HudPlugin,
+};
 
 fn main() {
     let mut app = App::new();
@@ -15,14 +18,16 @@ fn main() {
             ..default()
         }))
         .add_plugins(PhysicsPlugins::default())
-        .insert_resource(ClearColor(Color::srgb(0.53, 0.81, 0.98)))
+        // SkyPlugin owns the sky dome + sun + ambient + fog;
+        // ClearColor and the old setup_lighting are no longer needed.
         .add_plugins((
             TerrainPlugin,
             VehiclePlugin,
             CameraPlugin,
             DustPlugin,
-        ))
-        .add_systems(Startup, setup_lighting);
+            SkyPlugin,
+            HudPlugin,
+        ));
 
     // F3 world inspector — only compiled when `--features dev` is passed.
     // Inspector defaults to hidden; press F3 to toggle.
@@ -41,22 +46,6 @@ fn main() {
     }
 
     app.run();
-}
-
-fn setup_lighting(mut commands: Commands, mut ambient: ResMut<GlobalAmbientLight>) {
-    // Directional sun light.
-    commands.spawn((
-        DirectionalLight {
-            illuminance: 50_000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.8, 0.4, 0.0)),
-    ));
-
-    // Global ambient (Resource in Bevy 0.18; AmbientLight is now a per-camera Component).
-    ambient.color      = Color::WHITE;
-    ambient.brightness = 400.0;
 }
 
 // ---- Dev-only inspector toggle ----------------------------------------------
