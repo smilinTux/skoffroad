@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
-    CameraPlugin, DustPlugin, SkyPlugin, TerrainPlugin, VehiclePlugin,
+    AudioPlugin, CameraPlugin, DustPlugin, SkyPlugin, TerrainPlugin, VehiclePlugin,
     hud::HudPlugin,
 };
 
@@ -27,6 +27,7 @@ fn main() {
             DustPlugin,
             SkyPlugin,
             HudPlugin,
+            AudioPlugin,
         ));
 
     // F3 world inspector — only compiled when `--features dev` is passed.
