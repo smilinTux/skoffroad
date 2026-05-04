@@ -39,8 +39,11 @@ struct Headlight;
 
 // ---- Constants --------------------------------------------------------------
 
-const HL_INTENSITY:   f32 = 30_000.0;
-const HL_RANGE:       f32 = 50.0;
+// Bevy 0.18 SpotLight intensity is in lumens but the HDR pipeline needs
+// substantially more to read as bright headlights against a dark scene.
+// 30000 was barely visible; 200000 gives a clear cone that lights terrain.
+const HL_INTENSITY:   f32 = 200_000.0;
+const HL_RANGE:       f32 = 80.0;
 const HL_OUTER_ANGLE: f32 = 0.436_332; // 25°
 const HL_INNER_ANGLE: f32 = 0.261_799; // 15°
 
@@ -68,8 +71,8 @@ fn spawn_headlights(
             ..default()
         };
 
-        commands.spawn((Headlight, light, transform))
-            .set_parent_in_place(vehicle.chassis);
+        let light_id = commands.spawn((Headlight, light, transform)).id();
+        commands.entity(vehicle.chassis).add_child(light_id);
     }
 }
 

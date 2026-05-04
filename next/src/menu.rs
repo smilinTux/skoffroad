@@ -95,18 +95,62 @@ fn spawn_title_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Spacer to push the prompt toward the bottom third
-    let spacer = commands
+    // Spacer to push the keybinds toward the middle
+    let spacer1 = commands
+        .spawn(Node { height: Val::Px(28.0), ..default() })
+        .id();
+
+    // Two-column keybind grid
+    let kb_root = commands
         .spawn(Node {
-            height: Val::Px(80.0),
+            flex_direction: FlexDirection::Row,
+            column_gap:     Val::Px(48.0),
             ..default()
         })
+        .id();
+
+    let col_left  = build_kb_column(&mut commands, &[
+        ("DRIVING", ""),
+        ("W A S D", "Throttle / Steer"),
+        ("Space",   "Brake"),
+        ("R",       "Reset to spawn"),
+        ("J",       "Auto-flip recovery"),
+        ("N",       "Horn"),
+        ("1-5",     "Cycle livery"),
+        ("",        ""),
+        ("CAMERA", ""),
+        ("V",       "Chase / cockpit"),
+        ("Q E / RMB", "Orbit (chase)"),
+        ("P",       "Photo mode"),
+        (".",       "Replay last 10 s"),
+    ]);
+    let col_right = build_kb_column(&mut commands, &[
+        ("HUD", ""),
+        ("H M C E", "Toggle HUD / map / compass / events"),
+        ("L G Z X", "Trial / speedo / wind / speed lines"),
+        ("Tab (hold)", "Stats screen"),
+        ("?",       "Keybind help overlay"),
+        ("",        ""),
+        ("WORLD", ""),
+        ("T  [ ]",  "Pause / scrub time of day"),
+        ("Y",       "Headlights (Shift+Y auto)"),
+        ("F8 F9",   "Perf / fuel toggle"),
+        ("",        ""),
+        ("SAVE", ""),
+        ("F5/F6/F7", "Save slots 1/2/3"),
+        ("F1/F2/F4", "Load slots 1/2/3"),
+        ("Esc",     "Pause / settings"),
+    ]);
+    commands.entity(kb_root).add_children(&[col_left, col_right]);
+
+    let spacer2 = commands
+        .spawn(Node { height: Val::Px(28.0), ..default() })
         .id();
 
     // Bottom prompt
     let prompt = commands
         .spawn((
-            Text::new("Press SPACE or W to start.  Press ? for keybinds."),
+            Text::new("Press SPACE or W to start.  Press ? in-game for full keybinds."),
             TextFont { font_size: 16.0, ..default() },
             TextColor(COLOR_HINT),
         ))
@@ -114,7 +158,60 @@ fn spawn_title_screen(mut commands: Commands) {
 
     commands
         .entity(root)
-        .add_children(&[title, subtitle, spacer, prompt]);
+        .add_children(&[title, subtitle, spacer1, kb_root, spacer2, prompt]);
+}
+
+/// Build a vertical column of (key, description) rows for the title screen.
+/// A row with empty description is rendered as a section header (amber, larger).
+fn build_kb_column(commands: &mut Commands, rows: &[(&str, &str)]) -> Entity {
+    let col = commands
+        .spawn(Node {
+            flex_direction: FlexDirection::Column,
+            row_gap:        Val::Px(2.0),
+            ..default()
+        })
+        .id();
+
+    let mut children: Vec<Entity> = Vec::with_capacity(rows.len());
+    for (key, desc) in rows {
+        if key.is_empty() && desc.is_empty() {
+            // Visual gap between sections.
+            children.push(commands.spawn(Node { height: Val::Px(8.0), ..default() }).id());
+            continue;
+        }
+        if desc.is_empty() {
+            // Section header.
+            let h = commands.spawn((
+                Text::new(*key),
+                TextFont { font_size: 13.0, ..default() },
+                TextColor(Color::srgb(0.95, 0.72, 0.20)),
+            )).id();
+            children.push(h);
+            continue;
+        }
+        // Row: key + description.
+        let row = commands.spawn(Node {
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(8.0),
+            ..default()
+        }).id();
+        let k = commands.spawn((
+            Text::new(*key),
+            TextFont { font_size: 12.0, ..default() },
+            TextColor(Color::srgb(0.92, 0.92, 0.95)),
+            Node { width: Val::Px(110.0), ..default() },
+        )).id();
+        let d = commands.spawn((
+            Text::new(*desc),
+            TextFont { font_size: 12.0, ..default() },
+            TextColor(Color::srgb(0.65, 0.68, 0.72)),
+        )).id();
+        commands.entity(row).add_children(&[k, d]);
+        children.push(row);
+    }
+
+    commands.entity(col).add_children(&children);
+    col
 }
 
 // ---------------------------------------------------------------------------

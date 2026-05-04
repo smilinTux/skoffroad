@@ -159,30 +159,26 @@ fn spawn_vehicle(
     )).id();
 
     // Jeep silhouette: 7 child meshes (body, hood, windshield, 2 bumpers, 2 headlights).
-    let cx = |mesh: Handle<Mesh>, mat: Handle<StandardMaterial>, t: Transform| {
-        (Mesh3d(mesh), MeshMaterial3d(mat), t)
-    };
-    commands.spawn(cx(body_mesh, body_mat.clone(),
-        Transform::IDENTITY)).set_parent_in_place(chassis_id);
-    commands.spawn(cx(hood_mesh, body_mat.clone(),
-        Transform::from_translation(Vec3::new(0.0, -0.12, -1.6))))
-        .set_parent_in_place(chassis_id);
-    commands.spawn(cx(windshield_mesh, glass_mat,
+    // Use add_child on the chassis (same pattern as wheels below) — set_parent_in_place
+    // does not attach the child in Bevy 0.18, leaving the body parts as orphan root
+    // entities at world-space "child-local" positions (i.e. buried near the origin).
+    let body = commands.spawn((Mesh3d(body_mesh), MeshMaterial3d(body_mat.clone()),
+        Transform::IDENTITY)).id();
+    let hood = commands.spawn((Mesh3d(hood_mesh), MeshMaterial3d(body_mat.clone()),
+        Transform::from_translation(Vec3::new(0.0, -0.12, -1.6)))).id();
+    let windshield = commands.spawn((Mesh3d(windshield_mesh), MeshMaterial3d(glass_mat),
         Transform::from_translation(Vec3::new(0.0, 0.32, -0.88))
-            .with_rotation(Quat::from_rotation_x(-25_f32.to_radians()))))
-        .set_parent_in_place(chassis_id);
-    commands.spawn(cx(front_bumper, bumper_mat.clone(),
-        Transform::from_translation(Vec3::new(0.0, -0.30, -2.10))))
-        .set_parent_in_place(chassis_id);
-    commands.spawn(cx(rear_bumper, bumper_mat,
-        Transform::from_translation(Vec3::new(0.0, -0.30, 2.10))))
-        .set_parent_in_place(chassis_id);
-    commands.spawn(cx(headlight_mesh.clone(), headlight_mat.clone(),
-        Transform::from_translation(Vec3::new(-0.75, -0.12, -2.10))))
-        .set_parent_in_place(chassis_id);
-    commands.spawn(cx(headlight_mesh, headlight_mat,
-        Transform::from_translation(Vec3::new( 0.75, -0.12, -2.10))))
-        .set_parent_in_place(chassis_id);
+            .with_rotation(Quat::from_rotation_x(-25_f32.to_radians())))).id();
+    let front_bp = commands.spawn((Mesh3d(front_bumper), MeshMaterial3d(bumper_mat.clone()),
+        Transform::from_translation(Vec3::new(0.0, -0.30, -2.10)))).id();
+    let rear_bp = commands.spawn((Mesh3d(rear_bumper), MeshMaterial3d(bumper_mat),
+        Transform::from_translation(Vec3::new(0.0, -0.30, 2.10)))).id();
+    let hl_l = commands.spawn((Mesh3d(headlight_mesh.clone()),
+        MeshMaterial3d(headlight_mat.clone()),
+        Transform::from_translation(Vec3::new(-0.75, -0.12, -2.10)))).id();
+    let hl_r = commands.spawn((Mesh3d(headlight_mesh), MeshMaterial3d(headlight_mat),
+        Transform::from_translation(Vec3::new( 0.75, -0.12, -2.10)))).id();
+    commands.entity(chassis_id).add_children(&[body, hood, windshield, front_bp, rear_bp, hl_l, hl_r]);
 
     let tire_rot = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
     for (i, &offset) in WHEEL_OFFSETS.iter().enumerate() {
@@ -192,8 +188,9 @@ fn spawn_vehicle(
             MeshMaterial3d(wheel_mat.clone()),
             Transform::from_translation(offset).with_rotation(tire_rot),
         )).id();
-        commands.spawn(cx(rim_mesh.clone(), rim_mat.clone(), Transform::IDENTITY))
-            .set_parent_in_place(wheel_id);
+        let rim = commands.spawn((Mesh3d(rim_mesh.clone()), MeshMaterial3d(rim_mat.clone()),
+            Transform::IDENTITY)).id();
+        commands.entity(wheel_id).add_child(rim);
         commands.entity(chassis_id).add_child(wheel_id);
     }
 
