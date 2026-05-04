@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
-    AchievementToastPlugin, AudioPlugin, CameraPlugin, CompassPlugin, DamagePlugin,
-    DustPlugin, EventLogPlugin, HelpPlugin, HornPlugin, HudPlugin, LiveryPlugin,
-    MenuPlugin, MinimapPlugin, MudPlugin, PerfPlugin, PhotoModePlugin, RecoveryPlugin,
-    RepairPlugin, ReplayPlugin, SavePlugin, ScatterPlugin, SettingsPlugin, SkyPlugin,
-    StatsScreenPlugin, TerrainPlugin, TrialPlugin, VehiclePlugin, WaterPlugin, WindPlugin,
+    AchievementToastPlugin, AudioPlugin, BreadcrumbsPlugin, CameraPlugin, CompassPlugin,
+    DamagePlugin, DustPlugin, EventLogPlugin, FuelPlugin, HeadlightsPlugin, HelpPlugin,
+    HornPlugin, HudPlugin, LiveryPlugin, MenuPlugin, MinimapPlugin, MudPlugin, PerfPlugin,
+    PhotoModePlugin, RampsPlugin, RecoveryPlugin, RepairPlugin, ReplayPlugin, SavePlugin,
+    ScatterPlugin, SettingsPlugin, SkidmarksPlugin, SkyPlugin, StatsScreenPlugin,
+    TerrainPlugin, TrialPlugin, VehiclePlugin, WaterPlugin, WindPlugin,
 };
 
 fn main() {
@@ -59,6 +60,13 @@ fn main() {
             AchievementToastPlugin,
             WindPlugin,
             HornPlugin,
+        ))
+        .add_plugins((
+            HeadlightsPlugin,
+            BreadcrumbsPlugin,
+            FuelPlugin,
+            RampsPlugin,
+            SkidmarksPlugin,
         ));
 
     // F3 world inspector — only compiled when `--features dev` is passed.
