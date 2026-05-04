@@ -1,15 +1,24 @@
 pub mod audio;
 pub mod camera;
+pub mod events;
 pub mod headless;
 pub mod hud;
+pub mod minimap;
 pub mod particles;
+pub mod save;
+pub mod scatter;
 pub mod sky;
 pub mod terrain;
 pub mod vehicle;
 
 pub use audio::AudioPlugin;
 pub use camera::CameraPlugin;
+pub use events::{EventLog, EventLogPlugin, GameEvent};
+pub use hud::{HudPlugin, SessionStats};
+pub use minimap::MinimapPlugin;
 pub use particles::DustPlugin;
+pub use save::SavePlugin;
+pub use scatter::ScatterPlugin;
 pub use sky::SkyPlugin;
 pub use terrain::TerrainPlugin;
 pub use vehicle::{Chassis, DriveInput, VehiclePlugin, VehiclePluginHeadless, VehicleRoot, Wheel};
