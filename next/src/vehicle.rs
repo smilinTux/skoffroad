@@ -72,14 +72,15 @@ const WHEEL_HALF_WIDTH: f32      = 0.18;
 const RIM_RADIUS: f32            = 0.20;
 const CHASSIS_MASS: f32          = 1500.0;
 const SPRING_K: f32              = 50_000.0;
-const DAMPING_C: f32             = 4_000.0;
+const DAMPING_C: f32             = 5_000.0;
 const SUSPENSION_LEN: f32        = 0.60;
 const DRIVE_FORCE_PER_WHEEL: f32 = 700.0;
 const LATERAL_GRIP: f32          = 8_000.0;
 const BRAKE_FORCE_PER_WHEEL: f32 = 3_000.0;
 const MAX_STEER_ANGLE: f32       = 30_f32 * std::f32::consts::PI / 180.0;
-const ANG_DAMP: f32              = 16.0;
-const ANTI_ROLL_K: f32           = 18_000.0;
+const ANG_DAMP: f32              = 25.0;
+const ANTI_ROLL_K: f32           = 30_000.0;
+const ANTI_PITCH_K: f32          = 30_000.0;
 
 // FL, FR, RL, RR anchor offsets in chassis local space.
 const WHEEL_OFFSETS: [Vec3; 4] = [
@@ -312,6 +313,21 @@ fn suspension_system(
         let arb = ANTI_ROLL_K * (compressions[l] - compressions[r]);
         forces.apply_force_at_point(Vec3::Y *   arb,  world_anchors[l]);
         forces.apply_force_at_point(Vec3::Y * (-arb), world_anchors[r]);
+    }
+
+    // Anti-pitch: resist differential compression between front and rear axles.
+    // Reduces nose-dive on braking and rear-squat on acceleration.
+    let front_avg = 0.5 * (compressions[0] + compressions[1]);
+    let rear_avg  = 0.5 * (compressions[2] + compressions[3]);
+    let any_front = contacts[0] || contacts[1];
+    let any_rear  = contacts[2] || contacts[3];
+    if any_front && any_rear {
+        let pitch = ANTI_PITCH_K * (front_avg - rear_avg);
+        // Front more compressed → lift front, push rear down.
+        forces.apply_force_at_point(Vec3::Y *  pitch, world_anchors[0]);
+        forces.apply_force_at_point(Vec3::Y *  pitch, world_anchors[1]);
+        forces.apply_force_at_point(Vec3::Y * -pitch, world_anchors[2]);
+        forces.apply_force_at_point(Vec3::Y * -pitch, world_anchors[3]);
     }
 }
 

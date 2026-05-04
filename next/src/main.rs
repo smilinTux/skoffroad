@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
-    AudioPlugin, CameraPlugin, DustPlugin, EventLogPlugin, HudPlugin, MinimapPlugin,
-    SavePlugin, ScatterPlugin, SkyPlugin, TerrainPlugin, VehiclePlugin,
+    AudioPlugin, CameraPlugin, DamagePlugin, DustPlugin, EventLogPlugin, HudPlugin,
+    MinimapPlugin, SavePlugin, ScatterPlugin, SettingsPlugin, SkyPlugin, TerrainPlugin,
+    VehiclePlugin, WaterPlugin,
 };
 
 fn main() {
@@ -32,6 +33,11 @@ fn main() {
             MinimapPlugin,
             EventLogPlugin,
             SavePlugin,
+        ))
+        .add_plugins((
+            WaterPlugin,
+            SettingsPlugin,
+            DamagePlugin,
         ));
 
     // F3 world inspector — only compiled when `--features dev` is passed.
