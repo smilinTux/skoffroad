@@ -1,3 +1,4 @@
+use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
@@ -84,6 +85,20 @@ fn main() {
             ShakePlugin,
             ConfettiPlugin,
         ));
+
+    // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
+    // trampoline bounce, wind) all add commutative external forces to the
+    // chassis in PhysicsSchedule. They access the same Avian rigid-body
+    // components, so Bevy's default strict ambiguity detection panics with
+    // 10 conflict pairs. Their final force sum is order-independent (each
+    // calls forces.apply_force which accumulates), so downgrade ambiguity
+    // detection to a warning for that schedule only.
+    app.edit_schedule(PhysicsSchedule, |schedule| {
+        schedule.set_build_settings(ScheduleBuildSettings {
+            ambiguity_detection: LogLevel::Warn,
+            ..default()
+        });
+    });
 
     // F3 world inspector — only compiled when `--features dev` is passed.
     // Inspector defaults to hidden; press F3 to toggle.
