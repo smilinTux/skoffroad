@@ -172,11 +172,11 @@ const TAG_COLOR:   Color = Color::srgb(0.95, 0.72, 0.20);  // amber
 const NAME_COLOR:  Color = Color::WHITE;
 const DESC_COLOR:  Color = Color::srgb(0.75, 0.78, 0.82);  // light grey
 
-/// Tracks per-toast lifetime and vertical stack slot.
+/// Tracks per-toast lifetime. The vertical stack slot was previously cached
+/// here but is recomputed at spawn time, so the field is gone.
 #[derive(Component)]
 struct ToastTimer {
     elapsed: f32,
-    slot: usize,
 }
 
 /// Marker for the three text spans within a toast.
@@ -189,7 +189,7 @@ enum ToastSpan {
 
 // ---- spawn_toasts -----------------------------------------------------------
 
-pub fn spawn_toasts(
+fn spawn_toasts(
     mut commands:  Commands,
     mut earned:    ResMut<EarnedAchievements>,
     // Count currently alive toasts to assign a vertical stack slot.
@@ -206,7 +206,7 @@ pub fn spawn_toasts(
         let bottom_offset = 12.0 + slot as f32 * (TOAST_H + 8.0);
 
         let root = commands.spawn((
-            ToastTimer { elapsed: 0.0, slot },
+            ToastTimer { elapsed: 0.0 },
             Node {
                 position_type: PositionType::Absolute,
                 right: Val::Px(TOAST_RIGHT),
@@ -252,7 +252,7 @@ pub fn spawn_toasts(
 
 // ---- update_toasts ----------------------------------------------------------
 
-pub fn update_toasts(
+fn update_toasts(
     mut commands: Commands,
     time: Res<Time>,
     mut toast_q: Query<(Entity, &mut ToastTimer, &mut BackgroundColor, &Children)>,

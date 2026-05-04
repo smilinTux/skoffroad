@@ -195,9 +195,12 @@ fn build_heightmap_image() -> Image {
 
 fn update_minimap(
     vehicle: Res<VehicleRoot>,
-    chassis_q: Query<&Transform, With<Chassis>>,
+    // Disjoint from hdg_q (Without<HeadingIndicator>) — both touch Transform,
+    // one immutable on Chassis and one mutable on HeadingIndicator. Bevy
+    // requires the filters to make these provably non-overlapping.
+    chassis_q: Query<&Transform, (With<Chassis>, Without<HeadingIndicator>)>,
     mut dot_q: Query<&mut Node, (With<ChassisDot>, Without<HeadingIndicator>)>,
-    mut hdg_q: Query<&mut Transform, With<HeadingIndicator>>,
+    mut hdg_q: Query<&mut Transform, (With<HeadingIndicator>, Without<Chassis>)>,
 ) {
     let Ok(chassis_tf) = chassis_q.get(vehicle.chassis) else {
         return;
