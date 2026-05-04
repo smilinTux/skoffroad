@@ -110,8 +110,10 @@ fn animate_water(
     }
 
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    // Recompute flat normals so lighting stays consistent after vertex move.
-    mesh.compute_flat_normals();
+    // Bevy 0.18: compute_flat_normals panics on indexed meshes; the water grid
+    // uses indices, so use the smooth-normal variant. Visually it's actually
+    // nicer for rolling waves than per-tri faceted shading anyway.
+    let _ = mesh.compute_smooth_normals();
 }
 
 // ---------------------------------------------------------------------------
