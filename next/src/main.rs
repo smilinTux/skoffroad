@@ -1,10 +1,11 @@
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
-    AudioPlugin, CameraPlugin, CompassPlugin, DamagePlugin, DustPlugin, EventLogPlugin,
-    HelpPlugin, HudPlugin, LiveryPlugin, MenuPlugin, MinimapPlugin, MudPlugin, PerfPlugin,
-    RecoveryPlugin, RepairPlugin, SavePlugin, ScatterPlugin, SettingsPlugin, SkyPlugin,
-    StatsScreenPlugin, TerrainPlugin, TrialPlugin, VehiclePlugin, WaterPlugin,
+    AchievementToastPlugin, AudioPlugin, CameraPlugin, CompassPlugin, DamagePlugin,
+    DustPlugin, EventLogPlugin, HelpPlugin, HornPlugin, HudPlugin, LiveryPlugin,
+    MenuPlugin, MinimapPlugin, MudPlugin, PerfPlugin, PhotoModePlugin, RecoveryPlugin,
+    RepairPlugin, ReplayPlugin, SavePlugin, ScatterPlugin, SettingsPlugin, SkyPlugin,
+    StatsScreenPlugin, TerrainPlugin, TrialPlugin, VehiclePlugin, WaterPlugin, WindPlugin,
 };
 
 fn main() {
@@ -51,6 +52,13 @@ fn main() {
             RepairPlugin,
             LiveryPlugin,
             RecoveryPlugin,
+        ))
+        .add_plugins((
+            PhotoModePlugin,
+            ReplayPlugin,
+            AchievementToastPlugin,
+            WindPlugin,
+            HornPlugin,
         ));
 
     // F3 world inspector — only compiled when `--features dev` is passed.
