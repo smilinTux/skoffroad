@@ -60,7 +60,9 @@ fn compute_slope(x: f32, z: f32) -> f32 {
     let nxv = Vec3::new(SLOPE_STEP, hx - h, 0.0).normalize();
     let nzv = Vec3::new(0.0, hz - h, SLOPE_STEP).normalize();
     let n = nxv.cross(nzv).normalize();
-    1.0 - n.dot(Vec3::Y).clamp(0.0, 1.0)
+    // .abs() guards against the -Y normal that nxv.cross(nzv) produces on
+    // flat ground — see scatter.rs comment.
+    1.0 - n.dot(Vec3::Y).abs().clamp(0.0, 1.0)
 }
 
 // ---------------------------------------------------------------------------

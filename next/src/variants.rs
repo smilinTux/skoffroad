@@ -153,7 +153,7 @@ fn dark(mats: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
 /// Push a simple mesh+material entity into `ids`.
 fn push(
     ids: &mut Vec<Entity>, cmds: &mut Commands,
-    meshes: &mut Assets<Mesh>, mats: &mut Assets<StandardMaterial>,
+    meshes: &mut Assets<Mesh>, _mats: &mut Assets<StandardMaterial>,
     extra: impl Bundle,
     mesh: impl Into<Mesh>,
     mat: Handle<StandardMaterial>,

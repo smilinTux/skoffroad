@@ -80,7 +80,8 @@ fn slope_at(x: f32, z: f32) -> f32 {
     let nx_v = Vec3::new(step, hx - h, 0.0).normalize();
     let nz_v = Vec3::new(0.0, hz - h, step).normalize();
     let n = nx_v.cross(nz_v).normalize();
-    1.0 - n.dot(Vec3::Y).clamp(0.0, 1.0)
+    // .abs() guards against the -Y normal — see scatter.rs comment.
+    1.0 - n.dot(Vec3::Y).abs().clamp(0.0, 1.0)
 }
 
 fn spawn_trampolines(

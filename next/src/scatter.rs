@@ -38,7 +38,11 @@ fn compute_slope(x: f32, z: f32) -> f32 {
     let nz_v = Vec3::new(0.0, hz - h, SLOPE_STEP).normalize();
     let n = nx_v.cross(nz_v).normalize();
     // slope = 0 on flat ground, 1 on a vertical face.
-    1.0 - n.dot(Vec3::Y).clamp(0.0, 1.0)
+    // .abs() so it doesn't matter which side of the surface the cross-product
+    // normal points to — a -Y normal on flat ground would otherwise clamp to
+    // 0 and give 1.0 for *every* point. Bug propagated across 4 modules until
+    // discovered when obstacles spawned zero entities.
+    1.0 - n.dot(Vec3::Y).abs().clamp(0.0, 1.0)
 }
 
 // Simple deterministic hash → float in [0, 1) for per-cell jitter and scale.
