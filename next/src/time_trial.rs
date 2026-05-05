@@ -181,13 +181,12 @@ fn start_with_t(
 
 fn record_path(
     time: Res<Time>,
-    state_res: Res<TimeTrialState>,
     vehicle: Res<VehicleRoot>,
     chassis_q: Query<&Transform, With<Chassis>>,
     mut state: ResMut<TimeTrialState>,
     mut sample_acc: Local<f32>,
 ) {
-    if !state_res.running {
+    if !state.running {
         return;
     }
 
