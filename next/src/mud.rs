@@ -49,8 +49,10 @@ const SPAWN_CLEAR_RADIUS: f32 = 15.0;
 const PATCH_COUNT: usize = 12;
 // Mud patches seeded distinctly from trees (+1) and rocks (+2).
 const MUD_SEED: u32 = TERRAIN_SEED + 7;
-// Drag coefficient (N per unit submersion); lighter than water (800).
-const MUD_DRAG_COEFF: f32 = 400.0;
+// Drag coefficient (N per unit submersion). Reduced 400 → 120 after
+// playtest: 400 stacked across overlapping patches pinned the chassis.
+// 120 still feels viscous but chassis can power through.
+const MUD_DRAG_COEFF: f32 = 120.0;
 // Chassis mass mirrored from vehicle.rs — used for the slight sinking force.
 const CHASSIS_MASS: f32 = 1500.0;
 
@@ -176,7 +178,9 @@ fn apply_mud_drag(
         ));
 
         // Slight downward press — chassis feels like it's sinking into the mire.
-        forces.apply_force(Vec3::new(0.0, -CHASSIS_MASS * 1.0 * submersion, 0.0));
+        // 1.0 multiplier was too aggressive; 0.3 gives a gentle suction without
+        // burying the wheels.
+        forces.apply_force(Vec3::new(0.0, -CHASSIS_MASS * 0.3 * submersion, 0.0));
     }
 }
 

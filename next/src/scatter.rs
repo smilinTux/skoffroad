@@ -120,7 +120,11 @@ fn spawn_scatter(
             let slope = compute_slope(cx, cz);
 
             // ---- tree placement ----
-            if slope < 0.20 && t_val > 0.4 {
+            // Tightened from t_val > 0.4 (gave ~750 trees, world impassable)
+            // to t_val > 0.7 (~80-150 trees). Collider also reduced to a
+            // small low cylinder around the trunk only — chassis can drive
+            // through high foliage instead of being blocked by a 3m tall box.
+            if slope < 0.20 && t_val > 0.7 {
                 let jx  = (hash2(gx as i32, gz as i32, 10) * 2.0 - 1.0) * JITTER;
                 let jz  = (hash2(gx as i32, gz as i32, 20) * 2.0 - 1.0) * JITTER;
                 let rot = hash2(gx as i32, gz as i32, 30) * std::f32::consts::TAU;
@@ -136,7 +140,10 @@ fn spawn_scatter(
                         .with_scale(Vec3::splat(scale)),
                     Visibility::default(),
                     RigidBody::Static,
-                    Collider::cuboid(0.3, 1.5, 0.3),
+                    // Small cylinder around the trunk only (radius 0.2, height
+                    // 0.6). Chassis (height ~1m) drives over the trunk stub
+                    // and the cone foliage above is visual-only.
+                    Collider::cylinder(0.2, 0.6),
                 )).id();
 
                 // Trunk: half-height above ground.

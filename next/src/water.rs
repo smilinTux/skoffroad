@@ -142,10 +142,12 @@ fn buoyancy_system(
     forces.apply_force(Vec3::new(0.0, f_buoy, 0.0));
 
     // --- Drag ---
-    // Counter the current linear velocity proportional to submersion depth.
-    // Coefficient chosen so a full-submerged chassis decelerates from max (~4 m/s) in ~2 s.
+    // Reduced from 800 → 250 after playtest: 800 N·s/m at ~1m submersion
+    // pinned the chassis (3200 N drag at 4 m/s vs 2800 N drive). 250
+    // gives ~1000 N at 4 m/s — chassis can climb out of water under power
+    // but still feels viscous.
     let vel = forces.linear_velocity();
-    let drag_coeff = submersion * 800.0;
+    let drag_coeff = submersion * 250.0;
     let drag_force = Vec3::new(
         -vel.x * drag_coeff,
         -vel.y * drag_coeff,
