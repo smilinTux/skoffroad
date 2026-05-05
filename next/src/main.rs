@@ -4,15 +4,16 @@ use avian3d::prelude::*;
 use sandk_offroad_next::{
     AchievementToastPlugin, AirtimePlugin, ArrowPlugin, AudioPlugin, BannersPlugin,
     BoostPlugin, BreadcrumbsPlugin, CameraPlugin, CollectiblesPlugin, CompassPlugin,
-    ConfettiPlugin, CoursePlugin, DamagePlugin, DronePlugin, DustPlugin, EventLogPlugin,
-    ExhaustPlugin, FuelPlugin, GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin,
-    HudPlugin, LiveryPlugin, MarkersPlugin, MenuPlugin, MinimapPlugin, MudPlugin,
-    ObstaclesPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin, RampsPlugin, RecoveryPlugin,
-    RepairPlugin, ReplayPlugin, RoutePlugin, SavePlugin, ScatterPlugin, ScreenshotPlugin,
-    SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin, SpeedLinesPlugin,
-    SpeedTrapPlugin, StarsPlugin, StatsScreenPlugin, TerrainPlugin, TrailPlugin,
-    TrampolinesPlugin, TrialPlugin, TutorialPlugin, VariantsPlugin, VehiclePlugin,
-    WaterPlugin, WheelieCounterPlugin, WindPlugin, XpPlugin,
+    ConfettiPlugin, CoursePlugin, DamagePlugin, DronePlugin, DustPlugin, EngineProPlugin,
+    EventLogPlugin, ExhaustPlugin, FuelPlugin, GaugePlugin, HeadlightsPlugin, HelpPlugin,
+    HornPlugin, HudPlugin, LiveryPlugin, MarkersPlugin, MenuPlugin, MinimapPlugin,
+    MixerPlugin, MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin,
+    PinsPlugin, RampsPlugin, RecoveryPlugin, RepairPlugin, ReplayPlugin, RoutePlugin,
+    SavePlugin, ScatterPlugin, ScreenshotPlugin, SettingsPlugin, ShakePlugin,
+    SkidmarksPlugin, SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin,
+    StatsScreenPlugin, SurfacesPlugin, TerrainPlugin, TrailPlugin, TrampolinesPlugin,
+    TrialPlugin, TutorialPlugin, VariantsPlugin, VehiclePlugin, WaterPlugin,
+    WheelieCounterPlugin, WindPlugin, WorldAudioPlugin, XpPlugin,
 };
 
 fn main() {
@@ -108,6 +109,13 @@ fn main() {
             TrailPlugin,
             PinsPlugin,
             TutorialPlugin,
+        ))
+        .add_plugins((
+            MusicPlugin,
+            EngineProPlugin,
+            SurfacesPlugin,
+            WorldAudioPlugin,
+            MixerPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,

@@ -150,6 +150,11 @@ fn dark(mats: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
     mats.add(StandardMaterial { base_color: Color::srgb(0.12, 0.12, 0.12),
         perceptual_roughness: 0.9, ..default() })
 }
+fn chrome(mats: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
+    mats.add(StandardMaterial {
+        base_color: Color::srgb(0.85, 0.85, 0.90),
+        metallic: 0.95, perceptual_roughness: 0.15, ..default() })
+}
 
 /// Push a simple mesh+material entity into `ids`.
 fn push(
@@ -165,125 +170,219 @@ fn push(
 }
 
 // ---- Jeep TJ (re-spawn after cycling back) ----------------------------------
-// Mirrors what vehicle.rs spawns at startup, also tagged DefaultSkin.
+// Iconic short-wheelbase Wrangler. 7-slot vertical grille is the defining
+// feature. Round headlights, squared fender flares, roll bar, spare on rear.
 
 fn spawn_jeep_default(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Assets<StandardMaterial>) -> Vec<Entity> {
-    let body   = mat(mats, Color::srgb(0.8, 0.2, 0.1));
-    let bumper = dark(mats);
-    let glass  = glass(mats);
-    let hl     = hl_mat(mats);
-    let hm     = meshes.add(Sphere::new(0.10));
-    let mut ids = Vec::new();
-    // body 2×0.8×4
+    let body      = mat(mats, Color::srgb(0.8, 0.2, 0.1));
+    let bumper_m  = dark(mats);
+    let glass_m   = glass(mats);
+    let hl        = hl_mat(mats);
+    let roll_m    = mat(mats, Color::srgb(0.15, 0.15, 0.15));
+    let mut ids   = Vec::new();
+
+    // Main body
     ids.push(cmds.spawn((VariantSkin, DefaultSkin,
         Mesh3d(meshes.add(Cuboid::new(2.0, 0.8, 4.0))),
         MeshMaterial3d(body.clone()), Transform::IDENTITY)).id());
-    // hood
+    // Hood (slightly lower, forward)
     ids.push(cmds.spawn((VariantSkin, DefaultSkin,
         Mesh3d(meshes.add(Cuboid::new(1.9, 0.22, 1.2))),
         MeshMaterial3d(body.clone()),
         Transform::from_translation(Vec3::new(0.0, -0.12, -1.6)))).id());
-    // windshield
+    // Windshield
     ids.push(cmds.spawn((VariantSkin, DefaultSkin,
         Mesh3d(meshes.add(Cuboid::new(1.8, 0.05, 0.8))),
-        MeshMaterial3d(glass),
+        MeshMaterial3d(glass_m),
         Transform::from_translation(Vec3::new(0.0, 0.32, -0.88))
             .with_rotation(Quat::from_rotation_x(-25_f32.to_radians())))).id());
-    // front bumper
+    // Front bumper
     ids.push(cmds.spawn((VariantSkin, DefaultSkin,
         Mesh3d(meshes.add(Cuboid::new(2.1, 0.15, 0.12))),
-        MeshMaterial3d(bumper.clone()),
+        MeshMaterial3d(bumper_m.clone()),
         Transform::from_translation(Vec3::new(0.0, -0.30, -2.10)))).id());
-    // rear bumper
+    // Rear bumper
     ids.push(cmds.spawn((VariantSkin, DefaultSkin,
         Mesh3d(meshes.add(Cuboid::new(2.1, 0.15, 0.12))),
-        MeshMaterial3d(bumper),
+        MeshMaterial3d(bumper_m.clone()),
         Transform::from_translation(Vec3::new(0.0, -0.30, 2.10)))).id());
-    // headlights
+    // Round headlights — THE Jeep TJ look
+    let hm = meshes.add(Sphere::new(0.10));
     ids.push(cmds.spawn((VariantSkin, DefaultSkin,
         Mesh3d(hm.clone()), MeshMaterial3d(hl.clone()),
         Transform::from_translation(Vec3::new(-0.75, -0.12, -2.10)))).id());
     ids.push(cmds.spawn((VariantSkin, DefaultSkin,
         Mesh3d(hm), MeshMaterial3d(hl),
         Transform::from_translation(Vec3::new( 0.75, -0.12, -2.10)))).id());
+
+    // 7-slot vertical grille (the most recognizable Jeep feature)
+    let slat_m = dark(mats);
+    let slat   = meshes.add(Cuboid::new(0.07, 0.28, 0.06));
+    for i in 0..7_i32 {
+        let x = -0.42 + i as f32 * 0.14;
+        ids.push(cmds.spawn((VariantSkin, DefaultSkin,
+            Mesh3d(slat.clone()), MeshMaterial3d(slat_m.clone()),
+            Transform::from_translation(Vec3::new(x, -0.08, -2.09)))).id());
+    }
+
+    // Squared fender flares — 1 cuboid per wheel arch corner (4 arches × 2 pieces)
+    let flare_m = dark(mats);
+    let flare_h = meshes.add(Cuboid::new(0.12, 0.10, 0.55)); // front/rear arch cap
+    let flare_v = meshes.add(Cuboid::new(0.10, 0.18, 0.12)); // side vertical lip
+    for (sx, sz) in [(-1.0_f32, -1.4), (1.0, -1.4), (-1.0, 1.4), (1.0, 1.4)] {
+        ids.push(cmds.spawn((VariantSkin, DefaultSkin,
+            Mesh3d(flare_h.clone()), MeshMaterial3d(flare_m.clone()),
+            Transform::from_translation(Vec3::new(sx * 1.06, -0.25, sz)))).id());
+        ids.push(cmds.spawn((VariantSkin, DefaultSkin,
+            Mesh3d(flare_v.clone()), MeshMaterial3d(flare_m.clone()),
+            Transform::from_translation(Vec3::new(sx * 1.05, -0.18, sz)))).id());
+    }
+
+    // Roll bar: 2 vertical uprights + 1 horizontal top
+    let rb_post = meshes.add(Cylinder::new(0.05, 0.62));
+    let rb_top  = meshes.add(Cuboid::new(1.55, 0.05, 0.05));
+    ids.push(cmds.spawn((VariantSkin, DefaultSkin,
+        Mesh3d(rb_post.clone()), MeshMaterial3d(roll_m.clone()),
+        Transform::from_translation(Vec3::new(-0.72, 0.71, -0.35)))).id());
+    ids.push(cmds.spawn((VariantSkin, DefaultSkin,
+        Mesh3d(rb_post), MeshMaterial3d(roll_m.clone()),
+        Transform::from_translation(Vec3::new( 0.72, 0.71, -0.35)))).id());
+    ids.push(cmds.spawn((VariantSkin, DefaultSkin,
+        Mesh3d(rb_top), MeshMaterial3d(roll_m.clone()),
+        Transform::from_translation(Vec3::new(0.0, 1.02, -0.35)))).id());
+
+    // Tow hook — small black cuboid centered on front bumper
+    push(&mut ids, cmds, meshes, mats, DefaultSkin,
+        Cuboid::new(0.18, 0.12, 0.14), bumper_m.clone(),
+        Transform::from_translation(Vec3::new(0.0, -0.32, -2.20)));
+
+    // Spare tire on rear (cylinder lying flat against rear panel)
+    let spare_m = dark(mats);
+    ids.push(cmds.spawn((VariantSkin, DefaultSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.38, 0.16))),
+        MeshMaterial3d(spare_m),
+        Transform::from_translation(Vec3::new(0.0, 0.10, 2.22))
+            .with_rotation(Quat::from_rotation_x(90_f32.to_radians())))).id());
+
     ids
 }
 
 // ---- Ford Bronco ------------------------------------------------------------
-// Longer/taller body (2.0×1.0×4.5), roof rack on 4 posts, dark front grill.
-// Body color deep blue.
+// Classic 1980s squared SUV. Square headlights, thick chrome grille bar,
+// FORD letter blocks across grille face, side step rails, large door mirrors.
 
 fn spawn_bronco(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Assets<StandardMaterial>) -> Vec<Entity> {
-    let body   = mat(mats, Color::srgb(0.20, 0.40, 0.85));
-    let bumper = dark(mats);
-    let grill  = mats.add(StandardMaterial { base_color: Color::srgb(0.08, 0.08, 0.08),
+    let body    = mat(mats, Color::srgb(0.20, 0.40, 0.85));
+    let bumper  = dark(mats);
+    let grill_m = mats.add(StandardMaterial { base_color: Color::srgb(0.08, 0.08, 0.08),
         perceptual_roughness: 1.0, ..default() });
-    let glass  = glass(mats);
-    let hl     = hl_mat(mats);
-    let rack   = mat(mats, Color::srgb(0.20, 0.20, 0.20));
+    let glass_m = glass(mats);
+    let hl      = hl_mat(mats);
+    let rack_m  = mat(mats, Color::srgb(0.20, 0.20, 0.20));
+    let chrome_m = chrome(mats);
     let mut ids = Vec::new();
 
+    // Main body — taller and longer than Jeep
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.0, 1.0, 4.5),
         body.clone(), Transform::from_translation(Vec3::new(0.0, 0.0, 0.15)));
+    // Hood
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.9, 0.20, 1.4),
         body.clone(), Transform::from_translation(Vec3::new(0.0, -0.10, -1.85)));
+    // Windshield
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.85, 0.05, 0.9),
-        glass, Transform::from_translation(Vec3::new(0.0, 0.55, -0.85))
+        glass_m, Transform::from_translation(Vec3::new(0.0, 0.55, -0.85))
             .with_rotation(Quat::from_rotation_x(-20_f32.to_radians())));
+    // Front bumper
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.2, 0.18, 0.14),
         bumper.clone(), Transform::from_translation(Vec3::new(0.0, -0.30, -2.36)));
+    // Rear bumper
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.2, 0.15, 0.12),
         bumper, Transform::from_translation(Vec3::new(0.0, -0.30, 2.40)));
+    // Grille opening (dark fill)
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.30, 0.38, 0.08),
-        grill, Transform::from_translation(Vec3::new(0.0, -0.12, -2.33)));
+        grill_m, Transform::from_translation(Vec3::new(0.0, -0.12, -2.33)));
 
-    let hm = meshes.add(Sphere::new(0.11));
-    ids.push(cmds.spawn((VariantSkin, Mesh3d(hm.clone()), MeshMaterial3d(hl.clone()),
-        Transform::from_translation(Vec3::new(-0.80, -0.12, -2.34)))).id());
-    ids.push(cmds.spawn((VariantSkin, Mesh3d(hm), MeshMaterial3d(hl),
-        Transform::from_translation(Vec3::new( 0.80, -0.12, -2.34)))).id());
+    // Square headlights (replace round) — Bronco's signature box lamps
+    let sq_hl = meshes.add(Cuboid::new(0.22, 0.18, 0.06));
+    ids.push(cmds.spawn((VariantSkin, Mesh3d(sq_hl.clone()), MeshMaterial3d(hl.clone()),
+        Transform::from_translation(Vec3::new(-0.82, -0.12, -2.36)))).id());
+    ids.push(cmds.spawn((VariantSkin, Mesh3d(sq_hl), MeshMaterial3d(hl),
+        Transform::from_translation(Vec3::new( 0.82, -0.12, -2.36)))).id());
+
+    // Thick chrome grille bar spanning width of grille
+    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.32, 0.07, 0.10),
+        chrome_m.clone(), Transform::from_translation(Vec3::new(0.0, -0.05, -2.30)));
+
+    // "FORD" letter blocks across grille face (4 small raised cuboids)
+    let letter_m = chrome_m.clone();
+    let letter   = meshes.add(Cuboid::new(0.13, 0.10, 0.05));
+    for (i, lx) in [-0.30_f32, -0.10, 0.10, 0.30].iter().enumerate() {
+        let _ = i;
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(letter.clone()), MeshMaterial3d(letter_m.clone()),
+            Transform::from_translation(Vec3::new(*lx, -0.20, -2.34)))).id());
+    }
+
+    // Side step rails — long thin cuboids at lower body on each side
+    let step_m = mat(mats, Color::srgb(0.18, 0.18, 0.18));
+    let step   = meshes.add(Cuboid::new(0.10, 0.08, 3.20));
+    for sx in [-1.02_f32, 1.02] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(step.clone()), MeshMaterial3d(step_m.clone()),
+            Transform::from_translation(Vec3::new(sx, -0.55, 0.15)))).id());
+    }
+
+    // Large square door mirrors
+    let mirror_m = mat(mats, Color::srgb(0.22, 0.22, 0.22));
+    let mirror   = meshes.add(Cuboid::new(0.08, 0.18, 0.14));
+    for sx in [-1.06_f32, 1.06] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(mirror.clone()), MeshMaterial3d(mirror_m.clone()),
+            Transform::from_translation(Vec3::new(sx, 0.30, -0.55)))).id());
+    }
 
     // Roof rack: 4 posts + 2 long rails + 2 cross-bars
     let post  = meshes.add(Cylinder::new(0.03, 0.18));
     let rlong = meshes.add(Cuboid::new(0.03, 0.03, 1.36));
     let rlat  = meshes.add(Cuboid::new(1.74, 0.03, 0.03));
     for (px, pz) in [(-0.85_f32, -0.50), (0.85, -0.50), (-0.85, 0.80), (0.85, 0.80)] {
-        ids.push(cmds.spawn((VariantSkin, Mesh3d(post.clone()), MeshMaterial3d(rack.clone()),
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(post.clone()), MeshMaterial3d(rack_m.clone()),
             Transform::from_translation(Vec3::new(px, 0.59, pz)))).id());
     }
     for rx in [-0.85_f32, 0.85] {
-        ids.push(cmds.spawn((VariantSkin, Mesh3d(rlong.clone()), MeshMaterial3d(rack.clone()),
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(rlong.clone()), MeshMaterial3d(rack_m.clone()),
             Transform::from_translation(Vec3::new(rx, 0.68, 0.15)))).id());
     }
     for rz in [-0.50_f32, 0.80] {
-        ids.push(cmds.spawn((VariantSkin, Mesh3d(rlat.clone()), MeshMaterial3d(rack.clone()),
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(rlat.clone()), MeshMaterial3d(rack_m.clone()),
             Transform::from_translation(Vec3::new(0.0, 0.68, rz)))).id());
     }
     ids
 }
 
 // ---- Pickup -----------------------------------------------------------------
-// Separated cabin + open bed (floor + 4 walls), long hood. Body color silver.
+// Long-bed classic pickup. Separated cabin + open bed. Round headlights,
+// horizontal grille slats, door mirrors, tailgate handle, fuel cap, exhaust pipe.
 
 fn spawn_pickup(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Assets<StandardMaterial>) -> Vec<Entity> {
-    let body   = mat(mats, Color::srgb(0.72, 0.74, 0.76));
-    let bumper = dark(mats);
-    let grill  = mats.add(StandardMaterial { base_color: Color::srgb(0.10, 0.10, 0.10),
+    let body    = mat(mats, Color::srgb(0.72, 0.74, 0.76));
+    let bumper  = dark(mats);
+    let grill_m = mats.add(StandardMaterial { base_color: Color::srgb(0.10, 0.10, 0.10),
         perceptual_roughness: 1.0, ..default() });
-    let glass  = glass(mats);
-    let hl     = hl_mat(mats);
+    let glass_m = glass(mats);
+    let hl      = hl_mat(mats);
+    let detail  = mat(mats, Color::srgb(0.18, 0.18, 0.18));
     let mut ids = Vec::new();
 
-    // Cabin (forward), hood, windshield
+    // Cabin (forward half of vehicle)
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.0, 0.9, 2.2),
         body.clone(), Transform::from_translation(Vec3::new(0.0, 0.0, -0.70)));
+    // Hood
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.0, 0.18, 1.5),
         body.clone(), Transform::from_translation(Vec3::new(0.0, -0.18, -2.05)));
+    // Windshield
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.85, 0.05, 0.75),
-        glass, Transform::from_translation(Vec3::new(0.0, 0.50, -1.52))
+        glass_m, Transform::from_translation(Vec3::new(0.0, 0.50, -1.52))
             .with_rotation(Quat::from_rotation_x(-22_f32.to_radians())));
 
-    // Bed: floor + left/right/front/tailgate walls
+    // Bed: floor + left / right / front / tailgate walls
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.0, 0.08, 2.0),
         body.clone(), Transform::from_translation(Vec3::new(0.0, -0.40, 1.20)));
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(0.07, 0.65, 2.0),
@@ -292,73 +391,169 @@ fn spawn_pickup(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Asset
         body.clone(), Transform::from_translation(Vec3::new( 0.96, -0.08, 1.20)));
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.0, 0.65, 0.07),
         body.clone(), Transform::from_translation(Vec3::new(0.0, -0.08, 0.21)));
-    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.0, 0.65, 0.07),
+    // Tailgate (rear bed wall) — slightly thicker, same color
+    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.0, 0.65, 0.09),
         body.clone(), Transform::from_translation(Vec3::new(0.0, -0.08, 2.19)));
 
-    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.40, 0.36, 0.08),
-        grill, Transform::from_translation(Vec3::new(0.0, -0.15, -2.80)));
+    // Taller grille with 3 horizontal slats
+    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.40, 0.40, 0.08),
+        grill_m, Transform::from_translation(Vec3::new(0.0, -0.14, -2.80)));
+    let slat_m = mat(mats, Color::srgb(0.25, 0.25, 0.27));
+    let slat   = meshes.add(Cuboid::new(1.38, 0.05, 0.06));
+    for sz in [-0.28_f32, -0.14, 0.0] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(slat.clone()), MeshMaterial3d(slat_m.clone()),
+            Transform::from_translation(Vec3::new(0.0, sz, -2.78)))).id());
+    }
+
+    // Front bumper
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.25, 0.18, 0.13),
         bumper.clone(), Transform::from_translation(Vec3::new(0.0, -0.30, -2.82)));
+    // Rear bumper
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.10, 0.15, 0.12),
         bumper, Transform::from_translation(Vec3::new(0.0, -0.38, 2.26)));
 
-    let hm = meshes.add(Sphere::new(0.10));
+    // Large round headlights (classic pickup style)
+    let hm = meshes.add(Sphere::new(0.13));
     ids.push(cmds.spawn((VariantSkin, Mesh3d(hm.clone()), MeshMaterial3d(hl.clone()),
-        Transform::from_translation(Vec3::new(-0.78, -0.15, -2.80)))).id());
+        Transform::from_translation(Vec3::new(-0.78, -0.10, -2.80)))).id());
     ids.push(cmds.spawn((VariantSkin, Mesh3d(hm), MeshMaterial3d(hl),
-        Transform::from_translation(Vec3::new( 0.78, -0.15, -2.80)))).id());
+        Transform::from_translation(Vec3::new( 0.78, -0.10, -2.80)))).id());
+
+    // Tailgate handle — small horizontal cylinder across tailgate center
+    ids.push(cmds.spawn((VariantSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.03, 0.55))),
+        MeshMaterial3d(detail.clone()),
+        Transform::from_translation(Vec3::new(0.0, -0.05, 2.24))
+            .with_rotation(Quat::from_rotation_z(90_f32.to_radians())))).id());
+
+    // Side mirrors on cabin doors
+    let mirror_m = mat(mats, Color::srgb(0.20, 0.20, 0.20));
+    let mirror   = meshes.add(Cuboid::new(0.07, 0.14, 0.12));
+    for sx in [-1.05_f32, 1.05] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(mirror.clone()), MeshMaterial3d(mirror_m.clone()),
+            Transform::from_translation(Vec3::new(sx, 0.30, -1.05)))).id());
+    }
+
+    // Fuel cap — small cylinder on rear quarter panel (driver side)
+    ids.push(cmds.spawn((VariantSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.06, 0.04))),
+        MeshMaterial3d(detail.clone()),
+        Transform::from_translation(Vec3::new(-1.01, 0.10, 1.60))
+            .with_rotation(Quat::from_rotation_z(90_f32.to_radians())))).id());
+
+    // Exhaust tailpipe — cylinder protruding from rear underside
+    ids.push(cmds.spawn((VariantSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.05, 0.28))),
+        MeshMaterial3d(detail),
+        Transform::from_translation(Vec3::new(0.55, -0.50, 2.38))
+            .with_rotation(Quat::from_rotation_x(90_f32.to_radians())))).id());
+
     ids
 }
 
 // ---- Hummer -----------------------------------------------------------------
-// Wide (2.4) squat body, brush guard (3 thick vertical bars). Body desert tan.
+// Wide squat H1/H2 style. 8-slot vertical grille, tall headlights, roof
+// antenna, front winch, side-mounted spare tires, running boards.
 
 fn spawn_hummer(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Assets<StandardMaterial>) -> Vec<Entity> {
-    let body   = mat(mats, Color::srgb(0.82, 0.75, 0.50));
-    let bumper = dark(mats);
-    let guard  = mat(mats, Color::srgb(0.18, 0.18, 0.18));
-    let glass  = glass(mats);
-    let hl     = hl_mat(mats);
+    let body    = mat(mats, Color::srgb(0.82, 0.75, 0.50));
+    let bumper  = dark(mats);
+    let guard_m = mat(mats, Color::srgb(0.18, 0.18, 0.18));
+    let glass_m = glass(mats);
+    let hl      = hl_mat(mats);
+    let detail  = mat(mats, Color::srgb(0.14, 0.14, 0.14));
     let mut ids = Vec::new();
 
+    // Wide squat body — the Hummer is notably wider than tall
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.4, 0.8, 4.2),
         body.clone(), Transform::IDENTITY);
+    // Windshield
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.3, 0.05, 0.85),
-        glass, Transform::from_translation(Vec3::new(0.0, 0.43, -0.90))
+        glass_m, Transform::from_translation(Vec3::new(0.0, 0.43, -0.90))
             .with_rotation(Quat::from_rotation_x(-15_f32.to_radians())));
+    // Front bumper
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.5, 0.22, 0.15),
         bumper.clone(), Transform::from_translation(Vec3::new(0.0, -0.28, -2.18)));
+    // Rear bumper
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(2.5, 0.20, 0.13),
         bumper, Transform::from_translation(Vec3::new(0.0, -0.28, 2.18)));
+
+    // 8 prominent vertical grille slats (defining Hummer look)
+    let slat_m = dark(mats);
+    let slat   = meshes.add(Cuboid::new(0.09, 0.52, 0.10));
+    for i in 0..8_i32 {
+        let x = -0.63 + i as f32 * 0.18;
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(slat.clone()), MeshMaterial3d(slat_m.clone()),
+            Transform::from_translation(Vec3::new(x, -0.08, -2.24)))).id());
+    }
+
+    // Tall rectangular headlights (Hummer runs them tall and proud)
+    let sq_hl = meshes.add(Cuboid::new(0.26, 0.32, 0.06));
+    ids.push(cmds.spawn((VariantSkin, Mesh3d(sq_hl.clone()), MeshMaterial3d(hl.clone()),
+        Transform::from_translation(Vec3::new(-1.00, -0.05, -2.18)))).id());
+    ids.push(cmds.spawn((VariantSkin, Mesh3d(sq_hl), MeshMaterial3d(hl),
+        Transform::from_translation(Vec3::new( 1.00, -0.05, -2.18)))).id());
 
     // Brush guard: 3 vertical bars + horizontal cross-member
     let bar = meshes.add(Cuboid::new(0.10, 0.60, 0.12));
     for bx in [-0.65_f32, 0.0, 0.65] {
-        ids.push(cmds.spawn((VariantSkin, Mesh3d(bar.clone()), MeshMaterial3d(guard.clone()),
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(bar.clone()), MeshMaterial3d(guard_m.clone()),
             Transform::from_translation(Vec3::new(bx, -0.10, -2.26)))).id());
     }
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.55, 0.08, 0.10),
-        guard, Transform::from_translation(Vec3::new(0.0, 0.10, -2.26)));
+        guard_m, Transform::from_translation(Vec3::new(0.0, 0.10, -2.26)));
 
-    let hm = meshes.add(Sphere::new(0.12));
-    ids.push(cmds.spawn((VariantSkin, Mesh3d(hm.clone()), MeshMaterial3d(hl.clone()),
-        Transform::from_translation(Vec3::new(-0.95, -0.10, -2.18)))).id());
-    ids.push(cmds.spawn((VariantSkin, Mesh3d(hm), MeshMaterial3d(hl),
-        Transform::from_translation(Vec3::new( 0.95, -0.10, -2.18)))).id());
+    // Roof-mounted antenna — long thin cylinder on driver-side rear
+    ids.push(cmds.spawn((VariantSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.025, 0.70))),
+        MeshMaterial3d(detail.clone()),
+        Transform::from_translation(Vec3::new(-0.90, 0.75, 0.80)))).id());
+
+    // Recovery winch: spool cylinder + mounting box on front bumper center
+    ids.push(cmds.spawn((VariantSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.08, 0.40))),
+        MeshMaterial3d(detail.clone()),
+        Transform::from_translation(Vec3::new(0.0, -0.32, -2.22))
+            .with_rotation(Quat::from_rotation_z(90_f32.to_radians())))).id());
+    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(0.46, 0.16, 0.14),
+        detail.clone(), Transform::from_translation(Vec3::new(0.0, -0.38, -2.16)));
+
+    // Side-mounted spare tires (mounted high on flanks, both sides)
+    let spare_m = dark(mats);
+    for sx in [-1.28_f32, 1.28] {
+        ids.push(cmds.spawn((VariantSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.36, 0.18))),
+            MeshMaterial3d(spare_m.clone()),
+            Transform::from_translation(Vec3::new(sx, 0.20, 0.60))
+                .with_rotation(Quat::from_rotation_z(90_f32.to_radians())))).id());
+    }
+
+    // Running boards — long thin cuboids at lower body each side
+    let board_m = mat(mats, Color::srgb(0.16, 0.16, 0.16));
+    let board   = meshes.add(Cuboid::new(0.18, 0.07, 3.40));
+    for sx in [-1.26_f32, 1.26] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(board.clone()), MeshMaterial3d(board_m.clone()),
+            Transform::from_translation(Vec3::new(sx, -0.52, 0.0)))).id());
+    }
+
     ids
 }
 
 // ---- Buggy ------------------------------------------------------------------
-// No body panels. Exposed roll cage: 4 vertical poles, top hoop, X front
-// braces, rear bar. Tiny seat. Vivid orange.
+// No body panels — all exposed tubular cage. Visible engine in rear, exhaust
+// headers, shock absorbers at each corner, bucket seats, steering wheel,
+// front bumper tube.
 
 fn spawn_buggy(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Assets<StandardMaterial>) -> Vec<Entity> {
-    let cage = mat(mats, Color::srgb(0.92, 0.40, 0.05));
-    let seat = mat(mats, Color::srgb(0.12, 0.12, 0.14));
-    let hl   = hl_mat(mats);
+    let cage    = mat(mats, Color::srgb(0.92, 0.40, 0.05));
+    let seat_m  = mat(mats, Color::srgb(0.12, 0.12, 0.14));
+    let engine_m = mat(mats, Color::srgb(0.22, 0.18, 0.14));
+    let exhaust_m = mat(mats, Color::srgb(0.30, 0.28, 0.26));
+    let shock_m  = mat(mats, Color::srgb(0.55, 0.55, 0.60));
+    let hl      = hl_mat(mats);
     let mut ids = Vec::new();
 
-    // 4 vertical posts
+    // 4 vertical cage posts
     let post = meshes.add(Cylinder::new(0.05, 1.40));
     for (px, pz) in [(-0.75_f32, -0.80), (0.75, -0.80), (-0.75, 0.80), (0.75, 0.80)] {
         ids.push(cmds.spawn((VariantSkin, Mesh3d(post.clone()), MeshMaterial3d(cage.clone()),
@@ -377,7 +572,7 @@ fn spawn_buggy(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Assets
             Transform::from_translation(Vec3::new(0.0, 1.00, rz)))).id());
     }
 
-    // Front X-braces (two rotated Cuboids in the frontal plane)
+    // Front X-braces (two rotated cuboids in the frontal plane)
     let brace = meshes.add(Cuboid::new(0.05, 0.05, 1.65));
     for sign in [-1_f32, 1.0] {
         ids.push(cmds.spawn((VariantSkin, Mesh3d(brace.clone()), MeshMaterial3d(cage.clone()),
@@ -389,15 +584,58 @@ fn spawn_buggy(cmds: &mut Commands, meshes: &mut Assets<Mesh>, mats: &mut Assets
     push(&mut ids, cmds, meshes, mats, (), Cuboid::new(1.55, 0.05, 0.05),
         cage.clone(), Transform::from_translation(Vec3::new(0.0, 0.60, 0.80)));
 
-    // Seat
-    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(0.55, 0.30, 0.60),
-        seat, Transform::from_translation(Vec3::new(-0.20, -0.25, 0.0)));
+    // Front bumper as an exposed horizontal tube (no hood/grille)
+    ids.push(cmds.spawn((VariantSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.05, 1.50))),
+        MeshMaterial3d(cage.clone()),
+        Transform::from_translation(Vec3::new(0.0, -0.30, -1.00))
+            .with_rotation(Quat::from_rotation_z(90_f32.to_radians())))).id());
 
-    // Headlights (small, front-low)
+    // Bucket seats — 2 short cuboids side by side
+    let seat_shape = meshes.add(Cuboid::new(0.48, 0.28, 0.52));
+    for sx in [-0.30_f32, 0.30] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(seat_shape.clone()), MeshMaterial3d(seat_m.clone()),
+            Transform::from_translation(Vec3::new(sx, -0.26, 0.05)))).id());
+    }
+
+    // Steering wheel — thin flat cylinder
+    ids.push(cmds.spawn((VariantSkin,
+        Mesh3d(meshes.add(Cylinder::new(0.18, 0.03))),
+        MeshMaterial3d(seat_m.clone()),
+        Transform::from_translation(Vec3::new(-0.28, 0.18, -0.38))
+            .with_rotation(Quat::from_rotation_x(60_f32.to_radians())))).id());
+
+    // Visible engine block in rear (air-cooled buggy engine sits behind seats)
+    push(&mut ids, cmds, meshes, mats, (), Cuboid::new(0.70, 0.45, 0.55),
+        engine_m, Transform::from_translation(Vec3::new(0.0, -0.10, 0.78)));
+
+    // Exhaust headers — 4 small cylinders fanning out from engine
+    let hdr = meshes.add(Cylinder::new(0.035, 0.32));
+    for (hx, hz, angle) in [
+        (-0.20_f32, 0.95,  15_f32),
+        ( 0.20,     0.95, -15_f32),
+        (-0.28,     1.02,  30_f32),
+        ( 0.28,     1.02, -30_f32),
+    ] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(hdr.clone()), MeshMaterial3d(exhaust_m.clone()),
+            Transform::from_translation(Vec3::new(hx, -0.05, hz))
+                .with_rotation(Quat::from_rotation_z(angle.to_radians())))).id());
+    }
+
+    // Exposed shock absorbers at each wheel corner (4 small cylinders)
+    let shock = meshes.add(Cylinder::new(0.04, 0.50));
+    for (sx, sz) in [(-0.80_f32, -0.85), (0.80, -0.85), (-0.80, 0.85), (0.80, 0.85)] {
+        ids.push(cmds.spawn((VariantSkin, Mesh3d(shock.clone()), MeshMaterial3d(shock_m.clone()),
+            Transform::from_translation(Vec3::new(sx, -0.12, sz))
+                .with_rotation(Quat::from_rotation_x(20_f32.to_radians())))).id());
+    }
+
+    // Headlights (small, front-low, no bezel — just the lamp)
     let hm = meshes.add(Sphere::new(0.09));
     ids.push(cmds.spawn((VariantSkin, Mesh3d(hm.clone()), MeshMaterial3d(hl.clone()),
         Transform::from_translation(Vec3::new(-0.50, -0.18, -1.05)))).id());
     ids.push(cmds.spawn((VariantSkin, Mesh3d(hm), MeshMaterial3d(hl),
         Transform::from_translation(Vec3::new( 0.50, -0.18, -1.05)))).id());
+
     ids
 }
