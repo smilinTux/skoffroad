@@ -93,11 +93,22 @@ fn spawn_scatter(
 
     let half = WORLD_SIZE * 0.5;
 
+    // Spawn-clear radius: skip any cell whose centre is within 8 m of origin
+    // so the chassis (and the four wheel anchors at ±1.1 ±1.4) land in clear
+    // ground rather than on top of a tree/rock. Pre-slope-fix this was moot
+    // because trees never spawned anywhere; once the slope check started
+    // passing flat ground a tree landed on the spawn point.
+    const SPAWN_CLEAR: f32 = 8.0;
+
     for gz in 0..GRID_CELLS {
         for gx in 0..GRID_CELLS {
             // Cell centre in world space.
             let cx = -half + (gx as f32 + 0.5) * CELL_SIZE;
             let cz = -half + (gz as f32 + 0.5) * CELL_SIZE;
+
+            if cx * cx + cz * cz < SPAWN_CLEAR * SPAWN_CLEAR {
+                continue;
+            }
 
             // Noise coordinates in [0, 1] across the terrain.
             let nx = (cx / WORLD_SIZE + 0.5) as f64;
