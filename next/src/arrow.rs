@@ -97,8 +97,11 @@ fn spawn_arrow(
 fn update_arrow(
     course: Option<Res<CourseState>>,
     vehicle: Option<Res<VehicleRoot>>,
-    chassis_q: Query<&Transform, With<Chassis>>,
-    mut arrow_q: Query<(&mut Transform, &mut Visibility), With<ObjectiveArrow>>,
+    // Disjoint filters: both queries touch Transform (immut on Chassis,
+    // mut on ObjectiveArrow). Bevy needs proof they don't overlap or panics
+    // with B0001 at startup. Same fix as minimap::update_minimap.
+    chassis_q: Query<&Transform, (With<Chassis>, Without<ObjectiveArrow>)>,
+    mut arrow_q: Query<(&mut Transform, &mut Visibility), (With<ObjectiveArrow>, Without<Chassis>)>,
     time: Res<Time>,
 ) {
     // Both queries need to be resolvable; bail out silently if either resource
