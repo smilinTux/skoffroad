@@ -235,13 +235,12 @@ fn move_rain(
 
 fn tick_lightning(
     time:       Res<Time>,
-    state:      Res<StormState>,
     mut storm:  ResMut<StormState>,
     mut timer:  Local<f32>,
     mut seeded: Local<bool>,
     mut lseed:  Local<u32>,
 ) {
-    if !state.active {
+    if !storm.active {
         // Reset timer when inactive so the first flash after re-enable isn't
         // immediate.
         *timer = 4.0;
