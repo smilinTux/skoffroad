@@ -5,18 +5,19 @@ use sandk_offroad_next::{
     AchievementToastPlugin, AiDriverPlugin, AiPathPlugin, AirtimePlugin, ArrowPlugin,
     AudioPlugin, BannersPlugin, BiomeCanyonPlugin, BiomeDesertPlugin, BoostPlugin,
     BreadcrumbsPlugin, CameraPlugin, CareerPlugin, CollectiblesPlugin, CompassPlugin,
-    ConfettiPlugin, CoursePlugin, DailyPlugin, DamagePlugin, DronePlugin, DustPlugin,
-    EngineProPlugin, EventLogPlugin, ExhaustPlugin, FuelPlugin, GaugePlugin,
-    HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin, LiveryPlugin, MapSelectPlugin,
-    MapsPlugin, MarkersPlugin, MedalsPlugin, MenuPlugin, MinimapPlugin, MixerPlugin,
-    MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin,
+    ConfettiPlugin, ConfigPlugin, CoursePlugin, CreditsPlugin, DailyPlugin, DamagePlugin,
+    DronePlugin, DustPlugin, EngineProPlugin, EventLogPlugin, ExhaustPlugin,
+    FontAssetsPlugin, FuelPlugin, GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin,
+    HudPlugin, LiveryPlugin, LoadingScreenPlugin, MapSelectPlugin, MapsPlugin,
+    MarkersPlugin, MedalsPlugin, MenuPlugin, MinimapPlugin, MixerPlugin, MudPlugin,
+    MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin,
     ProgressionPlugin, RacePlugin, RampsPlugin, RecoveryPlugin, RepairPlugin,
     ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin, SavePlugin, ScatterPlugin,
     ScreenshotPlugin, SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin,
     SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin, StatsScreenPlugin, SurfacesPlugin,
-    TerrainPlugin, TrailPlugin, TrampolinesPlugin, TransitionPlugin, TrialPlugin,
-    TutorialPlugin, UnlocksPlugin, VariantsPlugin, VehiclePlugin, WaterPlugin,
-    WheelieCounterPlugin, WindPlugin, WorldAudioPlugin, XpPlugin,
+    TerrainPlugin, ThemePlugin, TrailPlugin, TrampolinesPlugin, TransitionPlugin,
+    TrialPlugin, TutorialPlugin, UnlocksPlugin, VariantsPlugin, VehiclePlugin,
+    WaterPlugin, WheelieCounterPlugin, WindPlugin, WorldAudioPlugin, XpPlugin,
 };
 
 fn main() {
@@ -140,6 +141,13 @@ fn main() {
             BiomeCanyonPlugin,
             MapSelectPlugin,
             TransitionPlugin,
+        ))
+        .add_plugins((
+            ConfigPlugin,
+            FontAssetsPlugin,
+            ThemePlugin,
+            LoadingScreenPlugin,
+            CreditsPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
