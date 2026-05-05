@@ -2,15 +2,16 @@ use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
-    AchievementToastPlugin, AirtimePlugin, AudioPlugin, BannersPlugin, BreadcrumbsPlugin,
-    CameraPlugin, CompassPlugin, ConfettiPlugin, DamagePlugin, DustPlugin, EventLogPlugin,
-    FuelPlugin, GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin,
-    LiveryPlugin, MarkersPlugin, MenuPlugin, MinimapPlugin, MudPlugin, ObstaclesPlugin,
-    PerfPlugin, PhotoModePlugin, RampsPlugin, RecoveryPlugin, RepairPlugin, ReplayPlugin,
-    RoutePlugin, SavePlugin, ScatterPlugin, SettingsPlugin, ShakePlugin, SkidmarksPlugin,
-    SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin, StatsScreenPlugin,
-    TerrainPlugin, TrampolinesPlugin, TrialPlugin, VariantsPlugin, VehiclePlugin,
-    WaterPlugin, WheelieCounterPlugin, WindPlugin, XpPlugin,
+    AchievementToastPlugin, AirtimePlugin, AudioPlugin, BannersPlugin, BoostPlugin,
+    BreadcrumbsPlugin, CameraPlugin, CollectiblesPlugin, CompassPlugin, ConfettiPlugin,
+    DamagePlugin, DronePlugin, DustPlugin, EventLogPlugin, ExhaustPlugin, FuelPlugin,
+    GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin, LiveryPlugin,
+    MarkersPlugin, MenuPlugin, MinimapPlugin, MudPlugin, ObstaclesPlugin, PerfPlugin,
+    PhotoModePlugin, RampsPlugin, RecoveryPlugin, RepairPlugin, ReplayPlugin, RoutePlugin,
+    SavePlugin, ScatterPlugin, ScreenshotPlugin, SettingsPlugin, ShakePlugin,
+    SkidmarksPlugin, SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin,
+    StatsScreenPlugin, TerrainPlugin, TrampolinesPlugin, TrialPlugin, VariantsPlugin,
+    VehiclePlugin, WaterPlugin, WheelieCounterPlugin, WindPlugin, XpPlugin,
 };
 
 fn main() {
@@ -92,6 +93,13 @@ fn main() {
             MarkersPlugin,
             ObstaclesPlugin,
             RoutePlugin,
+        ))
+        .add_plugins((
+            CollectiblesPlugin,
+            BoostPlugin,
+            ScreenshotPlugin,
+            DronePlugin,
+            ExhaustPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
