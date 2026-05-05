@@ -16,6 +16,7 @@ pub struct VariantsPlugin;
 impl Plugin for VariantsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<VehicleVariant>()
+           .init_resource::<VariantHudTimer>()
            .add_systems(Startup, spawn_variant_hud)
            .add_systems(Update, (cycle_variant, update_variant_hud)
                .run_if(resource_exists::<VehicleRoot>));
