@@ -44,7 +44,9 @@ pub struct TimeOfDay {
 
 impl Default for TimeOfDay {
     fn default() -> Self {
-        Self { t: 0.4, day_length_s: 120.0, paused: false }
+        // Start at noon so the world is fully lit at startup. Player can press T
+        // to pause the cycle or [/] to scrub to dawn / dusk / night manually.
+        Self { t: 0.5, day_length_s: 600.0, paused: false }
     }
 }
 
@@ -208,7 +210,9 @@ fn update_ambient(tod: Res<TimeOfDay>, mut ambient: ResMut<GlobalAmbientLight>) 
     let sin_el = elevation_rad.sin();
     let above  = smooth_step(sin_el.max(0.0));
 
-    ambient.brightness = lerp(20.0, 200.0, above);
+    // Bumped night floor 20→200 and day cap 200→500 — the original values
+    // produced a dim mid-morning (t=0.4) that made it hard to see the world.
+    ambient.brightness = lerp(200.0, 500.0, above);
     let night: [f32; 3] = [0.35, 0.40, 0.60];
     let day:   [f32; 3] = [0.50, 0.55, 0.65];
     let c = lerp_color3(&night, &day, above);
