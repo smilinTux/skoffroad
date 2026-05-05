@@ -9,6 +9,7 @@
 use std::time::Duration;
 use bevy::{
     asset::AssetPlugin,
+    ecs::schedule::{LogLevel, ScheduleBuildSettings},
     // MeshPlugin lives in bevy_mesh (re-exported as bevy::mesh in Bevy 0.18).
     // It registers the Mesh asset type, which is required for
     // ColliderConstructor::TrimeshFromMesh to resolve handles at runtime.
@@ -91,7 +92,29 @@ pub fn run_scenario(scenario: Scenario, duration_s: f32) -> TelemetrySummary {
     ))
     .init_asset::<StandardMaterial>()
     .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f32(1.0 / 60.0)))
-    .add_plugins((TerrainPlugin, VehiclePluginHeadless));
+    .add_plugins((TerrainPlugin, VehiclePluginHeadless))
+    // Add the world-population + viscous-medium plugins so the harness can
+    // diagnose drivability issues that only surface when the chassis hits a
+    // tree, rock, mud patch, or water. ScatterPlugin and ObstaclesPlugin
+    // place static colliders at deterministic LCG positions that the chassis
+    // may collide with on a forward 5 s run.
+    .add_plugins((
+        crate::scatter::ScatterPlugin,
+        crate::obstacles::ObstaclesPlugin,
+        crate::water::WaterPlugin,
+        crate::mud::MudPlugin,
+    ));
+
+    // Mirror main.rs: PhysicsSchedule has multiple commutative force-applying
+    // systems (suspension + buoyancy + mud drag) that touch the same Avian
+    // components. Default strict ambiguity detection panics; downgrade to Warn
+    // because the order doesn't matter — forces accumulate.
+    app.edit_schedule(PhysicsSchedule, |schedule| {
+        schedule.set_build_settings(ScheduleBuildSettings {
+            ambiguity_detection: LogLevel::Warn,
+            ..default()
+        });
+    });
 
     // Required for plugins that defer setup work to their finish() phase.
     // app.run() does this automatically; manual app.update() callers must do it.

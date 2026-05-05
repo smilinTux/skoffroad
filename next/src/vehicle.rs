@@ -151,7 +151,14 @@ fn spawn_vehicle(
         sum / WHEEL_OFFSETS.len() as f32
     };
 
-    // Chassis: collider only — visual shape is composed of child meshes below.
+    // Chassis: full-size collider, centred at the rigid-body origin. Earlier
+    // attempts to offset the collider via a child entity broke the chassis
+    // because Avian distributes mass across the collider AABB — an offset
+    // collider means an off-centre COM, which made the chassis top-heavy
+    // and flip immediately. Sticking with the centred collider; reverse
+    // asymmetry is now compensated by giving reverse 1.6x drive force
+    // (see compute_input drive shaping below — see Round 13 fix in
+    // suspension_system).
     let chassis_id = commands.spawn((
         Chassis,
         Transform::from_translation(Vec3::new(0.0, spawn_y, 0.0)),
@@ -295,9 +302,16 @@ fn suspension_system(
                 .clamp(-BRAKE_FORCE_PER_WHEEL, BRAKE_FORCE_PER_WHEEL);
             forces.apply_force_at_point(fwd_ground * brake_f, world_anchor);
         } else if input.drive.abs() > 0.0 {
-            // Throttle curve: powf(1.5) gives gentle low end, full power at full input
+            // Throttle curve: powf(1.5) gives gentle low end, full power at full input.
+            // Reverse compensation: chassis collider intersecting terrain bumps creates
+            // a small +X push from the solver that forward driving cooperates with but
+            // reverse fights. Bump reverse drive force 1.6x to net the same ground speed.
             let shaped = input.drive.signum() * input.drive.abs().powf(1.5);
-            forces.apply_force_at_point(fwd_ground * shaped * DRIVE_FORCE_PER_WHEEL, world_anchor);
+            let dir_boost = if input.drive < 0.0 { 1.6 } else { 1.0 };
+            forces.apply_force_at_point(
+                fwd_ground * shaped * DRIVE_FORCE_PER_WHEEL * dir_boost,
+                world_anchor,
+            );
         } else {
             let v_long   = v_anchor.dot(fwd_ground);
             let resist_f = (-LATERAL_GRIP * v_long).clamp(-f_susp * 1.2, f_susp * 1.2);
