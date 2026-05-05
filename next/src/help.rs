@@ -112,6 +112,17 @@ fn build_column_left(commands: &mut Commands) -> Entity {
         ("A / D",          "Steer left / right"),
         ("Arrow keys",     "Same as W/A/S/D"),
         ("Space",          "Brake"),
+        ("Left Shift",     "Boost / nitrous"),
+        ("R",              "Reset chassis to spawn"),
+        ("J",              "Auto-flip recovery"),
+        ("N",              "Horn"),
+    ];
+
+    let vehicle_header = section_header(commands, "VEHICLE");
+    let vehicle_rows   = [
+        ("1 - 5",          "Cycle paint livery"),
+        ("\\",             "Cycle vehicle silhouette"),
+        ("Y",              "Headlights (Shift+Y auto)"),
     ];
 
     let camera_header = section_header(commands, "CAMERA");
@@ -119,11 +130,17 @@ fn build_column_left(commands: &mut Commands) -> Entity {
         ("V",              "Toggle chase / cockpit"),
         ("Q / E",          "Orbit left / right (chase)"),
         ("RMB drag",       "Mouse orbit (chase)"),
+        ("P",              "Photo mode"),
+        (".",              "Replay last 10 s"),
+        ("F12",            "Screenshot"),
     ];
 
     let mut children: Vec<Entity> = Vec::new();
     children.push(driving_header);
     for (k, d) in &driving_rows  { children.push(bind_row(commands, k, d)); }
+    children.push(spacer(commands));
+    children.push(vehicle_header);
+    for (k, d) in &vehicle_rows  { children.push(bind_row(commands, k, d)); }
     children.push(spacer(commands));
     children.push(camera_header);
     for (k, d) in &camera_rows   { children.push(bind_row(commands, k, d)); }
@@ -143,13 +160,26 @@ fn build_column_right(commands: &mut Commands) -> Entity {
         })
         .id();
 
-    let ui_header = section_header(commands, "UI");
+    let ui_header = section_header(commands, "UI / OVERLAYS");
     let ui_rows   = [
         ("H",              "Toggle HUD"),
         ("M",              "Toggle mini-map"),
+        ("C",              "Toggle compass"),
         ("E",              "Toggle event log"),
+        ("L",              "Toggle trial timer"),
+        ("G",              "Toggle speedometer"),
+        ("Z",              "Toggle wind indicator"),
+        ("X",              "Toggle speed-line vignette"),
+        ("F8 / F9",        "Perf / fuel toggle"),
         ("?",              "This help screen"),
-        ("Tab",            "(TODO) Stats screen"),
+        ("Tab (hold)",     "Stats screen"),
+    ];
+
+    let game_header = section_header(commands, "GAMEPLAY");
+    let game_rows   = [
+        ("B",              "Breadcrumbs (Shift+B clear)"),
+        ("K",              "Skid marks (Shift+K clear)"),
+        ("O",              "Toggle drone"),
     ];
 
     let sys_header = section_header(commands, "SYSTEM");
@@ -157,7 +187,6 @@ fn build_column_right(commands: &mut Commands) -> Entity {
         ("Esc",            "Pause / settings overlay"),
         ("F5 / F6 / F7",   "Save to slot 1 / 2 / 3"),
         ("F1 / F2 / F4",   "Load slot 1 / 2 / 3"),
-        ("R",              "Reset chassis to spawn"),
         ("F3",             "Dev inspector (--features dev)"),
     ];
 
@@ -177,6 +206,9 @@ fn build_column_right(commands: &mut Commands) -> Entity {
     let mut children: Vec<Entity> = Vec::new();
     children.push(ui_header);
     for (k, d) in &ui_rows  { children.push(bind_row(commands, k, d)); }
+    children.push(spacer(commands));
+    children.push(game_header);
+    for (k, d) in &game_rows { children.push(bind_row(commands, k, d)); }
     children.push(spacer(commands));
     children.push(sys_header);
     for (k, d) in &sys_rows { children.push(bind_row(commands, k, d)); }
