@@ -80,7 +80,11 @@ const CHASSIS_MASS: f32          = 1500.0;
 const SPRING_K: f32              = 50_000.0;
 const DAMPING_C: f32             = 5_000.0;
 const SUSPENSION_LEN: f32        = 0.60;
-const DRIVE_FORCE_PER_WHEEL: f32 = 700.0;
+// Bumped 700 → 1800. With 4 wheels = 7200 N, mass 1500 = 4.8 m/s² flat-
+// ground accel, enough to climb ~28° slopes and push out of water under
+// boost. The original 700 (2800 N total) couldn't climb anything beyond
+// ~10° before gravity overpowered it.
+const DRIVE_FORCE_PER_WHEEL: f32 = 1800.0;
 const LATERAL_GRIP: f32          = 8_000.0;
 const BRAKE_FORCE_PER_WHEEL: f32 = 3_000.0;
 const MAX_STEER_ANGLE: f32       = 30_f32 * std::f32::consts::PI / 180.0;
@@ -354,6 +358,7 @@ fn update_wheel_visuals(
     vehicle: Option<Res<VehicleRoot>>,
     chassis_q: Query<(&Transform, &LinearVelocity), With<Chassis>>,
     mut wheel_q: Query<(&mut Transform, &mut Wheel), Without<Chassis>>,
+    input: Res<DriveInput>,
     time: Res<Time>,
 ) {
     let Some(vehicle) = vehicle else { return };
@@ -363,6 +368,13 @@ fn update_wheel_visuals(
     let speed = Vec3::new(lin_vel.x, lin_vel.y, lin_vel.z).dot(fwd);
     let dt    = time.delta_secs();
 
+    // Front wheels (index 0=FL, 1=FR) yaw with steering input. Same speed-
+    // sensitive shape used in the suspension drive logic so the visual
+    // matches the physics.
+    let speed_mps = Vec3::new(lin_vel.x, lin_vel.y, lin_vel.z).length();
+    let effective_steer = MAX_STEER_ANGLE * (1.0 / (1.0 + 0.1 * speed_mps));
+    let steer_yaw = input.steer * effective_steer;
+
     for (mut transform, mut wheel) in wheel_q.iter_mut() {
         wheel.spin += speed * dt / WHEEL_RADIUS;
         let base_offset    = WHEEL_OFFSETS[wheel.index];
@@ -371,7 +383,14 @@ fn update_wheel_visuals(
         // then becomes rotation around chassis X: wheel rolls forward correctly.
         let base_rot = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
         let spin_rot = Quat::from_rotation_y(wheel.spin);
+        // Front wheels also yaw with steering input — applied LAST so the
+        // steer rotation happens around the chassis-local Y axis (vertical).
+        let steer_rot = if wheel.index < 2 {
+            Quat::from_rotation_y(steer_yaw)
+        } else {
+            Quat::IDENTITY
+        };
         transform.translation = base_offset + compress_delta;
-        transform.rotation    = base_rot * spin_rot;
+        transform.rotation    = steer_rot * base_rot * spin_rot;
     }
 }

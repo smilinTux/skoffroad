@@ -18,7 +18,9 @@ use crate::vehicle::{Chassis, VehicleRoot};
 
 // ---- Constant ----------------------------------------------------------------
 
-const BOOST_FORCE: f32 = 6000.0;
+// Bumped 6000 → 12000. With base drive 7200 N + boost 12000 N = 19200 N,
+// chassis can muscle out of any reasonable terrain dip or water pit.
+const BOOST_FORCE: f32 = 12000.0;
 
 // ---- Public resource ---------------------------------------------------------
 
