@@ -59,13 +59,10 @@ fn apply_post_fx_on_change(
     }
     *last = Some(state.enabled);
 
-    let Ok((entity, mut camera)) = cam_q.single_mut() else {
+    let Ok((entity, _camera)) = cam_q.single_mut() else {
         return;
     };
-
-    // Note: In Bevy 0.18 Camera no longer has an `hdr` field;
-    // Bloom automatically enables HDR when inserted as a component.
-    let _ = camera; // still need the query to confirm a camera exists
+    // Bevy 0.18 Camera has no `hdr` field; Bloom enables HDR implicitly when inserted.
 
     if state.enabled {
         commands

@@ -1,68 +1,99 @@
 # SandK Offroad
 
-A single-player, physics-driven off-road vehicle simulation in Rust and Bevy, built around
-a Jeep TJ-class vehicle on procedurally generated terrain.
-
-## Status
-
-v0.4 restart in progress on `next/`. The original `src/` tree accumulated features that were
-never shipped and a build that broke in May 2025. The restart targets a tight vertical slice:
-one vehicle, one terrain, 60+ FPS, no networking, no economy. Legacy `src/` is retained for
-reference until `next/` reaches feature parity, then will be removed. See `MVP_SCOPE.md` for
-the full scope definition and milestone breakdown.
+Procedural off-road sandbox built with **Rust + Bevy 0.18 + Avian3D**, generated through 22 sprints of parallel Sonnet sub-agent work.
 
 ## Quick start
 
-Prerequisites: latest stable Rust, a Vulkan-capable GPU, Linux / Windows / macOS.
-
-```sh
+```bash
 cd next
-cargo run --features dev    # development build with dynamic linking
-cargo run --release         # optimised build
+cargo run --bin sandk-offroad-next --release
 ```
 
-No external tools, SDKs, or setup steps are needed beyond a working Rust toolchain and
-Vulkan drivers.
+Dev mode with the inspector (F3):
+
+```bash
+cargo run --features dev
+```
+
+Headless physics tests:
+
+```bash
+cargo test --test drive_test
+```
+
+Headless scenario harness:
+
+```bash
+cargo build --bin sim
+./target/debug/sim drop --json --verbose
+```
+
+## Highlights
+
+- **5 vehicle variants** — Jeep TJ, Ford Bronco, Pickup, Hummer, Buggy. All built from cuboid+cylinder primitives with photo-referenced detailing (grilles, fender flares, roll bars, tailpipes, winches, exhaust headers, etc.). License-clean, no GLTF assets required.
+- **3 maps** — VALLEY (default rolling hills), DUNES (cacti + amber fog), CANYON (red rock pillars + dusty haze). Tab to switch with a 1-second black fade.
+- **AI rivals** — RED, GRN, BLU rivals with skill-based AI driving along a Catmull-Rom densified race path.
+- **Career mode** — 8 sequential objectives spanning all the game systems.
+- **Daily challenge** — deterministic per-day rotation across 5 challenge kinds.
+- **Medals** — bronze/silver/gold awarded for course time, race position, gem count, longest jump, top speed.
+- **Time trial with ghost** — record your best, race against a translucent ghost car.
+- **Pursuit / demolition / explore / challenges** — alternate game modes built on the same physics base.
+- **Procedural everything** — terrain via noise, vehicle audio (4-cylinder firing-pulse synth), music (state machine over chord pads + arpeggios), tire surface audio (grass/dirt/rock blend by slope), wind/birds/crickets ambient mixed by TimeOfDay.
+- **Visual polish** — Bloom + ACES tonemapping, faux god rays at sunrise/sunset, persistent tire-track decals, vehicle dirt accumulation, storm rain + lightning.
+- **World flavor** — 8 procedural shacks + barns, 12-bird boid flock overhead, 5 ambient NPC trucks (toggleable), startup ASCII logo + 5-second cinematic intro orbit.
+- **Persistence** — config + keybindings autosaved to `~/.sandk-offroad/`. F12 benchmark mode logs frame-time stats.
+- **Accessibility** — colorblind palette swap, reduce-motion toggle, HUD scale 1.0/1.25/1.5x.
 
 ## Controls
 
-| Key / Input            | Action               |
-|------------------------|----------------------|
-| W / Arrow Up           | Accelerate forward   |
-| S / Arrow Down         | Reverse              |
-| A / Arrow Left         | Steer left           |
-| D / Arrow Right        | Steer right          |
-| Space                  | Brake                |
-| Right mouse + drag     | Orbit camera         |
+See [CONTROLS.md](CONTROLS.md) for the full reference. Highlights:
 
-## Layout
+| Key | Action |
+|---|---|
+| `WASD` | Drive (configurable via `/`) |
+| `Space` | Brake |
+| `Shift` | Handbrake |
+| `B` | Boost |
+| `R` | Start/restart race |
+| `T` | Time trial |
+| `P` | Pursuit |
+| `X` | Demolition |
+| `C` | Random 30s challenge |
+| `Tab` | Map select |
+| `H` | Help overlay |
+| `Esc` | Pause menu |
 
-```
-sandk-offroad/
-├── next/        canonical codebase (Bevy 0.18 + Avian3D)
-├── src/         legacy reference tree (Bevy 0.12, broken build — do not add code here)
-├── assets/      shared game assets (textures, models, audio, shaders)
-├── docs/        design and architecture notes
-├── tests/       integration tests
-├── benches/     performance benchmarks
-├── examples/    standalone runnable examples
-└── tasks/       leftover from a deprecated task-management tooling experiment
-```
+## Architecture
 
-## Tech stack
+The game is decomposed into ~95 plugin modules, each owning a single file in `next/src/*.rs`. Plugins are registered as tuples in `main.rs`. Cross-module communication uses Bevy resources and events; markers + queries do the rest.
 
-- Bevy 0.18.1 — ECS engine and renderer
-- Avian3D 0.6.1 — physics (rigid bodies, raycasts, collision)
-- bevy_hanabi 0.18.0 — GPU-driven particle system (dust, rain)
-- noise 0.9.0 — heightmap generation (FBM / Perlin)
-- bevy-inspector-egui 0.36.0 — dev-only parameter inspector (`--features dev`)
-- bevy_kira_audio — spatial audio (planned for Phase 4)
+Each sprint added 5 modules concurrently via Sonnet sub-agents working on pre-staged stub files.
 
-## Documentation
+## Sprint history
 
-- `MVP_SCOPE.md` — scope definition, phase milestones, and acceptance criteria
-- `docs/` — additional design and architecture notes
+| Sprint | Version | Focus |
+|---|---|---|
+| 14 | 0.4.15 | Audio polish — music, engine_pro, surfaces, world_audio, mixer + photo-referenced vehicle silhouettes |
+| 15 | 0.4.16 | AI rivals & racing |
+| 16 | 0.4.17 | Career & progression — XP curve, unlocks, career, daily, medals |
+| 17 | 0.4.18 | World variety — multiple maps, biomes, transitions |
+| 18 | 0.4.19 | Polish + persistence — config, fonts, theme, loading screen, credits |
+| 19 | 0.4.20 | QoL — input remap, accessibility, benchmark, demo mode, changelog |
+| 20 | 0.4.21 | Visual polish — storm, vehicle dirt, decals, bloom, god rays |
+| 21 | 0.4.22 | Game modes — time trial, pursuit, demolition, explore, challenges |
+| 22 | 0.4.23 | World flavor — ASCII logo, intro video, traffic, buildings, bird flock |
+
+## Testing
+
+`drive_test` (4 cases) verifies the headless physics harness on every commit:
+
+- `harness_runs` — bare scenario boots
+- `idle_settles` — chassis rests on terrain without drift
+- `forward_moves_vehicle` — drive input produces forward motion
+- `brake_stops_vehicle` — brake stops a moving vehicle
+
+Each sprint runs all 4 in CI before the agent reports completion.
 
 ## License
 
-MIT
+Code: project license TBD. Vehicle silhouettes are original procedural primitive compositions (no GLTF / external 3D assets), so the asset pipeline is license-clean.

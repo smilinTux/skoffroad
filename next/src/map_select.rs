@@ -54,7 +54,7 @@ struct MapSelectRoot;
 struct MapSelectRow(usize);
 
 #[derive(Component)]
-struct MapSelectRowPrefix(usize);
+struct MapSelectRowPrefix(#[allow(dead_code)] usize);
 
 // ---- Colour constants --------------------------------------------------------
 
