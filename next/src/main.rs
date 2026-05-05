@@ -3,19 +3,20 @@ use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
     AchievementToastPlugin, AiDriverPlugin, AiPathPlugin, AirtimePlugin, ArrowPlugin,
-    AudioPlugin, BannersPlugin, BoostPlugin, BreadcrumbsPlugin, CameraPlugin,
-    CareerPlugin, CollectiblesPlugin, CompassPlugin, ConfettiPlugin, CoursePlugin,
-    DailyPlugin, DamagePlugin, DronePlugin, DustPlugin, EngineProPlugin, EventLogPlugin,
-    ExhaustPlugin, FuelPlugin, GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin,
-    HudPlugin, LiveryPlugin, MarkersPlugin, MedalsPlugin, MenuPlugin, MinimapPlugin,
-    MixerPlugin, MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin,
-    PinsPlugin, ProgressionPlugin, RacePlugin, RampsPlugin, RecoveryPlugin, RepairPlugin,
+    AudioPlugin, BannersPlugin, BiomeCanyonPlugin, BiomeDesertPlugin, BoostPlugin,
+    BreadcrumbsPlugin, CameraPlugin, CareerPlugin, CollectiblesPlugin, CompassPlugin,
+    ConfettiPlugin, CoursePlugin, DailyPlugin, DamagePlugin, DronePlugin, DustPlugin,
+    EngineProPlugin, EventLogPlugin, ExhaustPlugin, FuelPlugin, GaugePlugin,
+    HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin, LiveryPlugin, MapSelectPlugin,
+    MapsPlugin, MarkersPlugin, MedalsPlugin, MenuPlugin, MinimapPlugin, MixerPlugin,
+    MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin,
+    ProgressionPlugin, RacePlugin, RampsPlugin, RecoveryPlugin, RepairPlugin,
     ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin, SavePlugin, ScatterPlugin,
     ScreenshotPlugin, SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin,
     SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin, StatsScreenPlugin, SurfacesPlugin,
-    TerrainPlugin, TrailPlugin, TrampolinesPlugin, TrialPlugin, TutorialPlugin,
-    UnlocksPlugin, VariantsPlugin, VehiclePlugin, WaterPlugin, WheelieCounterPlugin,
-    WindPlugin, WorldAudioPlugin, XpPlugin,
+    TerrainPlugin, TrailPlugin, TrampolinesPlugin, TransitionPlugin, TrialPlugin,
+    TutorialPlugin, UnlocksPlugin, VariantsPlugin, VehiclePlugin, WaterPlugin,
+    WheelieCounterPlugin, WindPlugin, WorldAudioPlugin, XpPlugin,
 };
 
 fn main() {
@@ -132,6 +133,13 @@ fn main() {
             CareerPlugin,
             DailyPlugin,
             MedalsPlugin,
+        ))
+        .add_plugins((
+            MapsPlugin,
+            BiomeDesertPlugin,
+            BiomeCanyonPlugin,
+            MapSelectPlugin,
+            TransitionPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
