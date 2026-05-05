@@ -120,8 +120,11 @@ fn spawn_collectible_hud(mut commands: Commands) {
         CollectibleHudRoot,
         Node {
             position_type: PositionType::Absolute,
-            top:   Val::Px(444.0),
-            right: Val::Px(12.0),
+            // Moved from right-side to left-side to clear the boost/fuel/gauge
+            // stack that grew along the right edge. Top-left stack:
+            // HUD (top:12) → free → collectibles (top:336).
+            top:  Val::Px(336.0),
+            left: Val::Px(12.0),
             width: Val::Px(160.0),
             padding: UiRect::all(Val::Px(8.0)),
             display: Display::Flex,
