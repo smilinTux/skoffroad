@@ -29,6 +29,7 @@
 | `Tab` | Map select (VALLEY / DUNES / CANYON) |
 | `8` | Toggle ambient traffic (5 NPC trucks) |
 | `9` | Toggle storm (rain + lightning) |
+| `+` / `-` | Zoom minimap in / out |
 
 ## Camera & post-FX
 

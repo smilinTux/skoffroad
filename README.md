@@ -82,6 +82,7 @@ Each sprint added 5 modules concurrently via Sonnet sub-agents working on pre-st
 | 20 | 0.4.21 | Visual polish — storm, vehicle dirt, decals, bloom, god rays |
 | 21 | 0.4.22 | Game modes — time trial, pursuit, demolition, explore, challenges |
 | 22 | 0.4.23 | World flavor — ASCII logo, intro video, traffic, buildings, bird flock |
+| 23 | 0.5.1 | Showcase polish — landmarks, exhaust smoke, minimap zoom, seasons, drifting clouds |
 
 ## Testing
 
