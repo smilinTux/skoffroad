@@ -46,6 +46,12 @@ impl Plugin for VehiclePluginHeadless {
 #[derive(Component)]
 pub struct Chassis;
 
+/// Marker on the 7 default Jeep-silhouette mesh children of the chassis. Used
+/// by `variants.rs` to identify and despawn the default skin when cycling to
+/// a different vehicle variant.
+#[derive(Component)]
+pub struct DefaultSkin;
+
 #[derive(Component)]
 pub struct Wheel {
     pub index: usize,
@@ -162,21 +168,21 @@ fn spawn_vehicle(
     // Use add_child on the chassis (same pattern as wheels below) — set_parent_in_place
     // does not attach the child in Bevy 0.18, leaving the body parts as orphan root
     // entities at world-space "child-local" positions (i.e. buried near the origin).
-    let body = commands.spawn((Mesh3d(body_mesh), MeshMaterial3d(body_mat.clone()),
+    let body = commands.spawn((DefaultSkin, Mesh3d(body_mesh), MeshMaterial3d(body_mat.clone()),
         Transform::IDENTITY)).id();
-    let hood = commands.spawn((Mesh3d(hood_mesh), MeshMaterial3d(body_mat.clone()),
+    let hood = commands.spawn((DefaultSkin, Mesh3d(hood_mesh), MeshMaterial3d(body_mat.clone()),
         Transform::from_translation(Vec3::new(0.0, -0.12, -1.6)))).id();
-    let windshield = commands.spawn((Mesh3d(windshield_mesh), MeshMaterial3d(glass_mat),
+    let windshield = commands.spawn((DefaultSkin, Mesh3d(windshield_mesh), MeshMaterial3d(glass_mat),
         Transform::from_translation(Vec3::new(0.0, 0.32, -0.88))
             .with_rotation(Quat::from_rotation_x(-25_f32.to_radians())))).id();
-    let front_bp = commands.spawn((Mesh3d(front_bumper), MeshMaterial3d(bumper_mat.clone()),
+    let front_bp = commands.spawn((DefaultSkin, Mesh3d(front_bumper), MeshMaterial3d(bumper_mat.clone()),
         Transform::from_translation(Vec3::new(0.0, -0.30, -2.10)))).id();
-    let rear_bp = commands.spawn((Mesh3d(rear_bumper), MeshMaterial3d(bumper_mat),
+    let rear_bp = commands.spawn((DefaultSkin, Mesh3d(rear_bumper), MeshMaterial3d(bumper_mat),
         Transform::from_translation(Vec3::new(0.0, -0.30, 2.10)))).id();
-    let hl_l = commands.spawn((Mesh3d(headlight_mesh.clone()),
+    let hl_l = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh.clone()),
         MeshMaterial3d(headlight_mat.clone()),
         Transform::from_translation(Vec3::new(-0.75, -0.12, -2.10)))).id();
-    let hl_r = commands.spawn((Mesh3d(headlight_mesh), MeshMaterial3d(headlight_mat),
+    let hl_r = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh), MeshMaterial3d(headlight_mat),
         Transform::from_translation(Vec3::new( 0.75, -0.12, -2.10)))).id();
     commands.entity(chassis_id).add_children(&[body, hood, windshield, front_bp, rear_bp, hl_l, hl_r]);
 

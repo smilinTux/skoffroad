@@ -2,13 +2,14 @@ use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
-    AchievementToastPlugin, AirtimePlugin, AudioPlugin, BreadcrumbsPlugin, CameraPlugin,
-    CompassPlugin, ConfettiPlugin, DamagePlugin, DustPlugin, EventLogPlugin, FuelPlugin,
-    GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin, LiveryPlugin,
-    MenuPlugin, MinimapPlugin, MudPlugin, PerfPlugin, PhotoModePlugin, RampsPlugin,
-    RecoveryPlugin, RepairPlugin, ReplayPlugin, SavePlugin, ScatterPlugin, SettingsPlugin,
-    ShakePlugin, SkidmarksPlugin, SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin,
-    StatsScreenPlugin, TerrainPlugin, TrampolinesPlugin, TrialPlugin, VehiclePlugin,
+    AchievementToastPlugin, AirtimePlugin, AudioPlugin, BannersPlugin, BreadcrumbsPlugin,
+    CameraPlugin, CompassPlugin, ConfettiPlugin, DamagePlugin, DustPlugin, EventLogPlugin,
+    FuelPlugin, GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin,
+    LiveryPlugin, MarkersPlugin, MenuPlugin, MinimapPlugin, MudPlugin, ObstaclesPlugin,
+    PerfPlugin, PhotoModePlugin, RampsPlugin, RecoveryPlugin, RepairPlugin, ReplayPlugin,
+    RoutePlugin, SavePlugin, ScatterPlugin, SettingsPlugin, ShakePlugin, SkidmarksPlugin,
+    SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin, StatsScreenPlugin,
+    TerrainPlugin, TrampolinesPlugin, TrialPlugin, VariantsPlugin, VehiclePlugin,
     WaterPlugin, WheelieCounterPlugin, WindPlugin, XpPlugin,
 };
 
@@ -84,6 +85,13 @@ fn main() {
             StarsPlugin,
             ShakePlugin,
             ConfettiPlugin,
+        ))
+        .add_plugins((
+            VariantsPlugin,
+            BannersPlugin,
+            MarkersPlugin,
+            ObstaclesPlugin,
+            RoutePlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
