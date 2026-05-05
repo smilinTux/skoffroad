@@ -2,13 +2,14 @@ use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
-    AchievementToastPlugin, AirtimePlugin, ArrowPlugin, AudioPlugin, BannersPlugin,
-    BoostPlugin, BreadcrumbsPlugin, CameraPlugin, CollectiblesPlugin, CompassPlugin,
-    ConfettiPlugin, CoursePlugin, DamagePlugin, DronePlugin, DustPlugin, EngineProPlugin,
-    EventLogPlugin, ExhaustPlugin, FuelPlugin, GaugePlugin, HeadlightsPlugin, HelpPlugin,
-    HornPlugin, HudPlugin, LiveryPlugin, MarkersPlugin, MenuPlugin, MinimapPlugin,
-    MixerPlugin, MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin,
-    PinsPlugin, RampsPlugin, RecoveryPlugin, RepairPlugin, ReplayPlugin, RoutePlugin,
+    AchievementToastPlugin, AiDriverPlugin, AiPathPlugin, AirtimePlugin, ArrowPlugin,
+    AudioPlugin, BannersPlugin, BoostPlugin, BreadcrumbsPlugin, CameraPlugin,
+    CollectiblesPlugin, CompassPlugin, ConfettiPlugin, CoursePlugin, DamagePlugin,
+    DronePlugin, DustPlugin, EngineProPlugin, EventLogPlugin, ExhaustPlugin, FuelPlugin,
+    GaugePlugin, HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin, LiveryPlugin,
+    MarkersPlugin, MenuPlugin, MinimapPlugin, MixerPlugin, MudPlugin, MusicPlugin,
+    ObstaclesPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin, RacePlugin, RampsPlugin,
+    RecoveryPlugin, RepairPlugin, ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin,
     SavePlugin, ScatterPlugin, ScreenshotPlugin, SettingsPlugin, ShakePlugin,
     SkidmarksPlugin, SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin,
     StatsScreenPlugin, SurfacesPlugin, TerrainPlugin, TrailPlugin, TrampolinesPlugin,
@@ -116,6 +117,13 @@ fn main() {
             SurfacesPlugin,
             WorldAudioPlugin,
             MixerPlugin,
+        ))
+        .add_plugins((
+            AiPathPlugin,
+            AiDriverPlugin,
+            RivalPlugin,
+            RacePlugin,
+            RivalHudPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
