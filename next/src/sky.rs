@@ -64,18 +64,25 @@ const GOLDEN_HORIZON:[f32; 4] = [1.00, 0.50, 0.30, 1.0];
 fn setup_sun(mut commands: Commands, mut ambient: ResMut<GlobalAmbientLight>) {
     commands.spawn((
         DirectionalLight {
-            illuminance: 10_000.0,
-            shadows_enabled: true,
-            shadow_depth_bias: 0.04,
-            shadow_normal_bias: 2.0,
+            illuminance: 12_000.0,
+            // Shadows disabled — Intel iGPUs render this scene at ~5 FPS with
+            // shadow mapping enabled because of the ~700 dynamic-mesh entity
+            // count (trees + rocks + obstacles + scatter + variants + scatter
+            // children). The night-time scene reads fine without them, and a
+            // brighter ambient floor compensates for the loss of contact
+            // shadows.
+            shadows_enabled: false,
             color: Color::srgb(1.0, 0.97, 0.88),
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.9, 0.5, 0.0)),
     ));
 
-    ambient.color      = Color::srgb(0.5, 0.55, 0.65);
-    ambient.brightness = 200.0;
+    // Very high ambient floor so terrain in non-direct-light areas reads
+    // clearly. Was 200 (then 500); 1500 makes the world genuinely bright at
+    // noon. The day/night system in update_ambient still scales this.
+    ambient.color      = Color::srgb(0.7, 0.72, 0.78);
+    ambient.brightness = 1500.0;
 }
 
 fn spawn_sky_dome(
@@ -210,9 +217,9 @@ fn update_ambient(tod: Res<TimeOfDay>, mut ambient: ResMut<GlobalAmbientLight>) 
     let sin_el = elevation_rad.sin();
     let above  = smooth_step(sin_el.max(0.0));
 
-    // Bumped night floor 20→200 and day cap 200→500 — the original values
-    // produced a dim mid-morning (t=0.4) that made it hard to see the world.
-    ambient.brightness = lerp(200.0, 500.0, above);
+    // Wide range so night is visible but noon is genuinely bright on a
+    // shadow-less DirectionalLight setup. 400 floor / 1500 ceiling.
+    ambient.brightness = lerp(400.0, 1500.0, above);
     let night: [f32; 3] = [0.35, 0.40, 0.60];
     let day:   [f32; 3] = [0.50, 0.55, 0.65];
     let c = lerp_color3(&night, &day, above);

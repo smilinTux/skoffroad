@@ -120,11 +120,10 @@ fn spawn_scatter(
             let slope = compute_slope(cx, cz);
 
             // ---- tree placement ----
-            // Tightened from t_val > 0.4 (gave ~750 trees, world impassable)
-            // to t_val > 0.7 (~80-150 trees). Collider also reduced to a
-            // small low cylinder around the trunk only — chassis can drive
-            // through high foliage instead of being blocked by a 3m tall box.
-            if slope < 0.20 && t_val > 0.7 {
+            // Tightened iteratively: 0.4 (impassable) → 0.7 (still slow on
+            // iGPU) → 0.85 (~30-60 trees, world reads as forested but the
+            // GPU keeps up).
+            if slope < 0.20 && t_val > 0.85 {
                 let jx  = (hash2(gx as i32, gz as i32, 10) * 2.0 - 1.0) * JITTER;
                 let jz  = (hash2(gx as i32, gz as i32, 20) * 2.0 - 1.0) * JITTER;
                 let rot = hash2(gx as i32, gz as i32, 30) * std::f32::consts::TAU;
@@ -165,7 +164,9 @@ fn spawn_scatter(
             }
 
             // ---- rock placement ----
-            let place_rock = slope > 0.30 || (slope > 0.15 && r_val > 0.6);
+            // Rocks-only-on-slopes is correct now that compute_slope is fixed,
+            // but the noise threshold is tightened so far fewer rocks spawn.
+            let place_rock = (slope > 0.40 && r_val > 0.5) || (slope > 0.25 && r_val > 0.85);
             if place_rock {
                 let jx  = (hash2(gx as i32, gz as i32, 50) * 2.0 - 1.0) * JITTER;
                 let jz  = (hash2(gx as i32, gz as i32, 60) * 2.0 - 1.0) * JITTER;

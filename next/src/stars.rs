@@ -26,7 +26,10 @@ struct StarMaterial(Handle<StandardMaterial>);
 
 // ---- Constants --------------------------------------------------------------
 
-const STAR_COUNT:  usize = 200;
+// Reduced 200 → 60 — at 200 stars × shared material write per frame the
+// scene rendered at 5 FPS on an Intel iGPU. 60 is still a reasonable
+// star field at midnight.
+const STAR_COUNT:  usize = 60;
 const STAR_RADIUS: f32   = 800.0;
 /// Peak emissive intensity (Linear HDR units) when fully visible.
 const STAR_EMIT:   f32   = 5.0;

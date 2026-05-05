@@ -135,20 +135,18 @@ fn buoyancy_system(
     }
 
     // --- Buoyancy ---
-    // F_buoy ramps linearly with submersion, capped at 2.0× weight (was 1.5).
-    // The cap makes shallow submersion feel softer; the higher cap means a
-    // chassis-deep submersion produces a clear net-upward force pushing it
-    // back to the surface no matter how stuck it feels.
-    let max_buoy = CHASSIS_MASS * GRAVITY * 2.0;
+    // Cap raised to 3.0× weight (was 2.0×). At any meaningful submersion the
+    // chassis gets a clear net upward force that overpowers gravity.
+    let max_buoy = CHASSIS_MASS * GRAVITY * 3.0;
     let f_buoy = (CHASSIS_MASS * GRAVITY * (submersion / CHASSIS_HALF_Y)).min(max_buoy);
     forces.apply_force(Vec3::new(0.0, f_buoy, 0.0));
 
     // --- Drag ---
-    // Cut to 120 N·s/m and clamped on submersion so deep water doesn't pin
-    // the chassis. Y axis explicitly excluded — vertical motion is governed
-    // by buoyancy, dragging it would fight escape from deep water.
+    // 60 N·s/m × clamped submersion. Was 120, then 250 originally — kept
+    // dropping it because the user kept getting pinned. 60 is gentle enough
+    // that 2 m/s = 120 N drag, well below the 4480 N reverse drive force.
     let vel = forces.linear_velocity();
-    let drag_coeff = submersion.min(1.0) * 120.0;
+    let drag_coeff = submersion.min(1.0) * 60.0;
     let drag_force = Vec3::new(
         -vel.x * drag_coeff,
         0.0, // no vertical drag — buoyancy handles up/down motion
