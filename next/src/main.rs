@@ -9,20 +9,21 @@ use sandk_offroad_next::{
     CareerPlugin, ChallengesPlugin, ChangelogPlugin, CollectiblesPlugin, CompassPlugin,
     ConfettiPlugin, ConfigPlugin, CoursePlugin, CreditsPlugin, DailyPlugin, DamagePlugin,
     DecalsPlugin, DemoModePlugin, DemolitionPlugin, DronePlugin, DustPlugin,
-    EngineProPlugin, EventLogPlugin, ExhaustPlugin, ExplorePlugin, FontAssetsPlugin,
-    FuelPlugin, GaugePlugin, GodraysPlugin, HeadlightsPlugin, HelpPlugin, HornPlugin,
-    HudPlugin, InputRemapPlugin, IntroVideoPlugin, LiveryPlugin, LoadingScreenPlugin,
-    MapSelectPlugin, MapsPlugin, MarkersPlugin, MedalsPlugin, MenuPlugin, MinimapPlugin,
+    EngineProPlugin, EventLogPlugin, ExhaustPlugin, ExhaustSmokePlugin, ExplorePlugin,
+    FontAssetsPlugin, FuelPlugin, GaugePlugin, GodraysPlugin, HeadlightsPlugin,
+    HelpPlugin, HornPlugin, HudPlugin, InputRemapPlugin, IntroVideoPlugin,
+    LandmarksPlugin, LiveryPlugin, LoadingScreenPlugin, MapSelectPlugin, MapsPlugin,
+    MarkersPlugin, MedalsPlugin, MenuPlugin, MinimapPlugin, MinimapZoomPlugin,
     MixerPlugin, MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin,
     PinsPlugin, ProgressionPlugin, PursuitPlugin, RacePlugin, RampsPlugin,
     RecoveryPlugin, RepairPlugin, ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin,
-    SavePlugin, ScatterPlugin, ScreenshotPlugin, SettingsPlugin, ShakePlugin,
-    SkidmarksPlugin, SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin,
-    StatsScreenPlugin, StormPlugin, SurfacesPlugin, TerrainPlugin, ThemePlugin,
-    TimeTrialPlugin, TrafficPlugin, TrailPlugin, TrampolinesPlugin, TransitionPlugin,
-    TrialPlugin, TutorialPlugin, UnlocksPlugin, VariantsPlugin, VehicleDirtPlugin,
-    VehiclePlugin, WaterPlugin, WheelieCounterPlugin, WindPlugin, WorldAudioPlugin,
-    XpPlugin,
+    SavePlugin, ScatterPlugin, ScreenshotPlugin, SeasonPlugin, SettingsPlugin,
+    ShakePlugin, SkidmarksPlugin, SkyPlugin, SpeedLinesPlugin, SpeedTrapPlugin,
+    StarsPlugin, StatsScreenPlugin, StormPlugin, SurfacesPlugin, TerrainPlugin,
+    ThemePlugin, TimeTrialPlugin, TrafficPlugin, TrailPlugin, TrampolinesPlugin,
+    TransitionPlugin, TrialPlugin, TutorialPlugin, UnlocksPlugin, VariantsPlugin,
+    VehicleDirtPlugin, VehiclePlugin, WaterPlugin, WeatherCloudsPlugin,
+    WheelieCounterPlugin, WindPlugin, WorldAudioPlugin, XpPlugin,
 };
 
 fn main() {
@@ -181,6 +182,13 @@ fn main() {
             TrafficPlugin,
             BuildingsPlugin,
             BirdsFlockPlugin,
+        ))
+        .add_plugins((
+            LandmarksPlugin,
+            ExhaustSmokePlugin,
+            MinimapZoomPlugin,
+            SeasonPlugin,
+            WeatherCloudsPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
