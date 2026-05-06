@@ -6,16 +6,17 @@ use sandk_offroad_next::{
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssistsPlugin, AudioPlugin,
     BannersPlugin, BenchmarkPlugin, BiomeCanyonPlugin, BiomeDesertPlugin,
     BirdsFlockPlugin, BloomPpPlugin, BoostPlugin, BreadcrumbsPlugin, BuildingsPlugin,
-    CameraPlugin, CareerPlugin, ChallengesPlugin, ChangelogPlugin, ClimbAssistPlugin,
-    CollectiblesPlugin, CompassPlugin, ConfettiPlugin, ConfigPlugin, CoursePlugin,
-    CreditsPlugin, DailyPlugin, DamagePlugin, DecalsPlugin, DemoModePlugin,
-    DemolitionPlugin, DronePlugin, DustPlugin, EngineProPlugin, EventLogPlugin,
-    ExhaustPlugin, ExhaustSmokePlugin, ExplorePlugin, FireworksPlugin, FontAssetsPlugin,
-    FuelPlugin, GaragePlugin, GaugePlugin, GodraysPlugin, HeadlightsPlugin, HelpPlugin,
-    HornPlugin, HudPlugin, InputRemapPlugin, IntroVideoPlugin, LandmarksPlugin,
-    LiveryPlugin, LoadingScreenPlugin, MapSelectPlugin, MapsPlugin, MarkersPlugin,
-    MedalsPlugin, MenuPlugin, MinimapPlugin, MinimapZoomPlugin, MixerPlugin, MudPlugin,
-    MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin,
+    CameraPlugin, CampfiresPlugin, CareerPlugin, ChallengesPlugin, ChangelogPlugin,
+    ClimbAssistPlugin, CollectiblesPlugin, ComboPlugin, CompassPlugin, ConfettiPlugin,
+    ConfigPlugin, CoursePlugin, CreditsPlugin, DailyPlugin, DamagePlugin, DecalsPlugin,
+    DemoModePlugin, DemolitionPlugin, DronePlugin, DustPlugin, EngineProPlugin,
+    EventLogPlugin, ExhaustPlugin, ExhaustSmokePlugin, ExplorePlugin, FireworksPlugin,
+    FontAssetsPlugin, FuelPlugin, GaragePlugin, GaugePlugin, GodraysPlugin,
+    HeadlightsPlugin, HelpPlugin, HornPlugin, HudPlugin, InputRemapPlugin,
+    IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LiveryPlugin,
+    LoadingScreenPlugin, MapSelectPlugin, MapsPlugin, MarkersPlugin, MedalsPlugin,
+    MenuPlugin, MinimapPlugin, MinimapZoomPlugin, MixerPlugin, MountainRangePlugin,
+    MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin,
     ProgressionPlugin, PursuitPlugin, RacePlugin, RampsPlugin, RecoveryPlugin,
     RepairPlugin, ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin, SavePlugin,
     ScatterPlugin, ScreenshotPlugin, SeasonPlugin, SettingsPlugin, ShakePlugin,
@@ -24,7 +25,7 @@ use sandk_offroad_next::{
     ThemePlugin, TimeTrialPlugin, TrafficPlugin, TrailPlugin, TrampolinesPlugin,
     TransitionPlugin, TrialPlugin, TutorialPlugin, UnlocksPlugin, VariantsPlugin,
     VehicleDirtPlugin, VehiclePlugin, WaterPlugin, WeatherCloudsPlugin,
-    WheelieCounterPlugin, WindPlugin, WorldAudioPlugin, XpPlugin,
+    WheelieCounterPlugin, WildlifePlugin, WindPlugin, WorldAudioPlugin, XpPlugin,
 };
 
 fn main() {
@@ -197,6 +198,13 @@ fn main() {
             GaragePlugin,
             FireworksPlugin,
             SpawnPointsPlugin,
+        ))
+        .add_plugins((
+            WildlifePlugin,
+            MountainRangePlugin,
+            JumpMeterPlugin,
+            ComboPlugin,
+            CampfiresPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
