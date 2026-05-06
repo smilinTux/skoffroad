@@ -84,7 +84,7 @@ const SUSPENSION_LEN: f32        = 0.60;
 // ground accel, enough to climb ~28° slopes and push out of water under
 // boost. The original 700 (2800 N total) couldn't climb anything beyond
 // ~10° before gravity overpowered it.
-const DRIVE_FORCE_PER_WHEEL: f32 = 1800.0;
+const DRIVE_FORCE_PER_WHEEL: f32 = 2600.0;
 const LATERAL_GRIP: f32          = 8_000.0;
 const BRAKE_FORCE_PER_WHEEL: f32 = 3_000.0;
 const MAX_STEER_ANGLE: f32       = 30_f32 * std::f32::consts::PI / 180.0;
