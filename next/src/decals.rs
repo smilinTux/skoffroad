@@ -134,27 +134,20 @@ fn spawn_decals(
 
 /// Ages each decal and updates its material alpha every frame.
 fn fade_decals(
-    decal_q: Query<(&TireDecal, &MeshMaterial3d<StandardMaterial>)>,
-    mut decal_age_q: Query<&mut TireDecal>,
+    mut decal_q: Query<(&mut TireDecal, &MeshMaterial3d<StandardMaterial>)>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     time: Res<Time>,
 ) {
     let dt = time.delta_secs();
 
-    // Age all decals and update their material alpha.
-    for (decal, mat_handle) in &decal_q {
-        let new_age = decal.age_s + dt;
-        let alpha = (1.0 - new_age / FADE_DURATION_S).max(0.0) * 0.85;
+    for (mut decal, mat_handle) in decal_q.iter_mut() {
+        decal.age_s += dt;
+        let alpha = (1.0 - decal.age_s / FADE_DURATION_S).max(0.0) * 0.85;
 
         if let Some(mat) = materials.get_mut(mat_handle.id()) {
             let old_color = mat.base_color.to_srgba();
             mat.base_color = Color::srgba(old_color.red, old_color.green, old_color.blue, alpha);
         }
-    }
-
-    // Commit age updates separately (avoids borrow conflict between Query<&TireDecal, ...> and &mut TireDecal).
-    for mut decal in decal_age_q.iter_mut() {
-        decal.age_s += dt;
     }
 }
 

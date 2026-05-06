@@ -259,10 +259,10 @@ fn track_challenge(
 
 fn update_hud(
     state: Res<ChallengesState>,
-    mut root_q: Query<(&mut Node, &mut BackgroundColor), With<ChallengeHudRoot>>,
+    mut root_q: Query<(&mut Node, &mut BackgroundColor), (With<ChallengeHudRoot>, Without<ChallengeHudBar>)>,
     mut header_q: Query<&mut Text, (With<ChallengeHudHeader>, Without<ChallengeHudDesc>)>,
     mut desc_q: Query<&mut Text, (With<ChallengeHudDesc>, Without<ChallengeHudHeader>)>,
-    mut bar_q: Query<(&mut Node, &mut BackgroundColor), With<ChallengeHudBar>>,
+    mut bar_q: Query<(&mut Node, &mut BackgroundColor), (With<ChallengeHudBar>, Without<ChallengeHudRoot>)>,
 ) {
     // Show/hide root panel
     for (mut node, _bg) in &mut root_q {

@@ -72,7 +72,6 @@ fn ai_driver_system(
             Entity,
             Forces,
             &Transform,
-            &LinearVelocity,
             &AiDriver,
             &PathFollower,
         ),
@@ -88,13 +87,15 @@ fn ai_driver_system(
 
     let t = time.elapsed_secs();
 
-    for (entity, mut forces, transform, lin_vel, driver, follower) in chassis_q.iter_mut() {
+    for (entity, mut forces, transform, driver, follower) in chassis_q.iter_mut() {
         let chassis_pos = transform.translation;
         let chassis_rot = transform.rotation;
         let chassis_fwd = (chassis_rot * Vec3::NEG_Z).normalize();
         let chassis_up  = (chassis_rot * Vec3::Y).normalize();
 
-        // Current speed along chassis forward axis.
+        // Current speed along chassis forward axis. Read velocity through Forces
+        // (avoids B0001: Forces already has mutable LinearVelocity access).
+        let lin_vel = forces.linear_velocity();
         let vel_v   = Vec3::new(lin_vel.x, lin_vel.y, lin_vel.z);
         let speed   = vel_v.dot(chassis_fwd);
         let speed_abs = vel_v.length();
