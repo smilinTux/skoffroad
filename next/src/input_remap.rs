@@ -603,7 +603,8 @@ pub fn apply_bindings_to_drive_input(
     // Only overwrite DriveInput when at least one remapped binding is active.
     if fwd || back || left || right || brk || hbrk {
         drive.drive = (if fwd { 1.0 } else { 0.0 }) - (if back { 1.0 } else { 0.0 });
-        drive.steer = (if right { 1.0 } else { 0.0 }) - (if left { 1.0 } else { 0.0 });
+        // Match vehicle.rs convention: A/Left = +1.0, D/Right = -1.0
+        drive.steer = (if left { 1.0 } else { 0.0 }) - (if right { 1.0 } else { 0.0 });
         drive.brake = brk || hbrk;
     }
 }
