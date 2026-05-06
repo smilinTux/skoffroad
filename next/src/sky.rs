@@ -64,7 +64,7 @@ const GOLDEN_HORIZON:[f32; 4] = [1.00, 0.50, 0.30, 1.0];
 fn setup_sun(mut commands: Commands, mut ambient: ResMut<GlobalAmbientLight>) {
     commands.spawn((
         DirectionalLight {
-            illuminance: 12_000.0,
+            illuminance: 22_000.0,
             // Shadows disabled — Intel iGPUs render this scene at ~5 FPS with
             // shadow mapping enabled because of the ~700 dynamic-mesh entity
             // count (trees + rocks + obstacles + scatter + variants + scatter
@@ -81,8 +81,8 @@ fn setup_sun(mut commands: Commands, mut ambient: ResMut<GlobalAmbientLight>) {
     // Very high ambient floor so terrain in non-direct-light areas reads
     // clearly. Was 200 (then 500); 1500 makes the world genuinely bright at
     // noon. The day/night system in update_ambient still scales this.
-    ambient.color      = Color::srgb(0.7, 0.72, 0.78);
-    ambient.brightness = 1500.0;
+    ambient.color      = Color::srgb(0.85, 0.87, 0.92);
+    ambient.brightness = 2400.0;
 }
 
 fn spawn_sky_dome(
@@ -218,10 +218,10 @@ fn update_ambient(tod: Res<TimeOfDay>, mut ambient: ResMut<GlobalAmbientLight>) 
     let above  = smooth_step(sin_el.max(0.0));
 
     // Wide range so night is visible but noon is genuinely bright on a
-    // shadow-less DirectionalLight setup. 400 floor / 1500 ceiling.
-    ambient.brightness = lerp(400.0, 1500.0, above);
-    let night: [f32; 3] = [0.35, 0.40, 0.60];
-    let day:   [f32; 3] = [0.50, 0.55, 0.65];
+    // shadow-less DirectionalLight setup. 800 floor / 2400 ceiling.
+    ambient.brightness = lerp(800.0, 2400.0, above);
+    let night: [f32; 3] = [0.45, 0.52, 0.70];
+    let day:   [f32; 3] = [0.85, 0.87, 0.92];
     let c = lerp_color3(&night, &day, above);
     ambient.color = Color::srgb(c[0], c[1], c[2]);
 }
