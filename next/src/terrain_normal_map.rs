@@ -115,7 +115,9 @@ fn apply_normals_once(
 
             let tangent_x = Vec3::new(0.5, hx - h, 0.0).normalize();
             let tangent_z = Vec3::new(0.0, hz - h, 0.5).normalize();
-            let normal    = tangent_x.cross(tangent_z).normalize();
+            // tangent_z × tangent_x gives Y > 0 (upward); the reverse cross
+            // product flips the sign and lights the terrain from underneath.
+            let normal    = tangent_z.cross(tangent_x).normalize();
 
             [normal.x, normal.y, normal.z]
         })

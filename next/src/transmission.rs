@@ -206,6 +206,14 @@ fn auto_shift_logic(
         return;
     }
 
+    // Engage 1st from neutral when driver pushes forward.
+    if gear == 0 && input.drive > 0.0 {
+        trans.current_gear  = 1;
+        trans.shift_cooldown = AUTO_COOLDOWN;
+        info!("transmission: auto → 1st");
+        return;
+    }
+
     // Upshift.
     if rpm > UPSHIFT_RPM && gear >= 1 && gear < 6 {
         trans.current_gear  += 1;

@@ -21,7 +21,8 @@ use bevy::prelude::*;
 // ---------------------------------------------------------------------------
 
 /// Key that cycles through transfer modes.
-const CYCLE_KEY: KeyCode = KeyCode::KeyV;
+/// (KeyV is taken by camera_modes.rs, so we use KeyJ here.)
+const CYCLE_KEY: KeyCode = KeyCode::KeyJ;
 
 /// Minimum seconds between mode changes.
 const COOLDOWN_SECS: f32 = 0.4;

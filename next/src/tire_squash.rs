@@ -59,34 +59,11 @@ impl Plugin for TireSquashPlugin {
 ///
 /// To diagnose which visual axis is correct in-engine, an `info!` log fires
 /// for wheel index 0 once per second.
-fn apply_squash(
-    mut wheel_q: Query<(&mut Transform, &Wheel)>,
-    time: Res<Time>,
-    mut log_timer: Local<f32>,
-) {
-    let dt = time.delta_secs();
-    *log_timer += dt;
-    let should_log = *log_timer >= 1.0;
-    if should_log {
-        *log_timer = 0.0;
-    }
-
+fn apply_squash(mut wheel_q: Query<(&mut Transform, &Wheel)>) {
     for (mut transform, wheel) in wheel_q.iter_mut() {
         let load_pct = (wheel.current_compression / SUSPENSION_LEN).clamp(0.0, 1.0);
-
-        // Vertical squash on local Z (maps to world-up after the baked-in Z rotation).
         let squash_scale = 1.0 - MAX_SQUASH * load_pct;
-        // Lateral bulge on local X (maps to world-X / front-to-back radial bulge).
         let bulge_scale  = 1.0 + MAX_BULGE  * load_pct;
-
         transform.scale = Vec3::new(bulge_scale, 1.0, squash_scale);
-
-        if should_log && wheel.index == 0 {
-            info!(
-                "[tire_squash] wheel 0 — compression={:.3} load={:.2} \
-                 scale.x(bulge)={:.4} scale.y(width)=1.0 scale.z(squash)={:.4}",
-                wheel.current_compression, load_pct, bulge_scale, squash_scale
-            );
-        }
     }
 }

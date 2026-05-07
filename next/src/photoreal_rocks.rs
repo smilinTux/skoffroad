@@ -30,6 +30,7 @@ use bevy::{
 };
 
 use crate::rock_garden::RockGardenRock;
+use bevy::ecs::hierarchy::Children;
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -192,7 +193,8 @@ fn upgrade_rocks_once(
     mut commands: Commands,
     mut meshes:   ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    rocks: Query<(Entity, &Transform), With<RockGardenRock>>,
+    rocks: Query<(Entity, &Transform, Option<&Children>), With<RockGardenRock>>,
+    child_mesh_q: Query<(), With<Mesh3d>>,
     mut done: Local<bool>,
 ) {
     if *done {
@@ -213,7 +215,7 @@ fn upgrade_rocks_once(
 
     let mut upgraded = 0usize;
 
-    for (entity, transform) in &rocks {
+    for (entity, transform, children) in &rocks {
         // Derive base_radius from the entity's scale (rock_garden.rs encodes
         // radius in the Transform scale if present, else uniform 1.0).
         let base_radius = {
@@ -222,12 +224,20 @@ fn upgrade_rocks_once(
             if r < 0.1 { 1.0 } else { r }
         };
 
+        // Despawn the original sphere-child meshes so the new compound is
+        // not visually competing with the old blocky boulders underneath.
+        if let Some(children) = children {
+            for child in children.iter() {
+                if child_mesh_q.get(child).is_ok() {
+                    commands.entity(child).despawn();
+                }
+            }
+        }
+
         let seed = entity_hash_f32(entity);
         let mesh = build_compound_mesh(base_radius, seed);
         let mesh_handle = meshes.add(mesh);
 
-        // Add the compound mesh as a child so it inherits the boulder's
-        // Transform (position, rotation, scale already correct).
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
                 Mesh3d(mesh_handle),
