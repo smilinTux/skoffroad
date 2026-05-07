@@ -1,0 +1,27 @@
+{
+  "vehicles": [
+    {
+      "name": "Custom Truck",
+      "glb_path": "vehicles/truck.glb",
+      "mass_kg": 1500.0,
+      "license": "CC0",
+      "author": "Quaternius"
+    }
+  ],
+  "maps": [
+    {
+      "name": "Trail 1",
+      "heightmap_path": "maps/trail1.png",
+      "license": "CC0"
+    }
+  ],
+  "mods": [
+    {
+      "name": "BigRig Pack",
+      "version": "1.0",
+      "author": "you",
+      "license": "CC-BY-4.0",
+      "root": "mods/bigrig/"
+    }
+  ]
+}

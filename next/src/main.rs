@@ -3,7 +3,8 @@ use bevy::prelude::*;
 use avian3d::prelude::*;
 use sandk_offroad_next::{
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
-    AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssistsPlugin, AudioPlugin,
+    AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
+    AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
     BannersPlugin, BenchmarkPlugin, BillboardsPlugin, BiomeCanyonPlugin,
     BiomeDesertPlugin, BirdsFlockPlugin, BloomPpPlugin, BoatsPlugin, BoostPlugin,
     BreadcrumbsPlugin, BuildingsPlugin,
@@ -19,7 +20,8 @@ use sandk_offroad_next::{
     ExhaustPlugin, ExhaustSmokePlugin,
     ExplorePlugin, FastTravelMenuPlugin, FencePostsPlugin, FireworksPlugin, FishPlugin,
     FogHornPlugin, FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin,
-    GaugePlugin, GodraysPlugin, GrassTuftsPlugin, HeadlightsPlugin, HeatHazePlugin,
+    GaugePlugin, GlbLoaderPlugin, GodraysPlugin, GrassTuftsPlugin, HeadlightsPlugin,
+    HeatHazePlugin, HeightmapLoaderPlugin,
     HelpPlugin, HillclimbPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
     ImpactFlashPlugin, InputRemapPlugin, Interior3dPlugin,
     IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LicensePlatePlugin, LiveryPlugin,
@@ -302,6 +304,13 @@ fn main() {
             HeatHazePlugin,
             NightGlowPlugin,
             ChromePolishPlugin,
+        ))
+        .add_plugins((
+            GlbLoaderPlugin,
+            HeightmapLoaderPlugin,
+            AssetManifestPlugin,
+            AssetBrowserPlugin,
+            AssetAttributionPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
