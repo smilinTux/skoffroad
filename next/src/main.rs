@@ -12,13 +12,15 @@ use sandk_offroad_next::{
     ComboPlugin, CompassHudPlugin, CompassPlugin,
     ConfettiPlugin, ConfigPlugin, CoursePlugin, CrashAudioPlugin, CreditsPlugin,
     DailyPlugin, DamagePlugin, DamageVisualPlugin, DecalsPlugin, DemoModePlugin,
-    DemolitionPlugin, DistantThunderPlugin, DriftMeterPlugin, DronePlugin, GroundRutsPlugin,
-    DustPlugin, EngineProPlugin, EventLogPlugin, ExhaustPlugin, ExhaustSmokePlugin,
+    DemolitionPlugin, DiffLockPlugin, DistantThunderPlugin, DriftMeterPlugin, DriveModePlugin,
+    DronePlugin, GroundRutsPlugin,
+    DustPlugin, EngineBayPlugin, EngineProPlugin, EngineTorquePlugin, EventLogPlugin,
+    ExhaustPlugin, ExhaustSmokePlugin,
     ExplorePlugin, FastTravelMenuPlugin, FireworksPlugin, FishPlugin, FogHornPlugin,
     FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin, GaugePlugin,
     GodraysPlugin, HeadlightsPlugin,
     HelpPlugin, HillclimbPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
-    ImpactFlashPlugin, InputRemapPlugin,
+    ImpactFlashPlugin, InputRemapPlugin, Interior3dPlugin,
     IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LicensePlatePlugin, LiveryPlugin,
     LoadingScreenPlugin, LowFuelWarningPlugin, LowRangePlugin, MapSelectPlugin, MapsPlugin,
     MarkersPlugin,
@@ -262,6 +264,13 @@ fn main() {
             WheelDetailPlugin,
             VehicleDetailPlugin,
             ChassisUnderglowPlugin,
+        ))
+        .add_plugins((
+            EngineBayPlugin,
+            Interior3dPlugin,
+            EngineTorquePlugin,
+            DriveModePlugin,
+            DiffLockPlugin,
         ))
         .add_plugins((
             RockGardenPlugin,
