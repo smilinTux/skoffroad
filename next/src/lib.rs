@@ -184,6 +184,17 @@ pub mod wind;
 pub mod world_audio;
 pub mod xp;
 
+pub mod engine_audio_layered;
+pub mod fuel_consumption_real;
+pub mod transfer_case;
+pub mod transmission;
+pub mod winch_cable_physics;
+pub use engine_audio_layered::EngineAudioLayeredPlugin;
+pub use fuel_consumption_real::FuelConsumptionRealPlugin;
+pub use transfer_case::TransferCasePlugin;
+pub use transmission::TransmissionPlugin;
+pub use winch_cable_physics::WinchCablePhysicsPlugin;
+
 pub use audio::AudioPlugin;
 pub use camera::CameraPlugin;
 pub use compass::CompassPlugin;

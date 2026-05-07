@@ -50,6 +50,8 @@ use sandk_offroad_next::{
     WindPlugin, WinchPlugin, WorldAudioPlugin, XpPlugin,
     MudDepthPlugin, TerrainLodPlugin, TerrainNormalMapPlugin, TerrainSplatmapPlugin,
     WaterReflectivePlugin,
+    EngineAudioLayeredPlugin, FuelConsumptionRealPlugin, TransferCasePlugin,
+    TransmissionPlugin, WinchCablePhysicsPlugin,
 };
 
 fn main() {
@@ -320,6 +322,13 @@ fn main() {
             TerrainLodPlugin,
             MudDepthPlugin,
             WaterReflectivePlugin,
+        ))
+        .add_plugins((
+            TransmissionPlugin,
+            TransferCasePlugin,
+            WinchCablePhysicsPlugin,
+            EngineAudioLayeredPlugin,
+            FuelConsumptionRealPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
