@@ -140,17 +140,19 @@ fn apply_camera_mode(
         CameraMode::Chase => unreachable!(), // handled above
 
         // ---- Wheel-FL -------------------------------------------------------
-        // Camera sits ~1 m outside the FL wheel, slightly behind and at wheel
-        // height, looking inward and forward toward the wheel contact patch.
+        // Camera sits outside the FL wheel, slightly in front and above,
+        // looking back-and-down at the wheel + ground ahead so the player
+        // sees the tire turn, articulate, and kick mud forward.
+        // FL wheel local pos = (-1.1, -0.35, -1.4); chassis_fwd is -Z so
+        // local_z = -1.4 means +1.4 along chassis_fwd (forward of chassis).
         CameraMode::WheelFL => {
             let cam_pos = chassis_pos
                 + chassis_right * (-2.2)
-                + chassis_fwd   * (-0.6)
-                + chassis_up    * (-0.1);
-            // Look toward the FL wheel anchor (local: -1.1, -0.35, -1.4).
+                + chassis_fwd   * 0.6
+                + chassis_up    * 0.2;
             let look_target = chassis_pos
                 + chassis_right * (-1.1)
-                + chassis_fwd   * (-1.4)
+                + chassis_fwd   * 1.4
                 + chassis_up    * (-0.4);
             Transform::from_translation(cam_pos).looking_at(look_target, Vec3::Y)
         }
@@ -159,11 +161,11 @@ fn apply_camera_mode(
         CameraMode::WheelFR => {
             let cam_pos = chassis_pos
                 + chassis_right * 2.2
-                + chassis_fwd   * (-0.6)
-                + chassis_up    * (-0.1);
+                + chassis_fwd   * 0.6
+                + chassis_up    * 0.2;
             let look_target = chassis_pos
                 + chassis_right * 1.1
-                + chassis_fwd   * (-1.4)
+                + chassis_fwd   * 1.4
                 + chassis_up    * (-0.4);
             Transform::from_translation(cam_pos).looking_at(look_target, Vec3::Y)
         }
