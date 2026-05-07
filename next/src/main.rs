@@ -17,13 +17,14 @@ use sandk_offroad_next::{
     FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin, GaugePlugin,
     GodraysPlugin, HeadlightsPlugin,
     HelpPlugin, HornPlugin, HudPlugin, ImpactFlashPlugin, InputRemapPlugin,
-    IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LiveryPlugin,
+    IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LicensePlatePlugin, LiveryPlugin,
     LoadingScreenPlugin, LowFuelWarningPlugin, MapSelectPlugin, MapsPlugin, MarkersPlugin,
     MedalsPlugin, MenuPlugin, MinimapPlugin, MinimapZoomPlugin, MixerPlugin,
-    MountainRangePlugin, MudPlugin, MusicPlugin, ObstaclesPlugin, PerfPlugin,
-    PhotoModePlugin, PinsPlugin, ProgressionPlugin, PursuitPlugin, RacePlugin,
-    RampsPlugin, RecoveryPlugin, RepairPlugin, ReplayPlugin, RivalHudPlugin, RivalPlugin,
-    RoutePlugin, SavePlugin, ScatterPlugin, ScreenshotPlugin, SeasonPlugin,
+    MountainRangePlugin, MudPlugin, MusicPlugin, NotificationsPlugin, ObstaclesPlugin,
+    PaintShopPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin, ProgressionPlugin,
+    PursuitPlugin, RacePlugin, RadarPickupsPlugin, RampsPlugin, RecoveryPlugin,
+    RepairPlugin, ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin, SavePlugin,
+    ScatterPlugin, ScreenshotPlugin, SeasonPlugin, SessionSummaryPlugin,
     SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin, SnowPlugin,
     SpawnPointsPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin, StatsScreenPlugin,
     StormPlugin, SurfacesPlugin, TerrainPlugin, ThemePlugin, TimeTrialPlugin,
@@ -232,6 +233,13 @@ fn main() {
             CrashAudioPlugin,
             FogHornPlugin,
             DistantThunderPlugin,
+        ))
+        .add_plugins((
+            PaintShopPlugin,
+            LicensePlatePlugin,
+            SessionSummaryPlugin,
+            NotificationsPlugin,
+            RadarPickupsPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
