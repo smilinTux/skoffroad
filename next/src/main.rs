@@ -7,8 +7,9 @@ use sandk_offroad_next::{
     BannersPlugin, BenchmarkPlugin, BillboardsPlugin, BiomeCanyonPlugin,
     BiomeDesertPlugin, BirdsFlockPlugin, BloomPpPlugin, BoatsPlugin, BoostPlugin,
     BreadcrumbsPlugin, BuildingsPlugin,
-    CameraPlugin, CampfiresPlugin, CareerPlugin, ChallengesPlugin, ChangelogPlugin,
-    ClimbAssistPlugin, CollectiblesPlugin, ComboPlugin, CompassHudPlugin, CompassPlugin,
+    CameraModesPlugin, CameraPlugin, CampfiresPlugin, CareerPlugin, ChallengesPlugin,
+    ChangelogPlugin, ChassisUnderglowPlugin, ClimbAssistPlugin, CollectiblesPlugin,
+    ComboPlugin, CompassHudPlugin, CompassPlugin,
     ConfettiPlugin, ConfigPlugin, CoursePlugin, CrashAudioPlugin, CreditsPlugin,
     DailyPlugin, DamagePlugin, DamageVisualPlugin, DecalsPlugin, DemoModePlugin,
     DemolitionPlugin, DistantThunderPlugin, DriftMeterPlugin, DronePlugin,
@@ -28,11 +29,13 @@ use sandk_offroad_next::{
     ScatterPlugin, ScreenshotPlugin, SeasonPlugin, SessionSummaryPlugin,
     SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin, SnowPlugin,
     SpawnPointsPlugin, SpeedLinesPlugin, SpeedTrapPlugin, StarsPlugin, StatsScreenPlugin,
-    StormPlugin, StuntScorePlugin, SurfacesPlugin, TerrainPlugin, ThemePlugin,
+    StormPlugin, StuntScorePlugin, SurfacesPlugin, SuspensionArmsPlugin, TerrainPlugin,
+    ThemePlugin,
     TimeTrialPlugin, TireSmokePlugin, TrafficPlugin, TrailPlugin, TrailersPlugin,
     TrampolinesPlugin, TransitionPlugin, TrialPlugin,
-    TutorialPlugin, UfoPlugin, UnlocksPlugin, VariantsPlugin, VehicleDirtPlugin,
-    VehiclePlugin, WaterPlugin, WeatherCloudsPlugin, WheelieCounterPlugin, WildlifePlugin,
+    TutorialPlugin, UfoPlugin, UnlocksPlugin, VariantsPlugin, VehicleDetailPlugin,
+    VehicleDirtPlugin, VehiclePlugin, WaterPlugin, WeatherCloudsPlugin, WheelDetailPlugin,
+    WheelieCounterPlugin, WildlifePlugin,
     WindPlugin, WorldAudioPlugin, XpPlugin,
 };
 
@@ -248,6 +251,13 @@ fn main() {
             TrailersPlugin,
             StuntScorePlugin,
             RampArrowsPlugin,
+        ))
+        .add_plugins((
+            CameraModesPlugin,
+            SuspensionArmsPlugin,
+            WheelDetailPlugin,
+            VehicleDetailPlugin,
+            ChassisUnderglowPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
