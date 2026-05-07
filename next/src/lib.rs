@@ -195,6 +195,17 @@ pub use transfer_case::TransferCasePlugin;
 pub use transmission::TransmissionPlugin;
 pub use winch_cable_physics::WinchCablePhysicsPlugin;
 
+pub mod hdr_skybox;
+pub mod photo_hud;
+pub mod photoreal_rocks;
+pub mod terrain_decals;
+pub mod terrain_grass_blades;
+pub use hdr_skybox::HdrSkyboxPlugin;
+pub use photo_hud::PhotoHudPlugin;
+pub use photoreal_rocks::PhotorealRocksPlugin;
+pub use terrain_decals::TerrainDecalsPlugin;
+pub use terrain_grass_blades::TerrainGrassBladesPlugin;
+
 pub use audio::AudioPlugin;
 pub use camera::CameraPlugin;
 pub use compass::CompassPlugin;
