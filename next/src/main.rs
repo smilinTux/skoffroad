@@ -48,6 +48,8 @@ use sandk_offroad_next::{
     WheelRimsPlugin, WheelWellPlugin,
     WheelieCounterPlugin, WildlifePlugin,
     WindPlugin, WinchPlugin, WorldAudioPlugin, XpPlugin,
+    MudDepthPlugin, TerrainLodPlugin, TerrainNormalMapPlugin, TerrainSplatmapPlugin,
+    WaterReflectivePlugin,
 };
 
 fn main() {
@@ -311,6 +313,13 @@ fn main() {
             AssetManifestPlugin,
             AssetBrowserPlugin,
             AssetAttributionPlugin,
+        ))
+        .add_plugins((
+            TerrainSplatmapPlugin,
+            TerrainNormalMapPlugin,
+            TerrainLodPlugin,
+            MudDepthPlugin,
+            WaterReflectivePlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
