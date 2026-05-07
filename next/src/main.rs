@@ -16,9 +16,9 @@ use sandk_offroad_next::{
     DronePlugin, GroundRutsPlugin,
     DustPlugin, EngineBayPlugin, EngineProPlugin, EngineTorquePlugin, EventLogPlugin,
     ExhaustPlugin, ExhaustSmokePlugin,
-    ExplorePlugin, FastTravelMenuPlugin, FireworksPlugin, FishPlugin, FogHornPlugin,
-    FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin, GaugePlugin,
-    GodraysPlugin, HeadlightsPlugin,
+    ExplorePlugin, FastTravelMenuPlugin, FencePostsPlugin, FireworksPlugin, FishPlugin,
+    FogHornPlugin, FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin,
+    GaugePlugin, GodraysPlugin, GrassTuftsPlugin, HeadlightsPlugin,
     HelpPlugin, HillclimbPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
     ImpactFlashPlugin, InputRemapPlugin, Interior3dPlugin,
     IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LicensePlatePlugin, LiveryPlugin,
@@ -29,7 +29,7 @@ use sandk_offroad_next::{
     NotificationsPlugin,
     ObstaclesPlugin, PaintShopPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin,
     ProgressionPlugin, PursuitPlugin, RacePlugin, RadarPickupsPlugin, RampArrowsPlugin,
-    RampsPlugin, RecoveryPlugin, RockGardenPlugin,
+    RampsPlugin, RecoveryPlugin, RockGardenPlugin, RoofRackPlugin,
     RepairPlugin, ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin, SavePlugin,
     ScatterPlugin, ScreenshotPlugin, SeasonPlugin, SessionSummaryPlugin,
     SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin, SnowPlugin,
@@ -38,9 +38,10 @@ use sandk_offroad_next::{
     SuspensionArmsPlugin, TerrainPlugin, ThemePlugin, TimeTrialPlugin, TirePressurePlugin,
     TireSmokePlugin, TireSquashPlugin, TrafficPlugin, TrailPlugin, TrailersPlugin,
     TrampolinesPlugin,
-    TransitionPlugin, TrialPlugin,
+    TransitionPlugin, TreeVariantsPlugin, TrialPlugin,
     TutorialPlugin, UfoPlugin, UnlocksPlugin, VariantsPlugin, VehicleDetailPlugin,
     VehicleDirtPlugin, VehiclePlugin, WaterPlugin, WeatherCloudsPlugin, WheelDetailPlugin,
+    WheelWellPlugin,
     WheelieCounterPlugin, WildlifePlugin,
     WindPlugin, WinchPlugin, WorldAudioPlugin, XpPlugin,
 };
@@ -271,6 +272,13 @@ fn main() {
             EngineTorquePlugin,
             DriveModePlugin,
             DiffLockPlugin,
+        ))
+        .add_plugins((
+            TreeVariantsPlugin,
+            GrassTuftsPlugin,
+            FencePostsPlugin,
+            WheelWellPlugin,
+            RoofRackPlugin,
         ))
         .add_plugins((
             RockGardenPlugin,
