@@ -17,9 +17,11 @@ use sandk_offroad_next::{
     ExplorePlugin, FastTravelMenuPlugin, FireworksPlugin, FishPlugin, FogHornPlugin,
     FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin, GaugePlugin,
     GodraysPlugin, HeadlightsPlugin,
-    HelpPlugin, HornPlugin, HudPlugin, ImpactFlashPlugin, InputRemapPlugin,
+    HelpPlugin, HillclimbPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
+    ImpactFlashPlugin, InputRemapPlugin,
     IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LicensePlatePlugin, LiveryPlugin,
-    LoadingScreenPlugin, LowFuelWarningPlugin, MapSelectPlugin, MapsPlugin, MarkersPlugin,
+    LoadingScreenPlugin, LowFuelWarningPlugin, LowRangePlugin, MapSelectPlugin, MapsPlugin,
+    MarkersPlugin,
     MedalsPlugin, MenuPlugin, MinimapPlugin, MinimapZoomPlugin, MixerPlugin,
     MountainRangePlugin, MudPlugin, MudPuddlesPlugin, MusicPlugin, NitroGaugePlugin,
     NotificationsPlugin,
@@ -31,13 +33,14 @@ use sandk_offroad_next::{
     SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin, SnowPlugin,
     SpawnPointsPlugin, SpeedLinesPlugin, SpeedTrapPlugin, SplashParticlesPlugin,
     StarsPlugin, StatsScreenPlugin, StormPlugin, StuntScorePlugin, SurfacesPlugin,
-    SuspensionArmsPlugin, TerrainPlugin, ThemePlugin, TimeTrialPlugin, TireSmokePlugin,
-    TireSquashPlugin, TrafficPlugin, TrailPlugin, TrailersPlugin, TrampolinesPlugin,
+    SuspensionArmsPlugin, TerrainPlugin, ThemePlugin, TimeTrialPlugin, TirePressurePlugin,
+    TireSmokePlugin, TireSquashPlugin, TrafficPlugin, TrailPlugin, TrailersPlugin,
+    TrampolinesPlugin,
     TransitionPlugin, TrialPlugin,
     TutorialPlugin, UfoPlugin, UnlocksPlugin, VariantsPlugin, VehicleDetailPlugin,
     VehicleDirtPlugin, VehiclePlugin, WaterPlugin, WeatherCloudsPlugin, WheelDetailPlugin,
     WheelieCounterPlugin, WildlifePlugin,
-    WindPlugin, WorldAudioPlugin, XpPlugin,
+    WindPlugin, WinchPlugin, WorldAudioPlugin, XpPlugin,
 };
 
 fn main() {
@@ -266,6 +269,13 @@ fn main() {
             MudPuddlesPlugin,
             SplashParticlesPlugin,
             GroundRutsPlugin,
+        ))
+        .add_plugins((
+            HillclimbTrackPlugin,
+            HillclimbPlugin,
+            LowRangePlugin,
+            TirePressurePlugin,
+            WinchPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
