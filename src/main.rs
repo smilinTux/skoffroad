@@ -55,6 +55,7 @@ use skoffroad::{
     HdrSkyboxPlugin, PhotoHudPlugin, PhotorealRocksPlugin, TerrainDecalsPlugin,
     TerrainGrassBladesPlugin,
     TerrainPbrPlugin,
+    PostFxPlugin,
 };
 
 fn main() {
@@ -73,8 +74,9 @@ fn main() {
         // GraphicsQualityPlugin must register first so other plugins' Startup
         // systems can read the GraphicsQuality resource.
         // TerrainPbrPlugin loads materials in Startup; TerrainPlugin
-        // consumes them in PostStartup.
-        .add_plugins((GraphicsQualityPlugin, TerrainPbrPlugin))
+        // consumes them in PostStartup. PostFxPlugin attaches camera
+        // post-FX in PostStartup after camera.rs spawns the Camera3d.
+        .add_plugins((GraphicsQualityPlugin, TerrainPbrPlugin, PostFxPlugin))
         // SkyPlugin owns the sky dome + sun + ambient + fog;
         // ClearColor and the old setup_lighting are no longer needed.
         .add_plugins((

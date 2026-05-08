@@ -210,6 +210,9 @@ pub use terrain_grass_blades::TerrainGrassBladesPlugin;
 pub mod terrain_pbr;
 pub use terrain_pbr::{TerrainPbrAssets, TerrainPbrPlugin, TriplanarTerrainExt, TriplanarTerrainMaterial};
 
+pub mod post_fx;
+pub use post_fx::PostFxPlugin;
+
 pub use audio::AudioPlugin;
 pub use camera::CameraPlugin;
 pub use compass::CompassPlugin;
