@@ -95,12 +95,6 @@ fn lcg_next(seed: &mut u32) -> f32 {
     *seed as f32 / u32::MAX as f32
 }
 
-/// Returns a value in [-1, 1).
-#[inline]
-fn lcg_signed(seed: &mut u32) -> f32 {
-    lcg_next(seed) * 2.0 - 1.0
-}
-
 /// Chassis-local wheel anchor position, mirroring WHEEL_OFFSETS in vehicle.rs.
 /// FL=0, FR=1, RL=2, RR=3.
 #[inline]
