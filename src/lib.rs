@@ -70,6 +70,7 @@ pub mod gauge;
 pub mod glb_loader;
 pub mod godrays;
 pub mod graphics_quality;
+pub mod platform_storage;
 pub mod grass_tufts;
 pub mod ground_ruts;
 pub mod headless;

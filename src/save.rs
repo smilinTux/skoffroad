@@ -22,13 +22,12 @@
 //   F7  — save slot 3
 //   R   — reset chassis to spawn (no file I/O)
 
-use std::{fs, path::PathBuf};
-
 use bevy::prelude::*;
 use avian3d::prelude::{AngularVelocity, LinearVelocity};
 use serde::{Deserialize, Serialize};
 
 use crate::hud::SessionStats;
+use crate::platform_storage;
 use crate::sky::TimeOfDay;
 use crate::vehicle::{Chassis, VehicleRoot};
 
@@ -82,52 +81,21 @@ struct SessionStatsSave {
     elapsed_s: f32,
 }
 
-// ---- Path resolution --------------------------------------------------------
+// ---- Storage key ------------------------------------------------------------
 
-/// Returns the platform-appropriate path for the requested save slot (1–3).
-fn resolve_save_path(slot: u8) -> PathBuf {
-    let filename = format!("save_{}.json", slot);
+/// Slot key (1..=3). Save files now live in $HOME/.skoffroad/save_<slot>.json
+/// on native and localStorage["skoffroad/save_<slot>.json"] in WASM. Earlier
+/// versions used XDG_DATA_HOME / APPDATA / Library — those legacy files are
+/// orphaned but the unified path keeps the desktop and browser builds in sync.
+fn save_key(slot: u8) -> String {
+    format!("save_{}.json", slot)
+}
 
-    let base: Option<PathBuf> = {
-        // 1. $XDG_DATA_HOME  (Linux, explicit)
-        std::env::var("XDG_DATA_HOME").ok().map(PathBuf::from)
-        // 2. $HOME/.local/share  (Linux, implicit)
-        .or_else(|| {
-            if cfg!(target_os = "linux") {
-                std::env::var("HOME").ok()
-                    .map(|h| PathBuf::from(h).join(".local").join("share"))
-            } else {
-                None
-            }
-        })
-        // 3. $APPDATA  (Windows)
-        .or_else(|| {
-            if cfg!(target_os = "windows") {
-                std::env::var("APPDATA").ok().map(PathBuf::from)
-            } else {
-                None
-            }
-        })
-        // 4. $HOME/Library/Application Support  (macOS)
-        .or_else(|| {
-            if cfg!(target_os = "macos") {
-                std::env::var("HOME").ok()
-                    .map(|h| PathBuf::from(h)
-                        .join("Library")
-                        .join("Application Support"))
-            } else {
-                None
-            }
-        })
-    };
-
-    match base {
-        Some(dir) => dir.join("skoffroad").join(&filename),
-        None => {
-            warn!("save: could not determine data directory; using ./{}", filename);
-            PathBuf::from(filename)
-        }
-    }
+fn save_label(slot: u8) -> String {
+    let key = save_key(slot);
+    platform_storage::debug_path(&key)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| format!("localStorage[{}]", key))
 }
 
 // ---- Serialise / deserialise helpers ----------------------------------------
@@ -163,29 +131,21 @@ fn build_save(
 }
 
 fn write_save(save: &SaveFile, slot: u8) {
-    let path = resolve_save_path(slot);
-
-    if let Some(parent) = path.parent() {
-        if let Err(e) = fs::create_dir_all(parent) {
-            error!("save: failed to create directory {}: {}", parent.display(), e);
-            return;
-        }
-    }
+    let key   = save_key(slot);
+    let label = save_label(slot);
 
     match serde_json::to_string_pretty(save) {
-        Ok(json) => {
-            match fs::write(&path, json) {
-                Ok(()) => info!("save: wrote slot {} to {}", slot, path.display()),
-                Err(e) => error!("save: write failed {}: {}", path.display(), e),
-            }
-        }
+        Ok(json) => match platform_storage::write_string(&key, &json) {
+            Ok(()) => info!("save: wrote slot {} to {}", slot, label),
+            Err(e) => error!("save: {}", e),
+        },
         Err(e) => error!("save: serialisation failed: {}", e),
     }
 }
 
 fn apply_save(
     save: &SaveFile,
-    path: &std::path::Path,
+    path_label: &str,
     vehicle: &VehicleRoot,
     chassis_q: &mut Query<(&mut Transform, &mut LinearVelocity, &mut AngularVelocity), With<Chassis>>,
     tod: &mut ResMut<TimeOfDay>,
@@ -214,24 +174,25 @@ fn apply_save(
         // last_pos left as None so the distance accumulator doesn't get a false delta.
     }
 
-    info!("save: restored from {}", path.display());
+    info!("save: restored from {}", path_label);
 }
 
-fn read_save(slot: u8) -> Option<(SaveFile, PathBuf)> {
-    let path = resolve_save_path(slot);
+fn read_save(slot: u8) -> Option<(SaveFile, String)> {
+    let key   = save_key(slot);
+    let label = save_label(slot);
 
-    let json = match fs::read_to_string(&path) {
-        Ok(s) => s,
-        Err(_) => {
-            info!("save: no save file found at {}; starting fresh", path.display());
+    let json = match platform_storage::read_string(&key) {
+        Some(s) => s,
+        None => {
+            info!("save: no save file found at {}; starting fresh", label);
             return None;
         }
     };
 
     match serde_json::from_str::<SaveFile>(&json) {
-        Ok(s)  => Some((s, path)),
+        Ok(s)  => Some((s, label)),
         Err(e) => {
-            warn!("save: failed to parse {}: {}", path.display(), e);
+            warn!("save: failed to parse {}: {}", label, e);
             None
         }
     }

@@ -7,9 +7,7 @@
 //   KeyBindings (resource)
 
 use bevy::prelude::*;
-use std::fs;
-use std::io::Write as IoWrite;
-use std::path::PathBuf;
+use crate::platform_storage;
 
 use crate::vehicle::{DriveInput, drive_input_keyboard};
 
@@ -225,12 +223,12 @@ fn is_modifier_only(k: KeyCode) -> bool {
 // Persistence
 // ---------------------------------------------------------------------------
 
-fn keybindings_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let mut p = PathBuf::from(home);
-    p.push(".skoffroad");
-    p.push("keybindings.json");
-    p
+const STORAGE_KEY: &str = "keybindings.json";
+
+fn keybindings_label() -> String {
+    platform_storage::debug_path(STORAGE_KEY)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| format!("localStorage[{}]", STORAGE_KEY))
 }
 
 fn keycode_to_str(k: KeyCode) -> &'static str {
@@ -337,23 +335,10 @@ fn keybindings_from_json(src: &str) -> Option<KeyBindings> {
 }
 
 fn write_keybindings_to_disk(bindings: &KeyBindings) {
-    let path = keybindings_path();
-    if let Some(parent) = path.parent() {
-        if let Err(e) = fs::create_dir_all(parent) {
-            warn!("input_remap: could not create directory {}: {}", parent.display(), e);
-            return;
-        }
-    }
     let json = keybindings_to_json(bindings);
-    match fs::File::create(&path) {
-        Err(e) => warn!("input_remap: could not open {} for writing: {}", path.display(), e),
-        Ok(mut f) => {
-            if let Err(e) = f.write_all(json.as_bytes()) {
-                warn!("input_remap: write failed for {}: {}", path.display(), e);
-            } else {
-                info!("input_remap: keybindings saved to {}", path.display());
-            }
-        }
+    match platform_storage::write_string(STORAGE_KEY, &json) {
+        Err(e) => warn!("input_remap: {}", e),
+        Ok(()) => info!("input_remap: keybindings saved to {}", keybindings_label()),
     }
 }
 
@@ -362,25 +347,21 @@ fn write_keybindings_to_disk(bindings: &KeyBindings) {
 // ---------------------------------------------------------------------------
 
 fn load_keybindings(mut bindings: ResMut<KeyBindings>) {
-    let path = keybindings_path();
-    match fs::read_to_string(&path) {
-        Err(e) => {
+    let label = keybindings_label();
+    match platform_storage::read_string(STORAGE_KEY) {
+        None => {
             info!(
-                "input_remap: no saved keybindings at {} ({}); using defaults",
-                path.display(),
-                e
+                "input_remap: no saved keybindings at {}; using defaults",
+                label,
             );
         }
-        Ok(text) => match keybindings_from_json(&text) {
+        Some(text) => match keybindings_from_json(&text) {
             None => {
-                info!(
-                    "input_remap: could not parse {}; using defaults",
-                    path.display()
-                );
+                info!("input_remap: could not parse {}; using defaults", label);
             }
             Some(loaded) => {
                 *bindings = loaded;
-                info!("input_remap: loaded keybindings from {}", path.display());
+                info!("input_remap: loaded keybindings from {}", label);
             }
         },
     }

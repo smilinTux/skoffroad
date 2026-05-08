@@ -8,10 +8,8 @@
 
 use bevy::prelude::*;
 use avian3d::prelude::{AngularVelocity, LinearVelocity};
-use std::fs;
-use std::io::Write as IoWrite;
-use std::path::PathBuf;
 
+use crate::platform_storage;
 use crate::vehicle::{Chassis, VehicleRoot};
 
 // ---------------------------------------------------------------------------
@@ -54,15 +52,15 @@ struct SpawnDebounce {
 }
 
 // ---------------------------------------------------------------------------
-// File path
+// Storage key
 // ---------------------------------------------------------------------------
 
-fn spawnpoints_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let mut p = PathBuf::from(home);
-    p.push(".skoffroad");
-    p.push("spawnpoints.json");
-    p
+const STORAGE_KEY: &str = "spawnpoints.json";
+
+fn spawnpoints_label() -> String {
+    platform_storage::debug_path(STORAGE_KEY)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| format!("localStorage[{}]", STORAGE_KEY))
 }
 
 // ---------------------------------------------------------------------------
@@ -102,21 +100,17 @@ fn from_json(src: &str) -> Option<[Option<Vec3>; 4]> {
 // ---------------------------------------------------------------------------
 
 fn load_slots(mut state: ResMut<SpawnPointsState>) {
-    let path = spawnpoints_path();
-    match fs::read_to_string(&path) {
-        Err(e) => {
+    let label = spawnpoints_label();
+    match platform_storage::read_string(STORAGE_KEY) {
+        None => {
             info!(
-                "spawn_points: no saved file at {} ({}); starting empty",
-                path.display(),
-                e
+                "spawn_points: no saved file at {}; starting empty",
+                label,
             );
         }
-        Ok(text) => match from_json(&text) {
+        Some(text) => match from_json(&text) {
             None => {
-                info!(
-                    "spawn_points: could not parse {}; starting empty",
-                    path.display()
-                );
+                info!("spawn_points: could not parse {}; starting empty", label);
             }
             Some(slots) => {
                 state.slots = slots;
@@ -124,7 +118,7 @@ fn load_slots(mut state: ResMut<SpawnPointsState>) {
                 info!(
                     "spawn_points: loaded {} slot(s) from {}",
                     filled,
-                    path.display()
+                    label,
                 );
             }
         },
@@ -290,33 +284,10 @@ fn save_on_change(
     deb.elapsed_s = 0.0;
 
     let json = to_json(&state.slots);
-    let path = spawnpoints_path();
+    let label = spawnpoints_label();
 
-    if let Some(parent) = path.parent() {
-        if let Err(e) = fs::create_dir_all(parent) {
-            warn!(
-                "spawn_points: could not create directory {}: {}",
-                parent.display(),
-                e
-            );
-            return;
-        }
-    }
-
-    match fs::File::create(&path) {
-        Err(e) => {
-            warn!(
-                "spawn_points: could not open {} for writing: {}",
-                path.display(),
-                e
-            );
-        }
-        Ok(mut f) => {
-            if let Err(e) = f.write_all(json.as_bytes()) {
-                warn!("spawn_points: write failed for {}: {}", path.display(), e);
-            } else {
-                info!("spawn_points: saved to {}", path.display());
-            }
-        }
+    match platform_storage::write_string(STORAGE_KEY, &json) {
+        Err(e) => warn!("spawn_points: {}", e),
+        Ok(()) => info!("spawn_points: saved to {}", label),
     }
 }

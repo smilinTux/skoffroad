@@ -16,9 +16,8 @@
 //   PaintShopState (resource)
 
 use bevy::prelude::*;
-use std::fs;
-use std::io::Write as IoWrite;
-use std::path::PathBuf;
+
+use crate::platform_storage;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -113,12 +112,12 @@ struct PaintToastText;
 // Persistence helpers
 // ---------------------------------------------------------------------------
 
-fn paint_path() -> PathBuf {
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let mut p = PathBuf::from(home);
-    p.push(".skoffroad");
-    p.push("paint.json");
-    p
+const STORAGE_KEY: &str = "paint.json";
+
+fn paint_label() -> String {
+    platform_storage::debug_path(STORAGE_KEY)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| format!("localStorage[{}]", STORAGE_KEY))
 }
 
 fn idx_from_json(src: &str) -> Option<u32> {
@@ -136,21 +135,17 @@ fn idx_to_json(idx: u32) -> String {
 // ---------------------------------------------------------------------------
 
 fn load_paint_config(mut state: ResMut<PaintShopState>) {
-    let path = paint_path();
-    match fs::read_to_string(&path) {
-        Err(e) => {
+    let label = paint_label();
+    match platform_storage::read_string(STORAGE_KEY) {
+        None => {
             info!(
-                "paint_shop: no saved config at {} ({}); defaulting to Red",
-                path.display(),
-                e
+                "paint_shop: no saved config at {}; defaulting to Red",
+                label,
             );
         }
-        Ok(text) => match idx_from_json(&text) {
+        Some(text) => match idx_from_json(&text) {
             None => {
-                info!(
-                    "paint_shop: could not parse {}; defaulting to Red",
-                    path.display()
-                );
+                info!("paint_shop: could not parse {}; defaulting to Red", label);
             }
             Some(idx) => {
                 state.current_idx = idx;
@@ -158,7 +153,7 @@ fn load_paint_config(mut state: ResMut<PaintShopState>) {
                     "paint_shop: loaded index {} ({}) from {}",
                     idx,
                     PALETTE[idx as usize].name,
-                    path.display()
+                    label,
                 );
             }
         },
@@ -326,38 +321,19 @@ fn save_on_change(
     deb.elapsed_s = 0.0;
 
     let json = idx_to_json(state.current_idx);
-    let path = paint_path();
+    let label = paint_label();
 
-    if let Some(parent) = path.parent() {
-        if let Err(e) = fs::create_dir_all(parent) {
-            warn!(
-                "paint_shop: could not create directory {}: {}",
-                parent.display(),
-                e
-            );
-            return;
-        }
-    }
-
-    match fs::File::create(&path) {
+    match platform_storage::write_string(STORAGE_KEY, &json) {
         Err(e) => {
-            warn!(
-                "paint_shop: could not open {} for writing: {}",
-                path.display(),
-                e
-            );
+            warn!("paint_shop: {}", e);
         }
-        Ok(mut f) => {
-            if let Err(e) = f.write_all(json.as_bytes()) {
-                warn!("paint_shop: write failed for {}: {}", path.display(), e);
-            } else {
-                info!(
-                    "paint_shop: saved index {} ({}) to {}",
-                    state.current_idx,
-                    PALETTE[state.current_idx as usize].name,
-                    path.display()
-                );
-            }
+        Ok(()) => {
+            info!(
+                "paint_shop: saved index {} ({}) to {}",
+                state.current_idx,
+                PALETTE[state.current_idx as usize].name,
+                label,
+            );
         }
     }
 }

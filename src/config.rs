@@ -6,11 +6,9 @@
 //   PersistedConfig  (resource; `loaded` is true after a successful file read)
 
 use bevy::prelude::*;
-use std::fs;
-use std::io::Write as IoWrite;
-use std::path::PathBuf;
 
 use crate::graphics_quality::GraphicsQuality;
+use crate::platform_storage;
 use crate::settings::SettingsState;
 
 // ---------------------------------------------------------------------------
@@ -69,18 +67,10 @@ impl Default for ConfigData {
 }
 
 // ---------------------------------------------------------------------------
-// Config file path
+// Storage key — see crate::platform_storage for native vs WASM mapping.
 // ---------------------------------------------------------------------------
 
-fn config_path() -> PathBuf {
-    // Prefer the `dirs`-equivalent: $HOME / .skoffroad / config.json.
-    // We do NOT depend on the `dirs` crate here — just HOME.
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    let mut p = PathBuf::from(home);
-    p.push(".skoffroad");
-    p.push("config.json");
-    p
-}
+const STORAGE_KEY: &str = "config.json";
 
 // ---------------------------------------------------------------------------
 // JSON serialisation (hand-rolled — avoids adding a serde derive to
@@ -130,22 +120,20 @@ fn load_config(
     mut quality: ResMut<GraphicsQuality>,
     mut persisted: ResMut<PersistedConfig>,
 ) {
-    let path = config_path();
+    let path_label = platform_storage::debug_path(STORAGE_KEY)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| format!("localStorage[{}]", STORAGE_KEY));
 
-    match fs::read_to_string(&path) {
-        Err(e) => {
+    match platform_storage::read_string(STORAGE_KEY) {
+        None => {
             info!(
-                "config: no saved config at {} ({}); using defaults",
-                path.display(),
-                e
+                "config: no saved config at {}; using defaults",
+                path_label,
             );
         }
-        Ok(text) => match from_json(&text) {
+        Some(text) => match from_json(&text) {
             None => {
-                info!(
-                    "config: could not parse {}; using defaults",
-                    path.display()
-                );
+                info!("config: could not parse {}; using defaults", path_label);
             }
             Some(data) => {
                 settings.master_volume     = data.master_volume;
@@ -159,7 +147,7 @@ fn load_config(
                 persisted.loaded           = true;
                 info!(
                     "config: loaded from {} (vol={:.2}, sens={:.2}, day={:.0}s, q={})",
-                    path.display(),
+                    path_label,
                     data.master_volume,
                     data.mouse_sensitivity,
                     data.day_length_s,
@@ -219,33 +207,21 @@ fn save_on_change(
         graphics_quality:  *quality,
     };
     let json = to_json(&data);
-    let path = config_path();
+    let path_label = platform_storage::debug_path(STORAGE_KEY)
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| format!("localStorage[{}]", STORAGE_KEY));
 
-    // Ensure the parent directory exists.
-    if let Some(parent) = path.parent() {
-        if let Err(e) = fs::create_dir_all(parent) {
-            warn!("config: could not create directory {}: {}", parent.display(), e);
-            return;
-        }
-    }
-
-    match fs::File::create(&path) {
-        Err(e) => {
-            warn!("config: could not open {} for writing: {}", path.display(), e);
-        }
-        Ok(mut f) => {
-            if let Err(e) = f.write_all(json.as_bytes()) {
-                warn!("config: write failed for {}: {}", path.display(), e);
-            } else {
-                info!(
-                    "config: saved to {} (vol={:.2}, sens={:.2}, day={:.0}s, q={})",
-                    path.display(),
-                    data.master_volume,
-                    data.mouse_sensitivity,
-                    data.day_length_s,
-                    data.graphics_quality.as_str(),
-                );
-            }
+    match platform_storage::write_string(STORAGE_KEY, &json) {
+        Err(e) => warn!("config: {}", e),
+        Ok(()) => {
+            info!(
+                "config: saved to {} (vol={:.2}, sens={:.2}, day={:.0}s, q={})",
+                path_label,
+                data.master_volume,
+                data.mouse_sensitivity,
+                data.day_length_s,
+                data.graphics_quality.as_str(),
+            );
         }
     }
 }
