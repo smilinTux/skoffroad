@@ -44,33 +44,57 @@ pub struct TerrainPbrAssets {
 pub struct TriplanarTerrainExt {
     #[uniform(100)]
     pub uniforms: TriplanarUniforms,
+
     #[texture(101)]
     #[sampler(102)]
     pub dirt_albedo: Handle<Image>,
     #[texture(103)]
     #[sampler(104)]
     pub dirt_roughness: Handle<Image>,
+
+    #[texture(105)]
+    #[sampler(106)]
+    pub grass_albedo: Handle<Image>,
+    #[texture(107)]
+    #[sampler(108)]
+    pub grass_roughness: Handle<Image>,
+
+    #[texture(109)]
+    #[sampler(110)]
+    pub rock_albedo: Handle<Image>,
+    #[texture(111)]
+    #[sampler(112)]
+    pub rock_roughness: Handle<Image>,
+
+    #[texture(113)]
+    #[sampler(114)]
+    pub mud_albedo: Handle<Image>,
+    #[texture(115)]
+    #[sampler(116)]
+    pub mud_roughness: Handle<Image>,
 }
 
 #[derive(ShaderType, Reflect, Debug, Clone, Copy)]
 pub struct TriplanarUniforms {
     /// World-units → UV scale for the close-up sample.
     /// 0.25 = 4 m repeat, 0.5 = 2 m repeat. ~0.25 looks natural.
-    pub tile_scale:   f32,
+    pub tile_scale:    f32,
     /// Multiplier applied to tile_scale for the detail sample.
-    pub detail_scale: f32,
+    pub detail_scale:  f32,
     /// Mix factor close↔detail (0..1).
-    pub detail_blend: f32,
-    pub _pad:         f32,
+    pub detail_blend:  f32,
+    /// 1.0 = full 4-layer splat blend, 0.0 = dirt-only.
+    /// Medium tier ramps this down to keep cost lower while keeping triplanar.
+    pub blend_strength: f32,
 }
 
 impl Default for TriplanarUniforms {
     fn default() -> Self {
         Self {
-            tile_scale:   0.25,
-            detail_scale: 4.0,
-            detail_blend: 0.35,
-            _pad:         0.0,
+            tile_scale:     0.25,
+            detail_scale:   4.0,
+            detail_blend:   0.35,
+            blend_strength: 1.0,
         }
     }
 }
@@ -92,8 +116,13 @@ fn load_terrain_assets(
     mut materials: ResMut<Assets<TriplanarTerrainMaterial>>,
 ) {
     let assets_resource = if quality.triplanar_terrain() {
-        let dirt_albedo    = assets.load("materials/terrain/dirt/albedo.jpg");
-        let dirt_roughness = assets.load("materials/terrain/dirt/roughness.jpg");
+        // Splat strength scales with quality tier:
+        //   High   -> 1.0 (full 4-layer blend)
+        //   Medium -> 0.55 (toward dirt-only, but still varied)
+        let blend_strength = match *quality {
+            GraphicsQuality::High => 1.0,
+            _                     => 0.55,
+        };
 
         let mat = TriplanarTerrainMaterial {
             base: StandardMaterial {
@@ -102,9 +131,18 @@ fn load_terrain_assets(
                 ..default()
             },
             extension: TriplanarTerrainExt {
-                uniforms: TriplanarUniforms::default(),
-                dirt_albedo,
-                dirt_roughness,
+                uniforms: TriplanarUniforms {
+                    blend_strength,
+                    ..default()
+                },
+                dirt_albedo:     assets.load("materials/terrain/dirt/albedo.jpg"),
+                dirt_roughness:  assets.load("materials/terrain/dirt/roughness.jpg"),
+                grass_albedo:    assets.load("materials/terrain/grass/albedo.jpg"),
+                grass_roughness: assets.load("materials/terrain/grass/roughness.jpg"),
+                rock_albedo:     assets.load("materials/terrain/rock/albedo.jpg"),
+                rock_roughness:  assets.load("materials/terrain/rock/roughness.jpg"),
+                mud_albedo:      assets.load("materials/terrain/mud/albedo.jpg"),
+                mud_roughness:   assets.load("materials/terrain/mud/roughness.jpg"),
             },
         };
 
