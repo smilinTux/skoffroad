@@ -149,11 +149,22 @@ fn spawn_vehicle(
         perceptual_roughness: 0.9,
         ..default()
     });
-    let rim_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.22, 0.22, 0.22),
-        perceptual_roughness: 0.7,
-        ..default()
-    });
+    // Sprint 44: chrome rims on Medium+; matte aluminium on Low.
+    let rim_mat = if quality.vehicle_clearcoat() {
+        materials.add(StandardMaterial {
+            base_color: Color::srgb(0.78, 0.78, 0.80),
+            perceptual_roughness: 0.18,
+            metallic: 0.95,
+            reflectance: 0.85,
+            ..default()
+        })
+    } else {
+        materials.add(StandardMaterial {
+            base_color: Color::srgb(0.22, 0.22, 0.22),
+            perceptual_roughness: 0.7,
+            ..default()
+        })
+    };
 
     let body_mesh        = meshes.add(Cuboid::new(CHASSIS_HALF.x*2.0, CHASSIS_HALF.y*2.0, CHASSIS_HALF.z*2.0));
     let hood_mesh        = meshes.add(Cuboid::new(1.9, 0.22, 1.2));

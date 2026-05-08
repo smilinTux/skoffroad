@@ -5,6 +5,14 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3] — 2026-05-08 — Sprint 44 "chrome rims"
+
+### Added
+- Chrome wheel rims on Medium+ (metallic 0.95, perceptual roughness
+  0.18, reflectance 0.85, near-white base color). Replaces the matte
+  aluminium 0.22-tone material with something that catches the sun at
+  speed. Low keeps the legacy matte rims.
+
 ## [0.8.2] — 2026-05-08 — Sprint 43 "vehicle paint"
 
 ### Added
@@ -96,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   development environment configuration; core dependencies in
   Cargo.toml; documentation framework.
 
+[0.8.3]: https://github.com/smilinTux/skoffroad/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/smilinTux/skoffroad/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/smilinTux/skoffroad/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/smilinTux/skoffroad/compare/v0.7.0...v0.8.0
