@@ -91,6 +91,10 @@ pub fn run_scenario(scenario: Scenario, duration_s: f32) -> TelemetrySummary {
         ScenePlugin,
     ))
     .init_asset::<StandardMaterial>()
+    // TerrainPlugin reads GraphicsQuality. Headless never renders, so pin
+    // to Low — that branch uses the cheap vertex-color StandardMaterial
+    // and skips the triplanar ExtendedMaterial entirely.
+    .insert_resource(crate::graphics_quality::GraphicsQuality::Low)
     .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f32(1.0 / 60.0)))
     .add_plugins((TerrainPlugin, VehiclePluginHeadless))
     // Add the world-population + viscous-medium plugins so the harness can

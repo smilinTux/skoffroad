@@ -6,11 +6,16 @@ use bevy::{
 use avian3d::prelude::*;
 use noise::{NoiseFn, Perlin, Fbm};
 
+use crate::graphics_quality::GraphicsQuality;
+use crate::terrain_pbr::TerrainPbrAssets;
+
 pub struct TerrainPlugin;
 
 impl Plugin for TerrainPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_terrain);
+        // Spawn after Startup so TerrainPbrPlugin's `load_terrain_assets`
+        // has a chance to populate `TerrainPbrAssets::material`.
+        app.add_systems(PostStartup, spawn_terrain);
     }
 }
 
@@ -40,6 +45,8 @@ fn spawn_terrain(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality: Res<GraphicsQuality>,
+    pbr_assets: Option<Res<TerrainPbrAssets>>,
 ) {
     let fbm: Fbm<Perlin> = Fbm::<Perlin>::new(42);
 
@@ -126,21 +133,38 @@ fn spawn_terrain(
 
     let mesh_handle = meshes.add(mesh);
 
-    // base_color WHITE so vertex colors aren't tinted (Bevy 0.18 samples
-    // ATTRIBUTE_COLOR automatically when present on the mesh).
-    let material = materials.add(StandardMaterial {
-        base_color: Color::WHITE,
-        perceptual_roughness: 0.9,
-        ..default()
-    });
+    // Branch on quality: Medium+ uses the triplanar PBR material,
+    // Low keeps the cheap vertex-color StandardMaterial.
+    let triplanar_handle = if quality.triplanar_terrain() {
+        pbr_assets.and_then(|a| a.material.clone())
+    } else {
+        None
+    };
 
-    commands.spawn((
-        Mesh3d(mesh_handle.clone()),
-        MeshMaterial3d(material),
-        Transform::default(),
-        RigidBody::Static,
-        ColliderConstructor::TrimeshFromMesh,
-    ));
+    if let Some(triplanar) = triplanar_handle {
+        commands.spawn((
+            Mesh3d(mesh_handle.clone()),
+            MeshMaterial3d(triplanar),
+            Transform::default(),
+            RigidBody::Static,
+            ColliderConstructor::TrimeshFromMesh,
+        ));
+    } else {
+        // base_color WHITE so vertex colors aren't tinted (Bevy 0.18 samples
+        // ATTRIBUTE_COLOR automatically when present on the mesh).
+        let material = materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            perceptual_roughness: 0.9,
+            ..default()
+        });
+        commands.spawn((
+            Mesh3d(mesh_handle.clone()),
+            MeshMaterial3d(material),
+            Transform::default(),
+            RigidBody::Static,
+            ColliderConstructor::TrimeshFromMesh,
+        ));
+    }
 }
 
 // ---------------------------------------------------------------------------
