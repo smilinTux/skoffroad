@@ -106,12 +106,27 @@ fn spawn_vehicle(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality: Res<crate::graphics_quality::GraphicsQuality>,
 ) {
-    let body_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.8, 0.2, 0.1),
-        perceptual_roughness: 0.6,
-        ..default()
-    });
+    // Sprint 43: Medium+ uses a glossier "car paint" material on the chassis.
+    // Metal flakes + low roughness + bumped reflectance read as clearcoat
+    // even without Bevy's optional clearcoat feature. Low keeps the matte
+    // sRGB(0.8, 0.2, 0.1) original to stay consistent with the legacy look.
+    let body_mat = if quality.vehicle_clearcoat() {
+        materials.add(StandardMaterial {
+            base_color: Color::srgb(0.8, 0.2, 0.1),
+            perceptual_roughness: 0.32,
+            metallic: 0.55,
+            reflectance: 0.65,
+            ..default()
+        })
+    } else {
+        materials.add(StandardMaterial {
+            base_color: Color::srgb(0.8, 0.2, 0.1),
+            perceptual_roughness: 0.6,
+            ..default()
+        })
+    };
     let bumper_mat = materials.add(StandardMaterial {
         base_color: Color::srgb(0.18, 0.18, 0.18),
         perceptual_roughness: 0.9,

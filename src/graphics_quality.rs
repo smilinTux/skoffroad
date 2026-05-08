@@ -127,6 +127,12 @@ impl GraphicsQuality {
         !matches!(self, Self::Low)
     }
 
+    /// Glossy car-paint material on the chassis (metallic + low roughness).
+    /// Sprint 43.
+    pub fn vehicle_clearcoat(self) -> bool {
+        !matches!(self, Self::Low)
+    }
+
     /// Render distance multiplier for scatter / LOD plugins.
     pub fn scatter_distance_mul(self) -> f32 {
         match self {
