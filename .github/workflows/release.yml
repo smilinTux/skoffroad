@@ -1,0 +1,135 @@
+name: Release binaries
+
+# Triggers on a v*.* tag push (and via the Actions tab "Run workflow" button).
+# Builds release binaries on Linux / Windows / macOS, bundles them with the
+# `assets/` directory, and attaches each archive to the GitHub Release that
+# matches the tag (the release is created if it doesn't already exist).
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. v0.8.3)'
+        required: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.os_label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            os_label: linux-x86_64
+            archive_ext: tar.gz
+            bin_ext: ''
+          - os: windows-latest
+            os_label: windows-x86_64
+            archive_ext: zip
+            bin_ext: .exe
+          - os: macos-latest
+            os_label: macos-aarch64
+            archive_ext: tar.gz
+            bin_ext: ''
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install Bevy system dependencies (linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libudev-dev \
+            pkg-config \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libfontconfig1-dev
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os_label }}
+
+      - name: Build release
+        shell: bash
+        run: cargo build --release --bin skoffroad
+
+      - name: Strip binary (linux/macos)
+        if: runner.os != 'Windows'
+        run: strip target/release/skoffroad
+
+      - name: Stage archive contents
+        shell: bash
+        run: |
+          mkdir -p dist/skoffroad-${{ matrix.os_label }}
+          cp "target/release/skoffroad${{ matrix.bin_ext }}" dist/skoffroad-${{ matrix.os_label }}/
+          cp -r assets dist/skoffroad-${{ matrix.os_label }}/assets
+          cp README.md CHANGELOG.md LICENSE CONTROLS.md MVP_SCOPE.md PRD_v3.md PRD_v3.1.md dist/skoffroad-${{ matrix.os_label }}/ 2>/dev/null || true
+          cat > dist/skoffroad-${{ matrix.os_label }}/RUN.txt <<'EOF'
+          skoffroad — open-source off-road sandbox
+          ----------------------------------------
+          To play, double-click `skoffroad` (or `skoffroad.exe` on Windows).
+
+          Quality flags (also via Esc-pause panel, Backslash to cycle):
+            ./skoffroad --quality=high     PBR + SSAO + AgX tonemap (default)
+            ./skoffroad --quality=medium   PBR + tonemap, no SSAO
+            ./skoffroad --quality=low      legacy look, lightest on GPU
+
+          Controls: see CONTROLS.md
+          License:  GPL-3.0-or-later (see LICENSE)
+          EOF
+
+      - name: Create archive (linux/macos)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd dist
+          tar -czf "skoffroad-${{ matrix.os_label }}.tar.gz" "skoffroad-${{ matrix.os_label }}"
+
+      - name: Create archive (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/skoffroad-${{ matrix.os_label }}" -DestinationPath "dist/skoffroad-${{ matrix.os_label }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skoffroad-${{ matrix.os_label }}
+          path: dist/skoffroad-${{ matrix.os_label }}.${{ matrix.archive_ext }}
+
+  release:
+    name: Attach to release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          files: dist/*
+          fail_on_unmatched_files: true
