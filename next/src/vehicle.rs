@@ -307,13 +307,12 @@ fn suspension_system(
             forces.apply_force_at_point(fwd_ground * brake_f, world_anchor);
         } else if input.drive.abs() > 0.0 {
             // Throttle curve: powf(1.5) gives gentle low end, full power at full input.
-            // Reverse compensation: chassis collider intersecting terrain bumps creates
-            // a small +X push from the solver that forward driving cooperates with but
-            // reverse fights. Bump reverse drive force 1.6x to net the same ground speed.
+            // Symmetric force in both directions; the empirically tuned reverse
+            // boost from earlier sprints over-compensated after Sprint 38–40
+            // (forward felt much weaker than reverse).
             let shaped = input.drive.signum() * input.drive.abs().powf(1.5);
-            let dir_boost = if input.drive < 0.0 { 1.6 } else { 1.0 };
             forces.apply_force_at_point(
-                fwd_ground * shaped * DRIVE_FORCE_PER_WHEEL * dir_boost,
+                fwd_ground * shaped * DRIVE_FORCE_PER_WHEEL,
                 world_anchor,
             );
         } else {
