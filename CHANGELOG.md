@@ -5,6 +5,28 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] — 2026-05-08 — Sprint 42 "foliage" + Sprint 41 hotfix
+
+### Added
+- **Cross-triangle grass blade mesh** in `grass_tufts.rs`. Replaces the
+  cuboid blades with two perpendicular tris (6 verts) and tip/base vertex
+  colors that fade dark → bright green. Reads as grass, not as green sticks.
+- **CPU wind sway**: each tuft tilts about an axis perpendicular to
+  `WindState.direction` with a sin(t·1.6 + phase) lean. Phase derives from
+  world position so the field sways non-uniformly. Amplitude scales with
+  `WindState.speed_mps` (cap ~8°).
+- Both gated by `GraphicsQuality::grass_billboards()` so Low keeps the cuboid
+  path with no per-frame work.
+
+### Fixed (Sprint 41 hotfix)
+- Triplanar `ExtendedMaterial` shipped a bind-group layout mismatch at
+  runtime (`Shader global ResourceBinding { group: 2, binding: 100 } is not
+  available in the pipeline layout`). For the v0.8 ship we fall back to a
+  regular textured `StandardMaterial` on the terrain (dirt pack: albedo +
+  normal + metallic-roughness). Loses triplanar projection and the 4-way
+  splat blend, keeps the photoreal look. Investigation parked in
+  `docs/PARKING_LOT.md`.
+
 ## [0.8.0] — 2026-05-08 — Sprint 41 "photoreal pass"
 
 ### Added
@@ -65,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   development environment configuration; core dependencies in
   Cargo.toml; documentation framework.
 
+[0.8.1]: https://github.com/smilinTux/skoffroad/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/smilinTux/skoffroad/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/smilinTux/skoffroad/compare/v0.6.12...v0.7.0
 [0.1.0]: https://github.com/smilinTux/skoffroad/releases/tag/v0.1.0
