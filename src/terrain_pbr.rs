@@ -15,6 +15,7 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use crate::graphics_quality::GraphicsQuality;
+use crate::storm::StormState;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -25,7 +26,8 @@ pub struct TerrainPbrPlugin;
 impl Plugin for TerrainPbrPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<TriplanarTerrainMaterial>::default())
-            .add_systems(Startup, load_terrain_assets);
+            .add_systems(Startup, load_terrain_assets)
+            .add_systems(Update, drive_wetness);
     }
 }
 
@@ -86,6 +88,12 @@ pub struct TriplanarUniforms {
     /// 1.0 = full 4-layer splat blend, 0.0 = dirt-only.
     /// Medium tier ramps this down to keep cost lower while keeping triplanar.
     pub blend_strength: f32,
+    /// 0..1; eased value driven by StormState. 1 = soaking wet (darker albedo,
+    /// lower roughness so headlights pop on the puddles).
+    pub wetness:        f32,
+    pub _pad0:          f32,
+    pub _pad1:          f32,
+    pub _pad2:          f32,
 }
 
 impl Default for TriplanarUniforms {
@@ -95,6 +103,10 @@ impl Default for TriplanarUniforms {
             detail_scale:   4.0,
             detail_blend:   0.35,
             blend_strength: 1.0,
+            wetness:        0.0,
+            _pad0: 0.0,
+            _pad1: 0.0,
+            _pad2: 0.0,
         }
     }
 }
@@ -156,4 +168,37 @@ fn load_terrain_assets(
     };
 
     commands.insert_resource(assets_resource);
+}
+
+// ---------------------------------------------------------------------------
+// Drive the wetness uniform from StormState
+// ---------------------------------------------------------------------------
+//
+// We exponentially ease `wetness` toward StormState.active (0 or 1) so dry/wet
+// transitions take a few seconds rather than snapping. The terrain material is
+// shared, so a single mutation each frame is enough.
+
+fn drive_wetness(
+    quality: Res<GraphicsQuality>,
+    storm: Option<Res<StormState>>,
+    pbr_assets: Option<Res<TerrainPbrAssets>>,
+    mut materials: ResMut<Assets<TriplanarTerrainMaterial>>,
+    time: Res<Time>,
+) {
+    if !quality.wet_shader() {
+        return;
+    }
+    let Some(handle) = pbr_assets.as_ref().and_then(|a| a.material.clone()) else {
+        return;
+    };
+    let Some(mat) = materials.get_mut(&handle) else {
+        return;
+    };
+
+    let target = storm.map(|s| if s.active { 1.0 } else { 0.0 }).unwrap_or(0.0);
+    let dt = time.delta_secs();
+    // Time constant ~2 s for full transition.
+    let ease = 1.0 - (-dt / 2.0).exp();
+    mat.extension.uniforms.wetness +=
+        (target - mat.extension.uniforms.wetness) * ease;
 }

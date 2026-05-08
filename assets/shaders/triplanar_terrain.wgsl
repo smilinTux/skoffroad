@@ -27,6 +27,11 @@ struct TriplanarUniforms {
     detail_blend:  f32,
     /// 1.0 = full splat blend, 0.0 = dirt-only (used for Medium tier later).
     blend_strength: f32,
+    /// 0..1, smoothed value driven by StormState. 1 = soaking wet.
+    wetness:        f32,
+    _pad0:          f32,
+    _pad1:          f32,
+    _pad2:          f32,
 };
 
 @group(2) @binding(100) var<uniform> tri_u: TriplanarUniforms;
@@ -202,8 +207,18 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
                + rock_r  * sw.z
                + mud_r   * sw.w;
 
-    pbr_input.material.base_color = vec4<f32>(albedo, 1.0);
-    pbr_input.material.perceptual_roughness = clamp(rough, 0.05, 1.0);
+    // Wet-surface tweak: water in pores darkens albedo and drops roughness so
+    // bright specular highlights pop. Mud reads less wet because it's already
+    // dark and mostly diffuse — bias the albedo darken toward grass/dirt/rock.
+    let wet = clamp(tri_u.wetness, 0.0, 1.0);
+    let mud_share = sw.w;
+    let wet_albedo_mul = 1.0 - 0.30 * wet * (1.0 - 0.6 * mud_share);
+    let wet_rough_mul  = 1.0 - 0.55 * wet * (1.0 - 0.4 * mud_share);
+    let wet_albedo = albedo * wet_albedo_mul;
+    let wet_rough  = rough  * wet_rough_mul;
+
+    pbr_input.material.base_color = vec4<f32>(wet_albedo, 1.0);
+    pbr_input.material.perceptual_roughness = clamp(wet_rough, 0.05, 1.0);
 
     var out: FragmentOutput;
     out.color = fns::apply_pbr_lighting(pbr_input);
