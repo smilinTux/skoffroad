@@ -114,7 +114,7 @@ fn spawn_vehicle(
     // sRGB(0.8, 0.2, 0.1) original to stay consistent with the legacy look.
     let body_mat = if quality.vehicle_clearcoat() {
         materials.add(StandardMaterial {
-            base_color: Color::srgb(0.8, 0.2, 0.1),
+            base_color: Color::srgb(0.75, 0.12, 0.10),
             perceptual_roughness: 0.32,
             metallic: 0.55,
             reflectance: 0.65,
@@ -122,7 +122,7 @@ fn spawn_vehicle(
         })
     } else {
         materials.add(StandardMaterial {
-            base_color: Color::srgb(0.8, 0.2, 0.1),
+            base_color: Color::srgb(0.75, 0.12, 0.10),
             perceptual_roughness: 0.6,
             ..default()
         })
@@ -175,6 +175,27 @@ fn spawn_vehicle(
     let wheel_mesh       = meshes.add(Cylinder::new(WHEEL_RADIUS, WHEEL_HALF_WIDTH * 2.0));
     let rim_mesh         = meshes.add(Cylinder::new(RIM_RADIUS, WHEEL_HALF_WIDTH * 1.4));
 
+    // Sprint 45 — Skrambler detail meshes:
+    // 7-slot grille slats, roll cage bars/cross-bars, fender flares, doors,
+    // side mirrors, roof light bar with LED spots, tailgate-mounted spare.
+    let grille_slat_mesh = meshes.add(Cuboid::new(0.04, 0.32, 0.05));
+    let cage_bar_mesh    = meshes.add(Cylinder::new(0.045, 0.95));
+    let cage_topbar_x    = meshes.add(Cylinder::new(0.045, 1.92));
+    let cage_topbar_z    = meshes.add(Cylinder::new(0.045, 0.86));
+    let fender_mesh      = meshes.add(Cuboid::new(0.18, 0.10, 0.92));
+    let door_mesh        = meshes.add(Cuboid::new(0.06, 0.46, 1.10));
+    let mirror_mesh      = meshes.add(Cuboid::new(0.12, 0.06, 0.18));
+    let light_bar_mesh   = meshes.add(Cuboid::new(1.50, 0.07, 0.10));
+    let spare_tire_mesh  = meshes.add(Cylinder::new(WHEEL_RADIUS * 0.95, WHEEL_HALF_WIDTH * 1.7));
+
+    // Matte-black roll-cage / grille / mirror material.
+    let cage_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.05, 0.05, 0.05),
+        perceptual_roughness: 0.75,
+        metallic: 0.10,
+        ..default()
+    });
+
     let spawn_y = {
         let sum: f32 = WHEEL_OFFSETS.iter()
             .map(|o| terrain_height_at(o.x, o.z) + SUSPENSION_LEN - o.y).sum();
@@ -219,9 +240,130 @@ fn spawn_vehicle(
     let hl_l = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh.clone()),
         MeshMaterial3d(headlight_mat.clone()),
         Transform::from_translation(Vec3::new(-0.75, -0.12, -2.10)))).id();
-    let hl_r = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh), MeshMaterial3d(headlight_mat),
+    let hl_r = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh.clone()), MeshMaterial3d(headlight_mat.clone()),
         Transform::from_translation(Vec3::new( 0.75, -0.12, -2.10)))).id();
     commands.entity(chassis_id).add_children(&[body, hood, windshield, front_bp, rear_bp, hl_l, hl_r]);
+
+    // ----- Sprint 45: Skrambler detail layer -----------------------------
+    //
+    // 7-slot grille between the headlights.
+    let mut details: Vec<Entity> = Vec::new();
+    for i in 0..7 {
+        let x = -0.42 + i as f32 * 0.14;
+        let slat = commands.spawn((
+            DefaultSkin,
+            Mesh3d(grille_slat_mesh.clone()),
+            MeshMaterial3d(cage_mat.clone()),
+            Transform::from_translation(Vec3::new(x, -0.18, -2.04)),
+        )).id();
+        details.push(slat);
+    }
+
+    // Roll cage — 4 vertical bars + front/rear/top crossbars across the cabin.
+    // Cylinder axis is +Y, so vertical bars need no rotation; the X-axis cross
+    // bar gets a Z rotation; the Z-axis side bars get an X rotation.
+    let rotz_90 = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
+    let rotx_90 = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+    for &(x, z) in &[(-0.95_f32, -0.30_f32), (0.95, -0.30), (-0.95, 0.50), (0.95, 0.50)] {
+        let bar = commands.spawn((
+            DefaultSkin,
+            Mesh3d(cage_bar_mesh.clone()),
+            MeshMaterial3d(cage_mat.clone()),
+            Transform::from_translation(Vec3::new(x, 0.85, z)),
+        )).id();
+        details.push(bar);
+    }
+    // Top X-axis cross bars (front-of-cabin and back-of-cabin).
+    for &z in &[-0.30_f32, 0.50] {
+        let bar = commands.spawn((
+            DefaultSkin,
+            Mesh3d(cage_topbar_x.clone()),
+            MeshMaterial3d(cage_mat.clone()),
+            Transform::from_translation(Vec3::new(0.0, 1.30, z))
+                .with_rotation(rotz_90),
+        )).id();
+        details.push(bar);
+    }
+    // Top Z-axis side rails.
+    for &x in &[-0.95_f32, 0.95] {
+        let bar = commands.spawn((
+            DefaultSkin,
+            Mesh3d(cage_topbar_z.clone()),
+            MeshMaterial3d(cage_mat.clone()),
+            Transform::from_translation(Vec3::new(x, 1.30, 0.10))
+                .with_rotation(rotx_90),
+        )).id();
+        details.push(bar);
+    }
+
+    // Fender flares above each wheel.
+    for &offset in WHEEL_OFFSETS.iter() {
+        let outer = if offset.x > 0.0 { 1.10 } else { -1.10 };
+        let flare = commands.spawn((
+            DefaultSkin,
+            Mesh3d(fender_mesh.clone()),
+            MeshMaterial3d(body_mat.clone()),
+            Transform::from_translation(Vec3::new(outer, -0.10, offset.z)),
+        )).id();
+        details.push(flare);
+    }
+
+    // Driver / passenger door panels (back half of the cabin only — open-top).
+    for &x in &[-1.04_f32, 1.04] {
+        let door = commands.spawn((
+            DefaultSkin,
+            Mesh3d(door_mesh.clone()),
+            MeshMaterial3d(body_mat.clone()),
+            Transform::from_translation(Vec3::new(x, 0.05, 0.30)),
+        )).id();
+        details.push(door);
+    }
+
+    // Side mirrors at the front of each door.
+    for &x in &[-1.16_f32, 1.16] {
+        let mirror = commands.spawn((
+            DefaultSkin,
+            Mesh3d(mirror_mesh.clone()),
+            MeshMaterial3d(cage_mat.clone()),
+            Transform::from_translation(Vec3::new(x, 0.36, -0.30)),
+        )).id();
+        details.push(mirror);
+    }
+
+    // Roof light bar above the windshield + 4 LED spots.
+    let light_bar = commands.spawn((
+        DefaultSkin,
+        Mesh3d(light_bar_mesh.clone()),
+        MeshMaterial3d(cage_mat.clone()),
+        Transform::from_translation(Vec3::new(0.0, 1.32, -1.05)),
+    )).id();
+    details.push(light_bar);
+    for i in 0..4 {
+        let lx = -0.55 + i as f32 * 0.36;
+        let led = commands.spawn((
+            DefaultSkin,
+            Mesh3d(headlight_mesh.clone()),
+            MeshMaterial3d(headlight_mat.clone()),
+            Transform::from_translation(Vec3::new(lx, 1.32, -1.13))
+                .with_scale(Vec3::splat(0.55)),
+        )).id();
+        details.push(led);
+    }
+
+    // Tailgate-mounted spare tire (rotated to face rear).
+    let spare_rot = Quat::from_rotation_y(std::f32::consts::FRAC_PI_2)
+        * Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
+    let spare = commands.spawn((
+        DefaultSkin,
+        Mesh3d(spare_tire_mesh.clone()),
+        MeshMaterial3d(wheel_mat.clone()),
+        Transform::from_translation(Vec3::new(0.0, 0.10, 2.32))
+            .with_rotation(spare_rot),
+    )).id();
+    details.push(spare);
+
+    commands.entity(chassis_id).add_children(&details);
+    // ---------------------------------------------------------------------
 
     let tire_rot = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
     for (i, &offset) in WHEEL_OFFSETS.iter().enumerate() {

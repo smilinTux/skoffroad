@@ -55,16 +55,20 @@ struct Preset {
     color: Color,
 }
 
-const PRESETS: [Preset; 5] = [
-    Preset { name: "Trail Red",    color: Color::srgb(0.80, 0.20, 0.10) },
-    Preset { name: "Highway Blue", color: Color::srgb(0.20, 0.40, 0.85) },
-    Preset { name: "Desert Tan",   color: Color::srgb(0.95, 0.85, 0.20) },
-    Preset { name: "Forest Green", color: Color::srgb(0.10, 0.30, 0.15) },
-    Preset { name: "Arctic White", color: Color::srgb(0.92, 0.92, 0.95) },
+// Sprint 45 — Skrambler factory palette.
+// Names + colours evoke real Jeep TJ trim levels (Sahara, Rubicon, etc.) without
+// using the trademarks. RGB values approximate the actual factory paint codes.
+const PRESETS: [Preset; 6] = [
+    Preset { name: "Cherry Crawler",  color: Color::srgb(0.75, 0.12, 0.10) }, // Flame Red
+    Preset { name: "Forest Trail",    color: Color::srgb(0.16, 0.32, 0.20) }, // Forest Green
+    Preset { name: "Sahara Tan",      color: Color::srgb(0.78, 0.60, 0.36) }, // Desert Sand
+    Preset { name: "Khaki Patrol",    color: Color::srgb(0.55, 0.55, 0.42) }, // Khaki Metallic
+    Preset { name: "Midnight Skrambler", color: Color::srgb(0.07, 0.07, 0.08) }, // Black
+    Preset { name: "Glacier Blue",    color: Color::srgb(0.32, 0.48, 0.65) }, // Patriot Blue Metallic
 ];
 
-// Expected base_color of the body material (Trail Red).
-const BODY_RED: [f32; 3] = [0.80, 0.20, 0.10];
+// Expected base_color of the body material (PRESETS[0] Cherry Crawler).
+const BODY_RED: [f32; 3] = [0.75, 0.12, 0.10];
 const COLOR_TOL: f32     = 0.02;
 
 // ---- Systems ----------------------------------------------------------------
@@ -123,12 +127,13 @@ fn cycle_livery(
     mut hud_text_q: Query<&mut Text, With<LiveryHudText>>,
     mut timer: ResMut<LiveryHudTimer>,
 ) {
-    let key_map: [(KeyCode, u8); 5] = [
+    let key_map: [(KeyCode, u8); 6] = [
         (KeyCode::Digit1, 0),
         (KeyCode::Digit2, 1),
         (KeyCode::Digit3, 2),
         (KeyCode::Digit4, 3),
         (KeyCode::Digit5, 4),
+        (KeyCode::Digit6, 5),
     ];
 
     let mut pressed_idx: Option<u8> = None;

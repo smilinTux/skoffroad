@@ -5,6 +5,28 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-05-08 — Sprint 45 "Skrambler"
+
+### Added
+- **Skrambler SK** — the cuboid Jeep silhouette is now a proper open-top
+  off-roader: 7-slot grille, full roll cage (4 vertical bars + front/rear/
+  side crossbars), fender flares on every wheel, driver/passenger doors,
+  wing mirrors, roof light bar with 4 LED spots, tailgate-mounted spare
+  tire. ~30 new child entities on the chassis, all primitives — zero
+  licensing risk, ships in tree.
+- **TJ-style paint palette** in `livery.rs` (cycle with 1–6):
+  Cherry Crawler, Forest Trail, Sahara Tan, Khaki Patrol, Midnight
+  Skrambler, Glacier Blue. Names + RGB approximate real Jeep TJ era
+  factory colours.
+- **`docs/USER_VEHICLES.md`** — license rules, drop-in `assets/vehicles/`
+  layout, `vehicle.toml` schema, Blender export tips. The infrastructure
+  for user-supplied GLB vehicles will land in the next sprint.
+
+### Notes
+- A previously-existing `1999_jeep_wrangler_tj.glb` on the dev machine was
+  CC-BY-NC-SA-4.0 (incompatible with the GPL-3 game) — not bundled.
+  Procedural Skrambler ships in its place.
+
 ## [0.8.3] — 2026-05-08 — Sprint 44 "chrome rims"
 
 ### Added
@@ -104,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   development environment configuration; core dependencies in
   Cargo.toml; documentation framework.
 
+[0.9.0]: https://github.com/smilinTux/skoffroad/compare/v0.8.3...v0.9.0
 [0.8.3]: https://github.com/smilinTux/skoffroad/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/smilinTux/skoffroad/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/smilinTux/skoffroad/compare/v0.8.0...v0.8.1
