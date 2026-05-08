@@ -1,8 +1,8 @@
-# SandK Offroad — MVP Scope (v2, May 2026)
+# skoffroad — MVP Scope (v2, May 2026)
 
 ## TL;DR
 
-SandK Offroad is a single-player, physics-driven off-road vehicle simulation built in Rust
+skoffroad is a single-player, physics-driven off-road vehicle simulation built in Rust
 with Bevy and Avian3D. The v2 restart targets a single playable vertical slice: one vehicle,
 one procedurally generated terrain, 60+ FPS, no networking, no economy, no voice chat.
 Everything else is deferred until the core loop is playable. Canonical code now lives in the

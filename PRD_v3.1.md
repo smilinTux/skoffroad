@@ -1,4 +1,4 @@
-# SandK Offroad — PRD v3.1
+# skoffroad — PRD v3.1
 ## Asset import pipeline + Spintires-quality visuals
 
 **Date:** 2026-05-07 (extends PRD_v3.md)

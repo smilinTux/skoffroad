@@ -1,70 +1,36 @@
-[package]
-name = "sandk-offroad"
-version = "0.1.0"
-edition = "2021"
-description = "An advanced off-road vehicle simulation game with realistic physics and graphics"
-authors = ["SandK Development Team"]
-repository = "https://github.com/sandk/offroad"
-license = "MIT"
-
 [workspace]
-members = ["scripts"]
+
+[package]
+name = "skoffroad"
+version = "0.7.0"
+edition = "2021"
+default-run = "skoffroad"
+
+[features]
+default = []
+dev = ["bevy/dynamic_linking", "dep:bevy-inspector-egui"]
+
+[lib]
+name = "skoffroad"
+path = "src/lib.rs"
+
+[[bin]]
+name = "skoffroad"
+path = "src/main.rs"
+
+[[bin]]
+name = "sim"
+path = "src/bin/sim.rs"
 
 [dependencies]
-# Core game engine
-bevy = { version = "0.12", features = ["bevy_pbr", "bevy_render", "bevy_asset", "bevy_core_pipeline", "dynamic_linking", "wayland"] }
-bevy_egui = "0.24"
-bevy_kira_audio = "0.18"
-
-# Graphics and shaders
-wgpu = "0.17"
-bytemuck = { version = "1.14", features = ["derive"] }
-glam = "0.25"
-
-# Physics
-bevy_rapier3d = "0.23"
-nalgebra = "0.32"
-
-# Asset handling
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-image = "0.24"
-
-# Networking
-tokio = { version = "1.32", features = ["full"] }
-warp = "0.3"
-
-# Logging and diagnostics
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-# Error handling
-anyhow = "1.0"
-thiserror = "1.0"
-
-# Noise
-noise = "0.8"
-
-# Voice chat and audio processing
-cpal = "0.15"
-ringbuf = "0.4"
-dasp_signal = "0.11"
-dasp_interpolate = "0.11"
-dasp_window = "0.11"
-dasp_ring_buffer = "0.11"
-fastrand = "2.0"
-rand = "0.8"
-
-[dev-dependencies]
-# Development tools
-bevy-inspector-egui = "0.22"
-bevy_mod_debugdump = "0.9"
-criterion = { version = "0.5", features = ["html_reports"] }
-tempfile = "3.8"
-mockall = "0.11"
-test-case = "3.3"
-rstest = "0.18"
-pretty_assertions = "1.4"
+bevy = { version = "0.18.1", default-features = true }
+avian3d = { version = "0.6.1", features = ["collider-from-mesh"] }
+bevy_hanabi = { version = "0.18.0" }
+noise = "0.9.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bevy-inspector-egui = { version = "0.36.0", optional = true }
+bevy_kira_audio = "0.25.0"
 
 [profile.dev]
 opt-level = 1
@@ -75,21 +41,3 @@ opt-level = 3
 [profile.release]
 lto = "thin"
 codegen-units = 1
-opt-level = 3
-
-[features]
-default = ["graphics-high"]
-graphics-low = []
-graphics-medium = ["graphics-low"]
-graphics-high = ["graphics-medium", "post-process-effects"]
-post-process-effects = []
-
-# Enable this feature for development with fast compilation
-dev = ["bevy/dynamic_linking"]
-
-# Enable this feature for shader hot-reloading
-shader-hot-reload = []
-
-[[bench]]
-name = "performance_tests"
-harness = false 

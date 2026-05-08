@@ -1,100 +1,150 @@
-# SandK Offroad
+# skoffroad
 
-Procedural off-road sandbox built with **Rust + Bevy 0.18 + Avian3D**, generated through 22 sprints of parallel Sonnet sub-agent work.
+Bevy 0.18 + Avian3D 0.6 + bevy_kira_audio + bevy_hanabi off-road sandbox.
+A Jeep-ish chassis on procedural terrain with raycast suspension, day/night,
+weather forces, mud, water, ramps, trampolines, scatter, livery, telemetry,
+HUD, mini-map, stats, achievements, replay, photo mode, and a headless test
+harness.
 
-## Quick start
+(The April 2025 prototype lives in `legacy/` — see `docs/PARKING_LOT.md` for
+features worth pulling forward.)
 
-```bash
-cd next
-cargo run --bin sandk-offroad-next --release
+## Run
+
+```sh
+cargo run --features dev          # fast iteration (dynamic linking, F3 inspector)
+cargo run --release               # optimised build
+cargo run --bin sim -- forward 5  # headless harness, JSON or human-readable
+cargo test                        # drive_test physics regressions
 ```
 
-Dev mode with the inspector (F3):
-
-```bash
-cargo run --features dev
-```
-
-Headless physics tests:
-
-```bash
-cargo test --test drive_test
-```
-
-Headless scenario harness:
-
-```bash
-cargo build --bin sim
-./target/debug/sim drop --json --verbose
-```
-
-## Highlights
-
-- **5 vehicle variants** — Jeep TJ, Ford Bronco, Pickup, Hummer, Buggy. All built from cuboid+cylinder primitives with photo-referenced detailing (grilles, fender flares, roll bars, tailpipes, winches, exhaust headers, etc.). License-clean, no GLTF assets required.
-- **3 maps** — VALLEY (default rolling hills), DUNES (cacti + amber fog), CANYON (red rock pillars + dusty haze). Tab to switch with a 1-second black fade.
-- **AI rivals** — RED, GRN, BLU rivals with skill-based AI driving along a Catmull-Rom densified race path.
-- **Career mode** — 8 sequential objectives spanning all the game systems.
-- **Daily challenge** — deterministic per-day rotation across 5 challenge kinds.
-- **Medals** — bronze/silver/gold awarded for course time, race position, gem count, longest jump, top speed.
-- **Time trial with ghost** — record your best, race against a translucent ghost car.
-- **Pursuit / demolition / explore / challenges** — alternate game modes built on the same physics base.
-- **Procedural everything** — terrain via noise, vehicle audio (4-cylinder firing-pulse synth), music (state machine over chord pads + arpeggios), tire surface audio (grass/dirt/rock blend by slope), wind/birds/crickets ambient mixed by TimeOfDay.
-- **Visual polish** — Bloom + ACES tonemapping, faux god rays at sunrise/sunset, persistent tire-track decals, vehicle dirt accumulation, storm rain + lightning.
-- **World flavor** — 8 procedural shacks + barns, 12-bird boid flock overhead, 5 ambient NPC trucks (toggleable), startup ASCII logo + 5-second cinematic intro orbit.
-- **Persistence** — config + keybindings autosaved to `~/.sandk-offroad/`. F12 benchmark mode logs frame-time stats.
-- **Accessibility** — colorblind palette swap, reduce-motion toggle, HUD scale 1.0/1.25/1.5x.
-
-## Controls
-
-See [CONTROLS.md](CONTROLS.md) for the full reference. Highlights:
+## Driving
 
 | Key | Action |
-|---|---|
-| `WASD` | Drive (configurable via `/`) |
-| `Space` | Brake |
-| `Shift` | Handbrake |
-| `B` | Boost |
-| `R` | Start/restart race |
-| `T` | Time trial |
-| `P` | Pursuit |
-| `X` | Demolition |
-| `C` | Random 30s challenge |
-| `Tab` | Map select |
-| `H` | Help overlay |
-| `Esc` | Pause menu |
+|-----|--------|
+| W / Up | Throttle forward |
+| S / Down | Reverse |
+| A / Left | Steer left |
+| D / Right | Steer right |
+| Space | Brake |
+| R | Reset chassis to spawn (refills fuel) |
+| J | Auto-flip recovery (right the chassis in place) |
+| N | Horn |
+| 1–5 | Cycle paint livery |
 
-## Architecture
+## Camera
 
-The game is decomposed into ~95 plugin modules, each owning a single file in `next/src/*.rs`. Plugins are registered as tuples in `main.rs`. Cross-module communication uses Bevy resources and events; markers + queries do the rest.
+| Key | Action |
+|-----|--------|
+| V | Toggle chase / cockpit |
+| Q / E | Orbit (chase only) |
+| Right mouse drag | Mouse orbit (chase only) |
 
-Each sprint added 5 modules concurrently via Sonnet sub-agents working on pre-staged stub files.
+## UI overlays
 
-## Sprint history
+| Key | Action |
+|-----|--------|
+| H | Toggle main HUD |
+| M | Toggle mini-map |
+| C | Toggle compass strip |
+| L | Toggle time-trial panel |
+| G | Toggle speedometer |
+| Z | Toggle wind indicator |
+| K | Toggle skid-mark spawning (`Shift+K` clears) |
+| B | Toggle breadcrumbs (`Shift+B` clears) |
+| Y | Toggle headlights (`Shift+Y` returns to auto) |
+| F8 | Toggle perf overlay |
+| F9 | Toggle fuel gauge |
+| X | Toggle speed-line vignette |
+| Tab (hold) | Stats screen |
+| ? (Shift + /) | Keybind help overlay |
+| E | Toggle event log |
 
-| Sprint | Version | Focus |
-|---|---|---|
-| 14 | 0.4.15 | Audio polish — music, engine_pro, surfaces, world_audio, mixer + photo-referenced vehicle silhouettes |
-| 15 | 0.4.16 | AI rivals & racing |
-| 16 | 0.4.17 | Career & progression — XP curve, unlocks, career, daily, medals |
-| 17 | 0.4.18 | World variety — multiple maps, biomes, transitions |
-| 18 | 0.4.19 | Polish + persistence — config, fonts, theme, loading screen, credits |
-| 19 | 0.4.20 | QoL — input remap, accessibility, benchmark, demo mode, changelog |
-| 20 | 0.4.21 | Visual polish — storm, vehicle dirt, decals, bloom, god rays |
-| 21 | 0.4.22 | Game modes — time trial, pursuit, demolition, explore, challenges |
-| 22 | 0.4.23 | World flavor — ASCII logo, intro video, traffic, buildings, bird flock |
-| 23 | 0.5.1 | Showcase polish — landmarks, exhaust smoke, minimap zoom, seasons, drifting clouds |
+## Time
 
-## Testing
+| Key | Action |
+|-----|--------|
+| T | Pause day cycle |
+| [ / ] | Scrub time of day |
 
-`drive_test` (4 cases) verifies the headless physics harness on every commit:
+## Save / load
 
-- `harness_runs` — bare scenario boots
-- `idle_settles` — chassis rests on terrain without drift
-- `forward_moves_vehicle` — drive input produces forward motion
-- `brake_stops_vehicle` — brake stops a moving vehicle
+| Key | Action |
+|-----|--------|
+| F5 / F6 / F7 | Save to slot 1 / 2 / 3 |
+| F1 / F2 / F4 | Load slot 1 / 2 / 3 |
 
-Each sprint runs all 4 in CI before the agent reports completion.
+(Auto-save on exit; auto-load slot 1 on launch.)
 
-## License
+## Replay & photo
 
-Code: project license TBD. Vehicle silhouettes are original procedural primitive compositions (no GLTF / external 3D assets), so the asset pipeline is license-clean.
+| Key | Action |
+|-----|--------|
+| . (period) | Replay last 10 s as a translucent ghost |
+| P | Photo mode (pauses physics, hides cursor, banner) |
+
+## Pause / settings
+
+| Key | Action |
+|-----|--------|
+| Esc | Pause + settings overlay |
+| -, = | Master volume −/+ (while paused) |
+| , . | Mouse sensitivity −/+ (while paused) |
+| ; ' | Day length −/+ (while paused) |
+
+## Dev
+
+| Key | Action |
+|-----|--------|
+| F3 | World inspector (only with `--features dev`) |
+
+## Stack
+
+| Crate | Version | Role |
+|-------|---------|------|
+| bevy | 0.18.1 | Engine |
+| avian3d | 0.6.1 | Physics |
+| bevy_hanabi | 0.18.0 | GPU particles (dust) |
+| bevy_kira_audio | 0.25.0 | Procedural engine / horn / skid / wind / thud |
+| noise | 0.9.0 | Heightmap generation |
+| bevy-inspector-egui | 0.36.0 | F3 inspector (dev-only) |
+| serde / serde_json | 1.x | Save files |
+
+## Plugin tour (44 of them)
+
+Vehicle physics: `vehicle`, `terrain`, `camera`, `recovery`.
+World dressing: `sky`, `water`, `scatter`, `mud`, `ramps`, `trampolines`,
+`speedtrap`, `repair`, `stars`.
+HUD & UI: `hud`, `minimap`, `gauge`, `compass`, `events`, `stats_screen`,
+`help`, `menu`, `perf`, `damage`, `speedlines`, `confetti`.
+Game loops: `trial`, `xp`, `wheelie`, `airtime`, `breadcrumbs`, `fuel`,
+`achievements`, `livery`.
+Effects / FX: `particles` (dust), `shake`, `audio` (engine + skid + thud +
+wind), `horn`.
+System: `save`, `settings`, `photomode`, `replay`, `headlights`, `wind`,
+`skidmarks`.
+
+Plus the `headless` module and a `sim` binary that step Avian without a
+window, used by `cargo test --test drive_test` and ad-hoc CLI scenarios.
+
+## Headless harness
+
+```sh
+cargo run --bin sim -- forward 5             # human-readable
+cargo run --bin sim -- forward 5 --json      # JSON for piping into jq
+cargo run --bin sim -- brake-test 5
+cargo run --bin sim -- right 3
+cargo run --bin sim -- idle 3
+cargo run --bin sim -- script:path.json      # custom timeline
+```
+
+Returns chassis position, velocity, distance, max speed, max tilt,
+did_flip, time-above-terrain.
+
+## Status
+
+Single playable window, ~44 plugins, all driven by ~12 000 lines of Rust
+across ~40 modules. Physics regressions gated by 4 passing
+`drive_test` integration tests; harness numbers stable across the v0.4.x
+series. v0.4 is the minimum-viable feature set; world-dressing, polish,
+and accessibility passes are deferred to v0.5.

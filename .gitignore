@@ -1,8 +1,9 @@
 # Rust build artifacts
 /target/
-next/target/
+legacy/target/
 **/*.rs.bk
 Cargo.lock
+legacy/Cargo.lock
 
 # IDE and editor files
 .idea/

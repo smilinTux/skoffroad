@@ -1,4 +1,4 @@
-# SandK Offroad — Keyboard Reference
+# skoffroad — Keyboard Reference
 
 ## Driving
 
@@ -55,7 +55,7 @@
 |---|---|
 | `Esc` | Pause menu |
 | `F3` | World inspector (dev builds only) |
-| `F12` | Start 30s benchmark (writes to `~/.sandk-offroad/benchmark-{ts}.txt`) |
+| `F12` | Start 30s benchmark (writes to `~/.skoffroad/benchmark-{ts}.txt`) |
 
 ## Other
 
@@ -73,6 +73,6 @@ If no key has been pressed for 30 seconds, the game enters **demo mode** and aut
 
 ## Persistence
 
-- `~/.sandk-offroad/config.json` — master volume, mouse sensitivity, day length
-- `~/.sandk-offroad/keybindings.json` — drive bindings
-- `~/.sandk-offroad/benchmark-{ts}.txt` — F12 benchmark reports
+- `~/.skoffroad/config.json` — master volume, mouse sensitivity, day length
+- `~/.skoffroad/keybindings.json` — drive bindings
+- `~/.skoffroad/benchmark-{ts}.txt` — F12 benchmark reports

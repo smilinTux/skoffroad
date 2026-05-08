@@ -1,4 +1,4 @@
-# SandK Offroad — PRD v3
+# skoffroad — PRD v3
 ## Rock Crawl & Trail Focus
 
 **Date:** 2026-05-07
@@ -67,7 +67,7 @@ These are the user-flagged priorities and the simulation-depth gaps that block "
 - A dedicated hillclimb course: steep procedurally-generated 30°–55° slope, ~150m long, narrow channel with rock walls forcing the line
 - Press `K` (or rebind) to enter hillclimb mode: spawn at base, timer starts at first 1m elevation gain, finishes at marked summit gate
 - HUD: elevation gained, % grade, time, best time
-- Best time persisted to `~/.sandk-offroad/hillclimb.json`
+- Best time persisted to `~/.skoffroad/hillclimb.json`
 - Failure conditions: chassis flips (>120° tilt) or slides backward >5m
 
 ### M5. Tire deformation visual

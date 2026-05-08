@@ -1,6 +1,6 @@
-# Contributing to SandK Offroad
+# Contributing to skoffroad
 
-Thank you for considering contributing to SandK Offroad!
+Thank you for considering contributing to skoffroad!
 
 ## Branching Strategy
 - Use `main` for stable releases.
