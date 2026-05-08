@@ -16,6 +16,7 @@ use bevy::prelude::*;
 use bevy_kira_audio::{Audio, AudioControl};
 use bevy_kira_audio::prelude::Decibels;
 
+use crate::graphics_quality::GraphicsQuality;
 use crate::vehicle::DriveInput;
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ enum SettingsText {
     Volume,
     Sensitivity,
     DayLength,
+    Quality,
     Help,
 }
 
@@ -153,17 +155,24 @@ fn spawn_overlay(mut commands: Commands) {
         TextColor(COLOR_BODY),
     )).id();
 
+    let quality = commands.spawn((
+        SettingsText::Quality,
+        Text::new(""),
+        TextFont { font_size: 16.0, ..default() },
+        TextColor(COLOR_BODY),
+    )).id();
+
     let help = commands.spawn((
         SettingsText::Help,
         Text::new(
             "[ - / = ] volume    [ , / . ] sensitivity\n\
-             [ ; / ' ] day len   [ Esc ] resume",
+             [ ; / ' ] day len   [ \\ ] quality   [ Esc ] resume",
         ),
         TextFont { font_size: 13.0, ..default() },
         TextColor(COLOR_HELP),
     )).id();
 
-    commands.entity(panel).add_children(&[title, vol, sens, day, help]);
+    commands.entity(panel).add_children(&[title, vol, sens, day, quality, help]);
     commands.entity(root).add_children(&[panel]);
 }
 
@@ -185,12 +194,22 @@ fn toggle_pause(
 // ---------------------------------------------------------------------------
 
 fn adjust_settings(
-    keys:    Res<ButtonInput<KeyCode>>,
-    mut cfg: ResMut<SettingsState>,
-    mut tod: ResMut<crate::sky::TimeOfDay>,
+    keys:        Res<ButtonInput<KeyCode>>,
+    mut cfg:     ResMut<SettingsState>,
+    mut tod:     ResMut<crate::sky::TimeOfDay>,
+    mut quality: ResMut<GraphicsQuality>,
 ) {
     if !cfg.paused {
         return;
+    }
+
+    // Backslash cycles GraphicsQuality. The change persists via config.rs and
+    // takes full effect on the next launch (some post-FX components only
+    // attach in PostStartup); the wetness, splat-blend and bloom components
+    // already react live.
+    if keys.just_pressed(KeyCode::Backslash) {
+        *quality = quality.cycle_next();
+        info!("settings: graphics quality -> {}", quality.as_str());
     }
 
     // Volume: Minus / Equal
@@ -280,6 +299,7 @@ fn apply_master_volume(
 
 fn update_overlay(
     cfg:       Res<SettingsState>,
+    quality:   Res<GraphicsQuality>,
     mut roots: Query<&mut Node, With<OverlayRoot>>,
     mut texts: Query<(&SettingsText, &mut Text)>,
 ) {
@@ -315,6 +335,20 @@ fn update_overlay(
                     bar12((cfg.day_length_s - 30.0) / 570.0),
                     cfg.day_length_s,
                 );
+            }
+            SettingsText::Quality => {
+                let q_idx = match *quality {
+                    GraphicsQuality::Low => 0,
+                    GraphicsQuality::Medium => 1,
+                    GraphicsQuality::High => 2,
+                };
+                let bar_t = q_idx as f32 / 2.0;
+                let label = match *quality {
+                    GraphicsQuality::Low => "LOW    (legacy / older HW)",
+                    GraphicsQuality::Medium => "MEDIUM (PBR + tonemap)",
+                    GraphicsQuality::High => "HIGH   (PBR + SSAO + grading)",
+                };
+                text.0 = format!("Quality:      {}  {}", bar12(bar_t), label);
             }
             SettingsText::Help => { /* static */ }
         }
