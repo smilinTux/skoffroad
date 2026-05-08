@@ -13,7 +13,7 @@ use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
 use bevy::pbr::ScreenSpaceAmbientOcclusionQualityLevel;
 use bevy::prelude::*;
-use bevy::render::view::ColorGrading;
+use bevy::render::view::{ColorGrading, Msaa};
 
 use crate::graphics_quality::GraphicsQuality;
 
@@ -53,10 +53,16 @@ fn attach_post_fx(
     if quality.ssao() {
         // SSAO at "Low" preset is the right perf/quality knee for an
         // open-world driving game. Medium would halve frame budget.
-        commands.entity(cam).insert(ScreenSpaceAmbientOcclusion {
-            quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Low,
-            constant_object_thickness: 0.25,
-        });
+        // SSAO is incompatible with MSAA — turn it off on this camera so
+        // bevy_pbr::ssao doesn't spam validation errors. The Sample4
+        // default is restored automatically on lower tiers.
+        commands.entity(cam).insert((
+            ScreenSpaceAmbientOcclusion {
+                quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Low,
+                constant_object_thickness: 0.25,
+            },
+            Msaa::Off,
+        ));
     }
 
     info!(

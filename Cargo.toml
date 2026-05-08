@@ -2,7 +2,7 @@
 
 [package]
 name = "skoffroad"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 default-run = "skoffroad"
 license = "GPL-3.0-or-later"
@@ -24,7 +24,7 @@ name = "sim"
 path = "src/bin/sim.rs"
 
 [dependencies]
-bevy = { version = "0.18.1", default-features = true }
+bevy = { version = "0.18.1", default-features = true, features = ["jpeg"] }
 avian3d = { version = "0.6.1", features = ["collider-from-mesh"] }
 bevy_hanabi = { version = "0.18.0" }
 noise = "0.9.0"

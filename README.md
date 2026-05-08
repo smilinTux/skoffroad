@@ -13,10 +13,15 @@ features worth pulling forward.)
 
 ```sh
 cargo run --features dev          # fast iteration (dynamic linking, F3 inspector)
-cargo run --release               # optimised build
+cargo run --release               # optimised build (defaults to High quality)
+cargo run --release -- --quality=medium   # PBR + tonemap, no SSAO
+cargo run --release -- --quality=low      # legacy look, lightest on GPU
 cargo run --bin sim -- forward 5  # headless harness, JSON or human-readable
 cargo test                        # drive_test physics regressions
 ```
+
+The `--quality` flag persists in `~/.skoffroad/config.json`. You can
+also cycle it live in-game from the pause overlay (Esc → `\`).
 
 ## Driving
 
@@ -91,6 +96,7 @@ cargo test                        # drive_test physics regressions
 | -, = | Master volume −/+ (while paused) |
 | , . | Mouse sensitivity −/+ (while paused) |
 | ; ' | Day length −/+ (while paused) |
+| \\  | Cycle graphics quality (Low / Medium / High) |
 
 ## Dev
 
@@ -147,8 +153,12 @@ GPL-3.0-or-later. See `LICENSE`.
 
 ## Status
 
-Single playable window, ~44 plugins, all driven by ~12 000 lines of Rust
-across ~40 modules. Physics regressions gated by 4 passing
-`drive_test` integration tests; harness numbers stable across the v0.4.x
-series. v0.4 is the minimum-viable feature set; world-dressing, polish,
-and accessibility passes are deferred to v0.5.
+Single playable window, ~46 plugins, ~13 000 lines of Rust across
+~190 modules. Physics regressions gated by 4 `drive_test` integration
+tests, all green on `main`.
+
+**v0.8.0** ships the photoreal pass: triplanar terrain shader with
+4-channel splat blend (dirt / grass / rock / mud) over CC0 PBR
+materials, PBR rocks, wet-surface shader hook, AgX tonemap, color
+grading and SSAO — all gated by the runtime `GraphicsQuality` tier so
+the game scales from older laptops up to modern GPUs.
