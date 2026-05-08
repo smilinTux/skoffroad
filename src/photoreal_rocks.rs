@@ -29,6 +29,7 @@ use bevy::{
     prelude::*,
 };
 
+use crate::graphics_quality::GraphicsQuality;
 use crate::rock_garden::RockGardenRock;
 use bevy::ecs::hierarchy::Children;
 
@@ -193,6 +194,8 @@ fn upgrade_rocks_once(
     mut commands: Commands,
     mut meshes:   ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    quality: Res<GraphicsQuality>,
     rocks: Query<(Entity, &Transform, Option<&Children>), With<RockGardenRock>>,
     child_mesh_q: Query<(), With<Mesh3d>>,
     mut done: Local<bool>,
@@ -206,12 +209,29 @@ fn upgrade_rocks_once(
         return;
     }
 
-    let mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(BASE_R, BASE_G, BASE_B),
-        perceptual_roughness: 0.92,
-        metallic: 0.0,
-        ..default()
-    });
+    // Build the boulder material. On Medium+ we sample the CC0 rock PBR pack
+    // shipped under assets/materials/terrain/rock/. On Low we keep the cheap
+    // solid-color StandardMaterial that the original Sprint 40 shipped.
+    let mat = if quality.photoreal_rocks() {
+        materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            base_color_texture: Some(asset_server.load("materials/terrain/rock/albedo.jpg")),
+            normal_map_texture: Some(asset_server.load("materials/terrain/rock/normal.jpg")),
+            metallic_roughness_texture: Some(
+                asset_server.load("materials/terrain/rock/roughness.jpg"),
+            ),
+            perceptual_roughness: 1.0, // multiplied by texture
+            metallic: 0.0,
+            ..default()
+        })
+    } else {
+        materials.add(StandardMaterial {
+            base_color: Color::srgb(BASE_R, BASE_G, BASE_B),
+            perceptual_roughness: 0.92,
+            metallic: 0.0,
+            ..default()
+        })
+    };
 
     let mut upgraded = 0usize;
 
