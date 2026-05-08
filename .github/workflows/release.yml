@@ -110,6 +110,73 @@ jobs:
           name: skoffroad-${{ matrix.os_label }}
           path: dist/skoffroad-${{ matrix.os_label }}.${{ matrix.archive_ext }}
 
+  # ---------------------------------------------------------------------------
+  # WebAssembly build — runs in parallel with the native matrix. Produces
+  # a static dist/ tree that GitHub Pages serves at play.skoffroad.skworld.io.
+  # Skipped if you've removed the wasm32 target on a future Rust toolchain
+  # update; the desktop release still ships fine in that case.
+  # ---------------------------------------------------------------------------
+  wasm:
+    name: Build (wasm32)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install Bevy system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libudev-dev \
+            pkg-config \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libfontconfig1-dev
+
+      - name: Install stable toolchain + wasm target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm32
+
+      - name: Install Trunk
+        uses: jetli/trunk-action@v0.5.0
+        with:
+          version: latest
+
+      - name: Build WASM (release)
+        run: trunk build --release
+
+      - name: Add CNAME for play.skoffroad.skworld.io
+        run: echo 'play.skoffroad.skworld.io' > dist/CNAME
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  pages-deploy:
+    name: Deploy WASM to GitHub Pages
+    needs: wasm
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - id: pages
+        uses: actions/deploy-pages@v4
+
   release:
     name: Attach to release
     needs: build

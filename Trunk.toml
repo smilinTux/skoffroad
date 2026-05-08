@@ -1,0 +1,20 @@
+# Trunk build config for the WASM port.
+#
+# Build:   trunk build --release
+# Serve:   trunk serve --release         (http://localhost:8080)
+# CI:      .github/workflows/release.yml runs `trunk build --release`
+#          on every v*.*.* tag and publishes dist/ to the gh-pages branch.
+
+[build]
+target  = "index.html"
+release = true
+dist    = "dist"
+
+# Default-feature build: skip dev (which pulls in dynamic linking) and
+# include nothing wasm-incompatible.
+filehash = true
+
+[serve]
+addresses = ["0.0.0.0"]
+port      = 8080
+open      = false

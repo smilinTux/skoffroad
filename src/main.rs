@@ -58,6 +58,12 @@ use skoffroad::{
 };
 
 fn main() {
+    // On WASM, route panic messages to the browser DevTools console so that
+    // a runtime error shows up as a readable stack trace instead of a silent
+    // canvas. No-op on native (the `#[cfg]` removes the call entirely).
+    #[cfg(target_arch = "wasm32")]
+    console_error_panic_hook::set_once();
+
     let mut app = App::new();
 
     app.add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -65,6 +71,16 @@ fn main() {
                 title: "skoffroad".into(),
                 // WindowResolution requires u32 or UVec2 in Bevy 0.18.
                 resolution: (1280u32, 720u32).into(),
+                // Browser path: render into the <canvas id="bevy"> from
+                // index.html. Native ignores this field.
+                #[cfg(target_arch = "wasm32")]
+                canvas: Some("#bevy".to_string()),
+                // Lock browsers from auto-resizing the canvas above the
+                // window so we don't burn GPU on offscreen pixels.
+                #[cfg(target_arch = "wasm32")]
+                fit_canvas_to_parent: true,
+                #[cfg(target_arch = "wasm32")]
+                prevent_default_event_handling: false,
                 ..default()
             }),
             ..default()

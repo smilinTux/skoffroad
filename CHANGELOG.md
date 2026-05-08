@@ -5,6 +5,44 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] — 2026-05-08 — Sprint 46 "browser port"
+
+### Added
+- **WebAssembly build target.** Trunk-driven WASM compilation lands at
+  `play.skoffroad.skworld.io` on every tagged release.
+  - `Trunk.toml` — release-mode config + dev server.
+  - `index.html` — the browser shell. Dark splash with mud-orange
+    progress bar, controls cheat sheet, and a graceful "WebGPU not
+    supported" hint for older browsers.
+  - `Cargo.toml` — `[lib].crate-type = ["cdylib", "rlib"]` so
+    wasm-bindgen can emit a .wasm + JS module while the native
+    binaries keep building unchanged. New
+    `[target.'cfg(target_arch = "wasm32")'.dependencies]` block:
+    wasm-bindgen, web-sys (Storage + Window), console_error_panic_hook.
+  - `main.rs` — WASM-only init wires `console_error_panic_hook` and a
+    `canvas: Some("#bevy")` selector on the primary window so Bevy
+    renders into the page's `<canvas>`.
+  - `release.yml` — new `wasm` job builds with Trunk, plants a CNAME
+    for `play.skoffroad.skworld.io`, and a follow-up `pages-deploy`
+    job pushes `dist/` to GitHub Pages.
+
+### Changed (foundation for the WASM port — all native-compatible)
+- New `src/platform_storage.rs` abstracts small-string persistence
+  behind `read_string` / `write_string` / `exists`. Native maps a key
+  like `config.json` to `$HOME/.skoffroad/<key>`; WASM uses
+  `localStorage["skoffroad/<key>"]`.
+- `config.rs`, `save.rs`, `paint_shop.rs`, `spawn_points.rs`,
+  `input_remap.rs` all switched to `platform_storage::*`. `save.rs`
+  drops its XDG / APPDATA / Library detection chain — saves now live
+  in `~/.skoffroad/save_<n>.json` consistent with the rest. **Old
+  saves in legacy locations are orphaned** but the codepath is much
+  smaller and works in browsers.
+- `glb_loader.rs` no longer scans `assets/vehicles/` via
+  `std::fs::read_dir` (won't work in browsers). Reads the existing
+  `AssetManifest.vehicles[]` list and asks `AssetServer` to load each
+  `glb_path`. Also surfaces the manifest metadata (mass, license,
+  author) on `LoadedVehicleGlbs.entries`.
+
 ## [0.9.0] — 2026-05-08 — Sprint 45 "Skrambler"
 
 ### Added
@@ -126,6 +164,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   development environment configuration; core dependencies in
   Cargo.toml; documentation framework.
 
+[0.10.0]: https://github.com/smilinTux/skoffroad/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/smilinTux/skoffroad/compare/v0.8.3...v0.9.0
 [0.8.3]: https://github.com/smilinTux/skoffroad/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/smilinTux/skoffroad/compare/v0.8.1...v0.8.2

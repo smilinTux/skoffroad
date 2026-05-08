@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>skoffroad — play in browser</title>
+<meta name="description" content="skoffroad — open-source off-road sandbox in Rust + Bevy. Playable in your browser via WebAssembly." />
+<meta name="theme-color" content="#0c0a09" />
+<link rel="icon" href="https://skoffroad.skworld.io/assets/favicon.svg" type="image/svg+xml" />
+
+<!-- Trunk wires up the WASM build: -->
+<link data-trunk rel="rust" data-bin="skoffroad" data-wasm-opt="z" />
+<!-- Bake all game assets next to the .wasm so AssetServer can find them. -->
+<link data-trunk rel="copy-dir" href="assets" />
+
+<style>
+:root {
+  --dirt-900: #0c0a09;
+  --mud-500:  #d97706;
+  --mud-300:  #fbbf24;
+  --bone:     #fafaf9;
+  --steel:    #a8a29e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
+  font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
+
+#bevy {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  outline: none;
+  background: var(--dirt-900);
+}
+
+#splash {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at top, #2b1d10 0%, #0c0a09 80%);
+  z-index: 50;
+  transition: opacity .6s ease, visibility .6s ease;
+}
+#splash.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+#splash h1 {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+  font-size: clamp(64px, 14vw, 160px);
+  letter-spacing: 0.04em;
+  color: var(--mud-300);
+  line-height: 0.85;
+  margin-bottom: 8px;
+}
+#splash p { color: var(--steel); font-size: 16px; margin-bottom: 24px; }
+#splash .bar {
+  width: 240px; height: 6px;
+  background: rgba(217, 119, 6, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+#splash .bar::after {
+  content: ""; position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--mud-500), transparent);
+  animation: slide 1.4s ease-in-out infinite;
+}
+@keyframes slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.tip {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--steel);
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+}
+.tip strong { color: var(--mud-300); }
+.warn {
+  margin-top: 16px;
+  padding: 8px 14px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--mud-300);
+  font-family: 'JetBrains Mono', monospace;
+  max-width: 360px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <h1>SKOFFROAD</h1>
+  <p>fetching ~30 MB of off-road sandbox...</p>
+  <div class="bar"></div>
+  <div class="tip">
+    <strong>WASD</strong> drive · <strong>Space</strong> brake · <strong>R</strong> reset · <strong>1–6</strong> paint · <strong>V</strong> camera · <strong>Esc</strong> menu
+  </div>
+  <div class="warn">
+    if the canvas stays black, your browser may not support WebGPU yet —
+    try Chrome / Brave / Edge.
+  </div>
+</div>
+
+<canvas id="bevy"></canvas>
+
+<script>
+// Hide splash once the canvas reports a non-zero size — Bevy starts
+// rendering as soon as it has a target, so this is a reasonable proxy for
+// "game booted".
+const canvas = document.getElementById('bevy');
+const splash = document.getElementById('splash');
+const ro = new ResizeObserver(() => {
+  if (canvas.width > 0 && canvas.height > 0) {
+    splash.classList.add('gone');
+    ro.disconnect();
+  }
+});
+ro.observe(canvas);
+// Fallback: hide after 30 s no matter what.
+setTimeout(() => splash.classList.add('gone'), 30_000);
+</script>
+
+</body>
+</html>

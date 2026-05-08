@@ -9,7 +9,13 @@ harness.
 (The April 2025 prototype lives in `legacy/` — see `docs/PARKING_LOT.md` for
 features worth pulling forward.)
 
-## Run
+## Play in browser
+
+**[play.skoffroad.skworld.io](https://play.skoffroad.skworld.io)** — runs as
+a WebAssembly bundle (Bevy + Avian compiled to wasm32, served via GitHub
+Pages). No install. Best in a Chromium-based browser with WebGPU enabled.
+
+## Run locally
 
 ```sh
 cargo run --features dev          # fast iteration (dynamic linking, F3 inspector)
@@ -22,6 +28,15 @@ cargo test                        # drive_test physics regressions
 
 The `--quality` flag persists in `~/.skoffroad/config.json`. You can
 also cycle it live in-game from the pause overlay (Esc → `\`).
+
+### WebAssembly build
+
+```sh
+cargo install trunk                # one-time
+rustup target add wasm32-unknown-unknown
+trunk serve --release              # http://localhost:8080
+trunk build --release              # static dist/ ready for any HTTP server
+```
 
 ## Driving
 
