@@ -141,6 +141,10 @@ cargo run --bin sim -- script:path.json      # custom timeline
 Returns chassis position, velocity, distance, max speed, max tilt,
 did_flip, time-above-terrain.
 
+## License
+
+GPL-3.0-or-later. See `LICENSE`.
+
 ## Status
 
 Single playable window, ~44 plugins, all driven by ~12 000 lines of Rust
