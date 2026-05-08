@@ -1,5 +1,28 @@
 # Parking Lot — Features Worth Considering
 
+## Active deferrals (Sprint 41–42)
+
+- **Triplanar terrain shader bind-group layout bug.** The custom
+  `ExtendedMaterial<StandardMaterial, TriplanarTerrainExt>` in
+  `src/terrain_pbr.rs` + `assets/shaders/triplanar_terrain.wgsl` compiles and
+  the AsBindGroup macro accepts the layout, but at runtime wgpu reports
+  `Shader global ResourceBinding { group: 2, binding: 100 } is not available
+  in the pipeline layout` against `pbr_opaque_mesh_pipeline`. Forcing
+  `OpaqueRendererMethod::Forward` did not help. For Sprint 41 ship we fall
+  back to a regular textured StandardMaterial on the terrain in `terrain.rs`
+  (one layer, no triplanar / splat / wet), and `TerrainPbrPlugin` is
+  unregistered. Re-investigation should:
+  1. Check whether the AsBindGroup-emitted layout actually includes 100–116;
+     compare against `cargo expand -p skoffroad terrain_pbr` output.
+  2. Try mirroring Bevy's `examples/shader/extended_material.rs` exactly with
+     a single uniform field and incrementally add textures.
+  3. Verify that nothing else in the project loads
+     `shaders/triplanar_terrain.wgsl` for the wrong material type.
+  All textures, attribution, GraphicsQuality plumbing and the WGSL itself stay
+  in tree — only the `add_plugins(TerrainPbrPlugin)` line is parked.
+
+---
+
 Curated list of features from the **archived legacy codebase** (`legacy/` after
 the v0.7.0 refactor) that are missing from the current `skoffroad` crate and
 might be worth porting. Sourced from a one-time scan of the April 2025 attempt.

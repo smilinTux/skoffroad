@@ -7,7 +7,6 @@ use avian3d::prelude::*;
 use noise::{NoiseFn, Perlin, Fbm};
 
 use crate::graphics_quality::GraphicsQuality;
-use crate::terrain_pbr::TerrainPbrAssets;
 
 pub struct TerrainPlugin;
 
@@ -45,8 +44,8 @@ fn spawn_terrain(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
     quality: Res<GraphicsQuality>,
-    pbr_assets: Option<Res<TerrainPbrAssets>>,
 ) {
     let fbm: Fbm<Perlin> = Fbm::<Perlin>::new(42);
 
@@ -133,38 +132,39 @@ fn spawn_terrain(
 
     let mesh_handle = meshes.add(mesh);
 
-    // Branch on quality: Medium+ uses the triplanar PBR material,
-    // Low keeps the cheap vertex-color StandardMaterial.
-    let triplanar_handle = if quality.triplanar_terrain() {
-        pbr_assets.and_then(|a| a.material.clone())
-    } else {
-        None
-    };
-
-    if let Some(triplanar) = triplanar_handle {
-        commands.spawn((
-            Mesh3d(mesh_handle.clone()),
-            MeshMaterial3d(triplanar),
-            Transform::default(),
-            RigidBody::Static,
-            ColliderConstructor::TrimeshFromMesh,
-        ));
+    // Branch on quality. Medium+ pulls the dirt PBR pack textures so the
+    // terrain reads as scanned dirt under daylight; the procedural triplanar
+    // pipeline is wired in `terrain_pbr.rs` but disabled at the call site
+    // until we resolve a Bevy 0.18 bind-group layout issue (see PARKING_LOT).
+    let material = if quality.triplanar_terrain() {
+        materials.add(StandardMaterial {
+            base_color: Color::WHITE,
+            base_color_texture: Some(asset_server.load("materials/terrain/dirt/albedo.jpg")),
+            normal_map_texture: Some(asset_server.load("materials/terrain/dirt/normal.jpg")),
+            metallic_roughness_texture: Some(
+                asset_server.load("materials/terrain/dirt/roughness.jpg"),
+            ),
+            perceptual_roughness: 1.0,
+            metallic: 0.0,
+            ..default()
+        })
     } else {
         // base_color WHITE so vertex colors aren't tinted (Bevy 0.18 samples
         // ATTRIBUTE_COLOR automatically when present on the mesh).
-        let material = materials.add(StandardMaterial {
+        materials.add(StandardMaterial {
             base_color: Color::WHITE,
             perceptual_roughness: 0.9,
             ..default()
-        });
-        commands.spawn((
-            Mesh3d(mesh_handle.clone()),
-            MeshMaterial3d(material),
-            Transform::default(),
-            RigidBody::Static,
-            ColliderConstructor::TrimeshFromMesh,
-        ));
-    }
+        })
+    };
+
+    commands.spawn((
+        Mesh3d(mesh_handle.clone()),
+        MeshMaterial3d(material),
+        Transform::default(),
+        RigidBody::Static,
+        ColliderConstructor::TrimeshFromMesh,
+    ));
 }
 
 // ---------------------------------------------------------------------------

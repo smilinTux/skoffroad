@@ -54,7 +54,6 @@ use skoffroad::{
     TransmissionPlugin, WinchCablePhysicsPlugin,
     HdrSkyboxPlugin, PhotoHudPlugin, PhotorealRocksPlugin, TerrainDecalsPlugin,
     TerrainGrassBladesPlugin,
-    TerrainPbrPlugin,
     PostFxPlugin,
 };
 
@@ -72,11 +71,11 @@ fn main() {
         }))
         .add_plugins(PhysicsPlugins::default())
         // GraphicsQualityPlugin must register first so other plugins' Startup
-        // systems can read the GraphicsQuality resource.
-        // TerrainPbrPlugin loads materials in Startup; TerrainPlugin
-        // consumes them in PostStartup. PostFxPlugin attaches camera
-        // post-FX in PostStartup after camera.rs spawns the Camera3d.
-        .add_plugins((GraphicsQualityPlugin, TerrainPbrPlugin, PostFxPlugin))
+        // systems can read the GraphicsQuality resource. PostFxPlugin
+        // attaches camera post-FX in PostStartup after camera.rs spawns
+        // the Camera3d. (TerrainPbrPlugin parked while we sort out a
+        // Bevy 0.18 bind-group layout issue with the triplanar shader.)
+        .add_plugins((GraphicsQualityPlugin, PostFxPlugin))
         // SkyPlugin owns the sky dome + sun + ambient + fog;
         // ClearColor and the old setup_lighting are no longer needed.
         .add_plugins((

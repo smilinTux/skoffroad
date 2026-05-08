@@ -9,7 +9,7 @@
 // Used only when `GraphicsQuality::triplanar_terrain()` is true (Medium+).
 // Low keeps the legacy vertex-color StandardMaterial path in `terrain.rs`.
 
-use bevy::pbr::{ExtendedMaterial, MaterialExtension, MaterialPlugin};
+use bevy::pbr::{ExtendedMaterial, MaterialExtension, MaterialPlugin, OpaqueRendererMethod};
 use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
@@ -140,6 +140,10 @@ fn load_terrain_assets(
             base: StandardMaterial {
                 base_color: Color::WHITE,
                 perceptual_roughness: 0.9,
+                // Force forward rendering — the deferred pipeline tries to
+                // use our fragment shader for the GBuffer pass and fails on
+                // the bindings layout. Forward only is fine for terrain.
+                opaque_render_method: OpaqueRendererMethod::Forward,
                 ..default()
             },
             extension: TriplanarTerrainExt {
