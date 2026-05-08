@@ -10,6 +10,7 @@ use std::fs;
 use std::io::Write as IoWrite;
 use std::path::PathBuf;
 
+use crate::graphics_quality::GraphicsQuality;
 use crate::settings::SettingsState;
 
 // ---------------------------------------------------------------------------
@@ -46,12 +47,13 @@ struct SaveDebounce {
     elapsed_s:   f32,
 }
 
-/// Flat representation of the three persisted f32 knobs.  Only these fields
+/// Flat representation of the persisted knobs.  Only these fields
 /// are written; `paused` is intentionally excluded (it is session-only state).
 struct ConfigData {
     master_volume:     f32,
     mouse_sensitivity: f32,
     day_length_s:      f32,
+    graphics_quality:  GraphicsQuality,
 }
 
 impl Default for ConfigData {
@@ -61,6 +63,7 @@ impl Default for ConfigData {
             master_volume:     d.master_volume,
             mouse_sensitivity: d.mouse_sensitivity,
             day_length_s:      d.day_length_s,
+            graphics_quality:  GraphicsQuality::default(),
         }
     }
 }
@@ -87,10 +90,11 @@ fn config_path() -> PathBuf {
 
 fn to_json(data: &ConfigData) -> String {
     format!(
-        "{{\n  \"master_volume\": {},\n  \"mouse_sensitivity\": {},\n  \"day_length_s\": {}\n}}",
+        "{{\n  \"master_volume\": {},\n  \"mouse_sensitivity\": {},\n  \"day_length_s\": {},\n  \"graphics_quality\": \"{}\"\n}}",
         data.master_volume,
         data.mouse_sensitivity,
         data.day_length_s,
+        data.graphics_quality.as_str(),
     )
 }
 
@@ -109,6 +113,11 @@ fn from_json(src: &str) -> Option<ConfigData> {
     if let Some(n) = obj.get("day_length_s").and_then(|x| x.as_f64()) {
         out.day_length_s = (n as f32).clamp(30.0, 600.0);
     }
+    if let Some(s) = obj.get("graphics_quality").and_then(|x| x.as_str()) {
+        if let Some(q) = GraphicsQuality::from_str(s) {
+            out.graphics_quality = q;
+        }
+    }
     Some(out)
 }
 
@@ -118,6 +127,7 @@ fn from_json(src: &str) -> Option<ConfigData> {
 
 fn load_config(
     mut settings: ResMut<SettingsState>,
+    mut quality: ResMut<GraphicsQuality>,
     mut persisted: ResMut<PersistedConfig>,
 ) {
     let path = config_path();
@@ -141,17 +151,35 @@ fn load_config(
                 settings.master_volume     = data.master_volume;
                 settings.mouse_sensitivity = data.mouse_sensitivity;
                 settings.day_length_s      = data.day_length_s;
+                // CLI flag wins over the persisted value: only adopt the
+                // saved quality if the resource is still at its default.
+                if !cli_quality_provided() {
+                    *quality = data.graphics_quality;
+                }
                 persisted.loaded           = true;
                 info!(
-                    "config: loaded from {} (vol={:.2}, sens={:.2}, day={:.0}s)",
+                    "config: loaded from {} (vol={:.2}, sens={:.2}, day={:.0}s, q={})",
                     path.display(),
                     data.master_volume,
                     data.mouse_sensitivity,
                     data.day_length_s,
+                    data.graphics_quality.as_str(),
                 );
             }
         },
     }
+}
+
+/// Returns true if `--quality=…` (or `--quality …`) was passed on the CLI,
+/// so the persisted value should be ignored on load.
+fn cli_quality_provided() -> bool {
+    let mut args = std::env::args();
+    while let Some(a) = args.next() {
+        if a.starts_with("--quality=") || a == "--quality" {
+            return true;
+        }
+    }
+    false
 }
 
 // ---------------------------------------------------------------------------
@@ -160,11 +188,12 @@ fn load_config(
 
 fn save_on_change(
     settings:  Res<SettingsState>,
+    quality:   Res<GraphicsQuality>,
     mut deb:   ResMut<SaveDebounce>,
     time:      Res<Time>,
 ) {
-    // Arm the debounce timer whenever the resource is mutated.
-    if settings.is_changed() {
+    // Arm the debounce timer whenever either resource is mutated.
+    if settings.is_changed() || quality.is_changed() {
         deb.pending   = true;
         deb.elapsed_s = 0.0;
         return;
@@ -187,6 +216,7 @@ fn save_on_change(
         master_volume:     settings.master_volume,
         mouse_sensitivity: settings.mouse_sensitivity,
         day_length_s:      settings.day_length_s,
+        graphics_quality:  *quality,
     };
     let json = to_json(&data);
     let path = config_path();
@@ -208,11 +238,12 @@ fn save_on_change(
                 warn!("config: write failed for {}: {}", path.display(), e);
             } else {
                 info!(
-                    "config: saved to {} (vol={:.2}, sens={:.2}, day={:.0}s)",
+                    "config: saved to {} (vol={:.2}, sens={:.2}, day={:.0}s, q={})",
                     path.display(),
                     data.master_volume,
                     data.mouse_sensitivity,
                     data.day_length_s,
+                    data.graphics_quality.as_str(),
                 );
             }
         }

@@ -20,7 +20,7 @@ use skoffroad::{
     ExhaustPlugin, ExhaustSmokePlugin,
     ExplorePlugin, FastTravelMenuPlugin, FencePostsPlugin, FireworksPlugin, FishPlugin,
     FogHornPlugin, FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin,
-    GaugePlugin, GlbLoaderPlugin, GodraysPlugin, GrassTuftsPlugin, HeadlightsPlugin,
+    GaugePlugin, GlbLoaderPlugin, GodraysPlugin, GrassTuftsPlugin, GraphicsQualityPlugin, HeadlightsPlugin,
     HeatHazePlugin, HeightmapLoaderPlugin,
     HelpPlugin, HillclimbPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
     ImpactFlashPlugin, InputRemapPlugin, Interior3dPlugin,
@@ -69,6 +69,9 @@ fn main() {
             ..default()
         }))
         .add_plugins(PhysicsPlugins::default())
+        // GraphicsQualityPlugin must register first so other plugins' Startup
+        // systems can read the GraphicsQuality resource.
+        .add_plugins(GraphicsQualityPlugin)
         // SkyPlugin owns the sky dome + sun + ambient + fog;
         // ClearColor and the old setup_lighting are no longer needed.
         .add_plugins((
