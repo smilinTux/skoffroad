@@ -84,7 +84,7 @@ const SUSPENSION_LEN: f32        = 0.60;
 // ground accel, enough to climb ~28° slopes and push out of water under
 // boost. The original 700 (2800 N total) couldn't climb anything beyond
 // ~10° before gravity overpowered it.
-const DRIVE_FORCE_PER_WHEEL: f32 = 2600.0;
+const DRIVE_FORCE_PER_WHEEL: f32 = 5500.0;
 const LATERAL_GRIP: f32          = 8_000.0;
 const BRAKE_FORCE_PER_WHEEL: f32 = 3_000.0;
 const MAX_STEER_ANGLE: f32       = 30_f32 * std::f32::consts::PI / 180.0;
@@ -374,8 +374,14 @@ fn update_wheel_visuals(
     let effective_steer = MAX_STEER_ANGLE * (1.0 / (1.0 + 0.1 * speed_mps));
     let steer_yaw = input.steer * effective_steer;
 
+    // Visual wheel slip: when the driver mashes throttle but the chassis is
+    // moving slowly (or stuck), spin the wheels faster than ground speed so
+    // the player sees they're "trying". slip_rpm peaks at ~1200 rpm visual.
+    let slip_factor = (1.0 - (speed_mps / 8.0).clamp(0.0, 1.0)) * input.drive.abs();
+    let slip_omega  = slip_factor * 25.0;  // rad/s extra spin
+
     for (mut transform, mut wheel) in wheel_q.iter_mut() {
-        wheel.spin += speed * dt / WHEEL_RADIUS;
+        wheel.spin += (speed * dt / WHEEL_RADIUS) + slip_omega * dt * input.drive.signum();
         let base_offset    = WHEEL_OFFSETS[wheel.index];
         let compress_delta = Vec3::new(0.0, -wheel.current_compression, 0.0);
         // base_rot aligns Cylinder Y-axis → chassis X (lateral). spin_rot around local Y

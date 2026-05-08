@@ -16,6 +16,7 @@
 // non-Chase modes.
 
 use bevy::prelude::*;
+use crate::camera::CameraSet;
 use crate::vehicle::{Chassis, VehicleRoot};
 
 // ---- Plugin -----------------------------------------------------------------
@@ -28,7 +29,9 @@ impl Plugin for CameraModesPlugin {
             .add_systems(Startup, spawn_cam_indicator)
             .add_systems(
                 Update,
-                (cycle_with_v, apply_camera_mode, update_indicator).chain(),
+                (cycle_with_v, apply_camera_mode, update_indicator)
+                    .chain()
+                    .after(CameraSet),
             );
     }
 }

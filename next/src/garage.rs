@@ -122,7 +122,8 @@ fn cycle_with_v(
     unlock:  Res<UnlockState>,
     mut gs:  ResMut<GarageState>,
 ) {
-    if !keys.just_pressed(KeyCode::KeyV) {
+    // V is camera-cycle (camera_modes.rs); use G for garage variant cycle.
+    if !keys.just_pressed(KeyCode::KeyG) {
         return;
     }
 

@@ -7,13 +7,21 @@ use crate::vehicle::{Chassis, VehicleRoot};
 
 pub struct CameraPlugin;
 
+/// Ordering anchor: chase-cam writes Camera3d Transform here. Other plugins
+/// (camera_modes.rs) chain `.after(CameraSet::Update)` so they overwrite the
+/// transform last. Without this, scheduler ambiguity leaves wheel/FP/orbit
+/// modes stuck in chase view.
+#[derive(SystemSet, Debug, Hash, Eq, PartialEq, Clone)]
+pub struct CameraSet;
+
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
+        // V-key mode toggle removed — camera_modes.rs is the source of truth
+        // for camera selection (5-mode cycle), and runs after this plugin.
         app.insert_resource(CameraState::default())
            .add_systems(Startup, spawn_camera)
-           .add_systems(Update, handle_mode_switch)
-           .add_systems(Update, mouse_look.after(handle_mode_switch))
-           .add_systems(Update, update_camera.after(mouse_look));
+           .add_systems(Update, mouse_look)
+           .add_systems(Update, update_camera.in_set(CameraSet).after(mouse_look));
     }
 }
 
@@ -58,18 +66,6 @@ fn spawn_camera(mut commands: Commands) {
         }),
         Transform::from_xyz(0.0, 10.0, 20.0).looking_at(Vec3::ZERO, Vec3::Y),
     ));
-}
-
-fn handle_mode_switch(
-    keys:      Res<ButtonInput<KeyCode>>,
-    mut state: ResMut<CameraState>,
-) {
-    if keys.just_pressed(KeyCode::KeyV) {
-        state.mode = match state.mode {
-            CameraMode::Chase   => CameraMode::Cockpit,
-            CameraMode::Cockpit => CameraMode::Chase,
-        };
-    }
 }
 
 fn mouse_look(

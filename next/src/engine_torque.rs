@@ -181,12 +181,18 @@ fn spawn_tachometer(mut commands: Commands) {
 fn compute_rpm(
     vehicle:    Res<VehicleRoot>,
     chassis_q:  Query<&LinearVelocity, With<Chassis>>,
+    input:      Res<crate::vehicle::DriveInput>,
     mut state:  ResMut<EngineState>,
 ) {
     let Ok(lin_vel) = chassis_q.get(vehicle.chassis) else { return };
 
     let speed_mps = Vec3::new(lin_vel.x, lin_vel.y, lin_vel.z).length();
-    let raw_rpm   = speed_mps * 90.0 + IDLE_RPM;
+    // Throttle revs the engine independent of speed: pressing W from a
+    // standstill should rev to ~3500 RPM (peak band) so torque is available
+    // to break the wheels loose. Without this term, RPM stays at idle and
+    // the torque curve subtracts force instead of adding it.
+    let throttle_rev = input.drive.abs() * 2800.0;
+    let raw_rpm   = speed_mps * 90.0 + IDLE_RPM + throttle_rev;
     let rpm       = raw_rpm.clamp(IDLE_RPM, MAX_RPM);
 
     state.rpm         = rpm;
