@@ -1,5 +1,23 @@
 # Parking Lot — Features Worth Considering
 
+## Active deferrals (Sprint 46 polish / v0.10.4)
+
+- **WebGL DOF render-graph spam.** The browser console message
+  `INFO bevy_post_process::dof: Disabling depth of field on this platform`
+  is emitted by Bevy's `DepthOfFieldPlugin` (part of `DefaultPlugins` via
+  `PostProcessPlugin`) when depth-texture sampling is unsupported. While Bevy
+  correctly skips the DOF component extraction, the plugin itself and its
+  render-graph node remain registered, and wgpu's WebGL2 backend emits
+  `GL_INVALID_FRAMEBUFFER_OPERATION: glCopyTexSubImage2D` during the depth
+  prepass that SSAO (not DOF) triggers. We silenced the framebuffer spam by
+  dropping `ScreenSpaceAmbientOcclusion` on wasm32 (see v0.10.4 CHANGELOG).
+  The DOF `INFO` line itself is a single one-shot log entry from Bevy internals
+  and cannot be suppressed without patching Bevy or disabling the entire
+  `bevy_post_process` feature. If the log line bothers future maintainers,
+  disable `default-features` on the `bevy` dep and re-enable all features
+  except `bevy_post_process` — but that risks missing other default features
+  accidentally. Defer until Bevy 0.19 or the log line is promoted to `debug`.
+
 ## Active deferrals (Sprint 41–42)
 
 - **Triplanar terrain shader bind-group layout bug.** The custom

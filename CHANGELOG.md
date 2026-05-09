@@ -5,6 +5,29 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.4] — 2026-05-09 — Polish: browser console noise
+
+### Fixed
+- **Missing fonts (A).** `assets/fonts/primary.ttf` (JetBrains Mono Regular,
+  OFL-1.1) and `assets/fonts/display.ttf` (Inter Display Regular, OFL-1.1)
+  are now shipped in-tree, silencing the `ERROR Path not found: assets/fonts/*`
+  log spam that appeared on every startup.
+  - `assets/fonts/FONTS.md` — attribution for both OFL fonts.
+  - `scripts/fetch_fonts.sh` — idempotent fetcher (mirrors `fetch_materials.sh`)
+    for CI and contributors who want to re-download or swap variants.
+
+- **WASM auto-demo (B).** `src/demo_mode.rs` no longer auto-starts the attract
+  loop in the browser (`target_arch = "wasm32"`). The 30-second idle timer is
+  cfg-gated to native only; visitors landing on `play.skoffroad.skworld.io`
+  drive immediately. Native attract-loop behaviour unchanged.
+
+- **WebGL framebuffer spam (C).** `src/post_fx.rs` now skips attaching
+  `ScreenSpaceAmbientOcclusion` on `wasm32`. SSAO requires compute storage
+  textures that WebGL2 lacks; its depth prepass triggered hundreds of
+  `GL_INVALID_FRAMEBUFFER_OPERATION: glCopyTexSubImage2D` errors per second
+  in the browser DevTools console. Silenced without visible quality regression
+  (SSAO was already explicitly unsupported on WebGL2 per Bevy docs).
+
 ## [0.10.0] — 2026-05-08 — Sprint 46 "browser port"
 
 ### Added
