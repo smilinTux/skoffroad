@@ -65,6 +65,9 @@ const CHANNEL_STATE: usize = 0;
 /// Channel index for reliable signaling (voice SDP / ICE candidates).
 pub const CHANNEL_VOICE_SIGNAL: usize = 1;
 
+/// Channel index for reliable recovery messages (Sprint 55).
+pub const CHANNEL_RECOVERY: usize = 2;
+
 // ---------------------------------------------------------------------------
 // Packet-kind prefix byte — sits at byte 0 of every CHANNEL_STATE message
 // so that future packet types can be dispatched without breaking the existing
@@ -87,6 +90,9 @@ use bevy_matchbox::prelude::*;
 use bevy_matchbox::matchbox_socket::RtcIceServerConfig;
 use bincode::{Decode, Encode};
 
+use crate::buddy_recovery::{
+    self as br, HookKind, RecoveryKind, RecoveryState as BuddyRecoveryState,
+};
 use crate::camera_modes::{CameraMode, CameraModesState};
 use crate::livery::LiveryState;
 use crate::platform_storage;
@@ -126,6 +132,7 @@ impl Plugin for MultiplayerPlugin {
                     update_panel_ui,
                     handle_connect_button,
                     handle_config_inputs,
+                    handle_recovery_attach_buttons,
                 )
                     .chain(),
             );
@@ -289,6 +296,15 @@ struct ConnectButton;
 /// Container for the peer list inside the I-panel (rows are rebuilt each frame).
 #[derive(Component)]
 struct PeerListContainer;
+
+/// Button that initiates a recovery attach to a peer.
+#[derive(Component)]
+struct RecoveryAttachButton {
+    peer_id:   PeerId,
+    peer_hook: HookKind,
+    our_hook:  HookKind,
+    kind:      RecoveryKind,
+}
 
 // ---------------------------------------------------------------------------
 // UI colours (match the settings.rs palette)
@@ -696,10 +712,11 @@ fn cleanup_disconnected_ghosts(
 // ---------------------------------------------------------------------------
 
 fn update_panel_ui(
-    mp:      Res<MultiplayerState>,
-    cfg:     Res<MultiplayerConfig>,
-    ghosts:  Res<PeerGhosts>,
-    spectate: Res<SpectateState>,
+    mp:        Res<MultiplayerState>,
+    cfg:       Res<MultiplayerConfig>,
+    ghosts:    Res<PeerGhosts>,
+    spectate:  Res<SpectateState>,
+    recovery:  Option<Res<BuddyRecoveryState>>,
     mut texts: Query<(&MpText, &mut Text)>,
     peer_list_q: Query<(Entity, &Children), With<PeerListContainer>>,
     mut commands: Commands,
@@ -746,8 +763,9 @@ fn update_panel_ui(
         }
     }
 
-    // Rebuild peer list rows if ghosts or spectate changed.
-    if !ghosts.is_changed() && !spectate.is_changed() {
+    // Rebuild peer list rows if ghosts, spectate, or recovery state changed.
+    let recovery_changed = recovery.as_ref().map(|r| r.is_changed()).unwrap_or(false);
+    if !ghosts.is_changed() && !spectate.is_changed() && !recovery_changed {
         return;
     }
 
@@ -759,17 +777,22 @@ fn update_panel_ui(
     }
 
     // Re-spawn one row per connected ghost.
-    let spectating = spectate.target_peer;
-    let btn_color = Color::srgb(0.18, 0.36, 0.50);
-    let btn_active = Color::srgb(0.72, 0.48, 0.10);
+    let spectating   = spectate.target_peer;
+    let recovering   = recovery.as_ref().and_then(|r| r.active.as_ref().map(|c| c.peer_id));
+    let btn_color    = Color::srgb(0.18, 0.36, 0.50);
+    let btn_active   = Color::srgb(0.72, 0.48, 0.10);
+    let btn_recovery = Color::srgb(0.50, 0.25, 0.05);
 
-    let new_children: Vec<Entity> = ghosts.entries.iter().map(|(peer_id, _entry)| {
-        let id_str = format!("{peer_id:?}");
+    let mut new_children: Vec<Entity> = Vec::new();
+
+    for (peer_id, _entry) in &ghosts.entries {
+        let id_str   = format!("{peer_id:?}");
         let short_id: String = id_str.chars().filter(|c| c.is_alphanumeric()).take(8).collect();
 
-        let is_spectating = spectating == Some(*peer_id);
-        let btn_label = if is_spectating { "Exit" } else { "Spectate" };
-        let row_btn_color = if is_spectating { btn_active } else { btn_color };
+        // --- Row 1: peer label + spectate button ---
+        let is_spectating   = spectating == Some(*peer_id);
+        let btn_label       = if is_spectating { "Exit" } else { "Spectate" };
+        let row_btn_color   = if is_spectating { btn_active } else { btn_color };
 
         let label_text = commands
             .spawn((
@@ -800,7 +823,7 @@ fn update_panel_ui(
             .add_child(btn_text)
             .id();
 
-        commands
+        let row1 = commands
             .spawn((
                 Node {
                     flex_direction:  FlexDirection::Row,
@@ -811,8 +834,125 @@ fn update_panel_ui(
                 },
             ))
             .add_children(&[label_text, spectate_btn])
-            .id()
-    }).collect();
+            .id();
+
+        new_children.push(row1);
+
+        // --- Row 2: Attach Winch buttons (skip if already in recovery with this peer) ---
+        if recovering != Some(*peer_id) {
+            // Winch row: [Front] [Rear] [Cage]
+            let winch_label = commands
+                .spawn((
+                    Text::new("Winch →"),
+                    TextFont { font_size: 12.0, ..default() },
+                    TextColor(Color::srgb(0.9, 0.75, 0.2)),
+                ))
+                .id();
+
+            let mut winch_buttons: Vec<Entity> = vec![winch_label];
+            for hook in [HookKind::FrontHook, HookKind::RearHook, HookKind::CageHook] {
+                let btn_txt = commands
+                    .spawn((
+                        Text::new(hook.label()),
+                        TextFont { font_size: 12.0, ..default() },
+                        TextColor(COLOR_BODY),
+                    ))
+                    .id();
+                let btn = commands
+                    .spawn((
+                        RecoveryAttachButton {
+                            peer_id:   *peer_id,
+                            peer_hook: hook,
+                            our_hook:  HookKind::FrontHook,
+                            kind:      RecoveryKind::Winch,
+                        },
+                        Button,
+                        Node {
+                            padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
+                            margin:  UiRect::left(Val::Px(4.0)),
+                            ..default()
+                        },
+                        BackgroundColor(btn_recovery),
+                    ))
+                    .add_child(btn_txt)
+                    .id();
+                winch_buttons.push(btn);
+            }
+
+            let winch_row = commands
+                .spawn((Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items:    AlignItems::Center,
+                    column_gap:     Val::Px(2.0),
+                    padding:        UiRect::left(Val::Px(12.0)),
+                    ..default()
+                },))
+                .add_children(&winch_buttons)
+                .id();
+            new_children.push(winch_row);
+
+            // Tow strap row
+            let tow_label = commands
+                .spawn((
+                    Text::new("Tow →"),
+                    TextFont { font_size: 12.0, ..default() },
+                    TextColor(Color::srgb(1.0, 0.5, 0.15)),
+                ))
+                .id();
+
+            let mut tow_buttons: Vec<Entity> = vec![tow_label];
+            for hook in [HookKind::FrontHook, HookKind::RearHook, HookKind::CageHook] {
+                let btn_txt = commands
+                    .spawn((
+                        Text::new(hook.label()),
+                        TextFont { font_size: 12.0, ..default() },
+                        TextColor(COLOR_BODY),
+                    ))
+                    .id();
+                let btn = commands
+                    .spawn((
+                        RecoveryAttachButton {
+                            peer_id:   *peer_id,
+                            peer_hook: hook,
+                            our_hook:  HookKind::RearHook,
+                            kind:      RecoveryKind::TowStrap,
+                        },
+                        Button,
+                        Node {
+                            padding: UiRect::axes(Val::Px(6.0), Val::Px(3.0)),
+                            margin:  UiRect::left(Val::Px(4.0)),
+                            ..default()
+                        },
+                        BackgroundColor(btn_recovery),
+                    ))
+                    .add_child(btn_txt)
+                    .id();
+                tow_buttons.push(btn);
+            }
+
+            let tow_row = commands
+                .spawn((Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items:    AlignItems::Center,
+                    column_gap:     Val::Px(2.0),
+                    padding:        UiRect::left(Val::Px(12.0)),
+                    ..default()
+                },))
+                .add_children(&tow_buttons)
+                .id();
+            new_children.push(tow_row);
+        } else {
+            // Show "Recovery active" label
+            let active_label = commands
+                .spawn((
+                    Text::new("  [Recovery active — Esc to detach]"),
+                    TextFont { font_size: 12.0, ..default() },
+                    TextColor(Color::srgb(0.4, 0.9, 0.4)),
+                ))
+                .id();
+            new_children.push(active_label);
+        }
+    }
 
     if !new_children.is_empty() {
         commands.entity(list_entity).add_children(&new_children);
@@ -963,6 +1103,7 @@ fn build_socket_builder(cfg: &MultiplayerConfig) -> WebRtcSocketBuilder {
         .ice_server(ice_server)
         .add_channel(ChannelConfig::unreliable()) // channel 0: chassis state
         .add_channel(ChannelConfig::reliable())   // channel 1: voice SDP / ICE signaling
+        .add_channel(ChannelConfig::reliable())   // channel 2: recovery (Sprint 55)
 }
 
 // ---------------------------------------------------------------------------
@@ -1045,5 +1186,31 @@ fn variant_to_disc(v: VehicleVariant) -> u8 {
         VehicleVariant::HighlandSK  => 5,
         VehicleVariant::DuneSkipper => 6,
         VehicleVariant::HaulerSK    => 7,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Recovery attach button handler (Sprint 55)
+// ---------------------------------------------------------------------------
+
+fn handle_recovery_attach_buttons(
+    interaction_q: Query<(&Interaction, &RecoveryAttachButton), Changed<Interaction>>,
+    mut recovery:  Option<ResMut<BuddyRecoveryState>>,
+    mut socket:    Option<ResMut<MatchboxSocket>>,
+) {
+    for (interaction, btn) in &interaction_q {
+        if *interaction != Interaction::Pressed { continue; }
+
+        let Some(ref mut recovery) = recovery else { continue };
+        let Some(ref mut socket)   = socket   else { continue };
+
+        br::request_recovery(
+            btn.our_hook,
+            btn.peer_id,
+            btn.peer_hook,
+            btn.kind,
+            recovery,
+            socket,
+        );
     }
 }

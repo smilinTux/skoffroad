@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use avian3d::prelude::*;
 use skoffroad::{
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
+    BuddyRecoveryPlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -369,9 +370,11 @@ fn main() {
         // Sprint 49: P2P multiplayer (position sync)
         // Sprint 51: WebRTC voice chat
         // Sprint 53: webcam video + spectate mode
+        // Sprint 55: peer-to-peer buddy recovery (winch + tow strap)
         .add_plugins(MultiplayerPlugin)
         .add_plugins(VoicePlugin)
-        .add_plugins(SpectatePlugin);
+        .add_plugins(SpectatePlugin)
+        .add_plugins(BuddyRecoveryPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

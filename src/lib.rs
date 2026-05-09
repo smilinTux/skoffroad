@@ -206,6 +206,9 @@ pub use transfer_case::TransferCasePlugin;
 pub use transmission::TransmissionPlugin;
 pub use winch_cable_physics::WinchCablePhysicsPlugin;
 
+pub mod buddy_recovery;
+pub use buddy_recovery::{BuddyRecoveryPlugin, RecoveryState as BuddyRecoveryState};
+
 pub mod multiplayer;
 pub use multiplayer::MultiplayerPlugin;
 
