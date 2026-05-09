@@ -18,6 +18,12 @@ impl Plugin for TerrainPlugin {
     }
 }
 
+/// Marker component on the procedurally-generated terrain entity.
+/// Custom-heightmap terrain swaps this out at runtime by despawning the entity
+/// carrying this component and spawning a new one.
+#[derive(Component)]
+pub struct ProceduralTerrainMarker;
+
 const GRID: usize = 128; // vertices per side (128x128 = ~16k tris)
 const SIZE: f32 = 200.0; // world-space width/depth in metres
 const HEIGHT_SCALE: f32 = 12.0;
@@ -164,6 +170,7 @@ fn spawn_terrain(
         Transform::default(),
         RigidBody::Static,
         ColliderConstructor::TrimeshFromMesh,
+        ProceduralTerrainMarker,
     ));
 }
 

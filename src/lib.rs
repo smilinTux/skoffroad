@@ -410,7 +410,11 @@ pub use asset_attribution::AssetAttributionPlugin;
 pub use asset_browser::AssetBrowserPlugin;
 pub use asset_manifest::{AssetManifest, AssetManifestPlugin, MapEntry, ModEntry, VehicleClassEntry};
 pub use glb_loader::{GlbLoaderPlugin, LoadedVehicleGlbs};
-pub use heightmap_loader::{HeightmapLoaderPlugin, LoadedHeightmaps};
+pub use heightmap_loader::{
+    CustomHeightmapRequest, CustomTerrainMarker,
+    HeightmapLoaderPlugin, LoadedHeightmaps, heightmap_to_mesh,
+    CUSTOM_GRID, CUSTOM_MAX_HEIGHT, CUSTOM_WORLD_SIZE,
+};
 pub use mud_depth::MudDepthPlugin;
 pub use terrain_lod::TerrainLodPlugin;
 pub use terrain_normal_map::TerrainNormalMapPlugin;
