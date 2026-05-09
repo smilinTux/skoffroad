@@ -103,6 +103,20 @@ trunk build --release              # static dist/ ready for any HTTP server
 | . (period) | Replay last 10 s as a translucent ghost |
 | P | Photo mode (pauses physics, hides cursor, banner) |
 
+## Multiplayer (Sprint 49)
+
+P2P position sync via WebRTC / matchbox. Two players in different browsers
+(or native + browser) see each other's chassis as a semi-transparent ghost
+in real time.
+
+| Key | Action |
+|-----|--------|
+| I | Toggle multiplayer panel |
+
+Connect: press **I**, check the room code matches on both clients, click
+**Connect**. See `docs/MULTIPLAYER.md` for TURN, self-hosted signaling, and
+NAT troubleshooting.
+
 ## Pause / settings
 
 | Key | Action |

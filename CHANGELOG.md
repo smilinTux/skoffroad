@@ -5,6 +5,38 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] — 2026-05-09 — Sprint 49 "multiplayer"
+
+### Added
+- **P2P multiplayer** (`src/multiplayer.rs`, `MultiplayerPlugin`) — first
+  network sprint. Two players in different browsers (or native + browser)
+  see each other's chassis in real time.
+  - WebRTC data channel via `bevy_matchbox 0.14` / `matchbox_socket 0.14`.
+  - Chassis packets at **20 Hz**: `Transform` (translation + rotation),
+    `LinearVelocity`, `AngularVelocity`, paint preset index, vehicle
+    variant discriminant. ~54 bytes each — ~8.6 Kbps per peer pair.
+  - Serialised with `bincode 2.x` over an **unreliable** data channel.
+  - **ICE**: three hardcoded STUN servers (Google, Cloudflare, Twilio).
+    TURN read from `SKOFFROAD_TURN_URL` / `_USERNAME` / `_PASSWORD` env
+    vars or `turn.json` platform storage key; STUN-only fallback.
+  - **Signaling URL** defaulting to
+    `wss://signaling.skoffroad.skworld.io/skoffroad-1`, overridable via
+    `SKOFFROAD_SIGNALING_URL` or `signaling.json` storage key.
+  - `MultiplayerState` enum: `Disconnected / Connecting / InRoom / Failed`.
+  - **Ghost cars**: semi-transparent cuboid silhouette (`alpha=0.55`,
+    `AlphaMode::Blend`) per remote peer. Transform lerped toward received
+    target over 50 ms. Peer-ID label (8-char prefix) via `Text2d`.
+    Auto-despawned on disconnect.
+  - **Multiplayer panel** toggled by **I**. Shows state, peer count, room
+    code, Connect / Disconnect button.
+  - `docs/MULTIPLAYER.md`: room hosting, TURN env vars, NAT troubleshooting.
+
+### Changed
+- `Cargo.toml`: bumped `0.12.0 → 0.13.0`; added `bevy_matchbox 0.14`
+  and `bincode 2.0`.
+- `src/lib.rs`, `src/main.rs`: wired `MultiplayerPlugin`.
+- `README.md`: Multiplayer section with key binding table.
+
 ## [0.12.0] — 2026-05-09 — Sprint 48 "vehicle mods"
 
 ### Added
