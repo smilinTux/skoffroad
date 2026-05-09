@@ -5,6 +5,49 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] — 2026-05-09 — Sprint 51 "voice chat"
+
+### Added
+- **WebRTC voice chat** (`src/voice.rs`, `VoicePlugin`) — browser-first
+  voice communication between players in the same matchbox room.
+  - **Browser path** (fully implemented):
+    - `getUserMedia({audio:true})` called via `wasm-bindgen` / `web-sys`
+      on first PTT press, triggering the browser microphone permission prompt.
+    - Per-peer `RTCPeerConnection` (separate from matchbox game data
+      channel) with local audio track attached.
+    - SDP Offer/Answer and ICE candidates exchanged via matchbox's new
+      **reliable channel 1** (`CHANNEL_VOICE_SIGNAL`) — no second
+      signaling server required.
+    - Remote audio rendered as `<audio autoplay>` DOM element appended to
+      `<body>` (tagged `data-voice-peer` for cleanup on disconnect).
+    - Mute/unmute via `MediaStreamTrack.enabled` — no renegotiation.
+  - **Native path**: no-op stub; parked — see `docs/PARKING_LOT.md` for
+    the cpal + webrtc-rs blocker notes.
+  - **Key bindings**: `F` (hold) = push-to-talk; `Shift+F` = always-on
+    toggle. (`T` was already used for sky/time-trial/transmission.)
+  - `VoiceState` resource: `mic_live`, `transmitting`, `always_on`,
+    `permission_granted`, `active_peer_connections`.
+  - `VoiceSignal` enum: `Offer / Answer / IceCandidate / HangUp`.
+  - Clean disconnect: `HangUp` signal + DOM element removal on peer leave.
+
+### Changed
+- `Cargo.toml`: bumped `0.13.0 → 0.14.0`; added `wasm-bindgen-futures 0.4`
+  and extended `web-sys` features for WebRTC + Web Audio (`RtcPeerConnection`,
+  `MediaDevices`, `MediaStream`, `MediaStreamTrack`, `HtmlAudioElement`, etc.).
+- `src/multiplayer.rs`:
+  - Added `CHANNEL_VOICE_SIGNAL = 1` (reliable ordered channel).
+  - `build_socket_builder` now opens two channels: unreliable (game) + reliable (voice).
+  - Added `MessageKind` enum (`Game = 0 / Voice = 1`) for future packet
+    dispatch; existing chassis decode is unchanged.
+  - Re-exports `PeerId` so `voice.rs` doesn't need a direct
+    `bevy_matchbox` import.
+- `src/lib.rs`, `src/main.rs`: registered `VoicePlugin`.
+- `docs/MULTIPLAYER.md`: voice chat section with key bindings, channel
+  table, and how-it-works explanation.
+- `docs/PARKING_LOT.md`: detailed native-voice blocker analysis and
+  resolution path.
+- `README.md`: Voice section with key binding table.
+
 ## [0.13.0] — 2026-05-09 — Sprint 49 "multiplayer"
 
 ### Added

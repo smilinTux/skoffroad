@@ -103,19 +103,25 @@ trunk build --release              # static dist/ ready for any HTTP server
 | . (period) | Replay last 10 s as a translucent ghost |
 | P | Photo mode (pauses physics, hides cursor, banner) |
 
-## Multiplayer (Sprint 49)
+## Multiplayer (Sprint 49 + Sprint 51)
 
-P2P position sync via WebRTC / matchbox. Two players in different browsers
-(or native + browser) see each other's chassis as a semi-transparent ghost
-in real time.
+P2P position sync and voice chat via WebRTC / matchbox. Two players in
+different browsers (or native + browser) see each other's chassis as a
+semi-transparent ghost in real time and can speak to each other.
 
 | Key | Action |
 |-----|--------|
 | I | Toggle multiplayer panel |
+| F (hold) | Push-to-talk voice (browser only) |
+| Shift+F | Toggle always-on voice mode |
 
 Connect: press **I**, check the room code matches on both clients, click
-**Connect**. See `docs/MULTIPLAYER.md` for TURN, self-hosted signaling, and
-NAT troubleshooting.
+**Connect**. Press **F** to talk — the browser will prompt for microphone
+permission on first use.
+
+See `docs/MULTIPLAYER.md` for TURN, self-hosted signaling, NAT
+troubleshooting, and voice chat architecture. Native voice is a TODO; see
+`docs/PARKING_LOT.md` for the roadmap.
 
 ## Pause / settings
 

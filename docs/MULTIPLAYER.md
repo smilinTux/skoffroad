@@ -1,4 +1,4 @@
-# skoffroad Multiplayer (Sprint 49)
+# skoffroad Multiplayer (Sprint 49 + Sprint 51 voice)
 
 P2P over WebRTC via `bevy_matchbox` / `matchbox_socket`.
 No dedicated server — peers broadcast chassis position at 20 Hz.
@@ -126,9 +126,58 @@ arrives in 50 ms anyway).
 
 ---
 
+---
+
+## Voice Chat (Sprint 51)
+
+When two or more players are in the same room, they can speak to each other
+via WebRTC audio.
+
+### Browser (implemented, works now)
+
+| Key | Action |
+|-----|--------|
+| F (hold) | Push-to-talk — transmit while held |
+| Shift+F  | Toggle always-on mode (mic stays live) |
+
+**First use**: pressing F triggers a browser mic-permission prompt.
+After granting, the local audio track is captured once and reused for all
+peer connections.
+
+**How it works (browser):**
+1. `getUserMedia({audio:true})` captures the local microphone.
+2. For each remote matchbox peer, a separate `RTCPeerConnection` is created
+   exclusively for audio (separate from matchbox's game data channel).
+3. SDP Offer/Answer and ICE candidates are exchanged through matchbox's
+   **reliable** channel 1 (`CHANNEL_VOICE_SIGNAL`), so no second signaling
+   server is needed.
+4. On receiving a remote audio track, an `<audio autoplay>` DOM element is
+   appended to `<body>` — audio plays immediately in the browser.
+5. Mute/unmute is `MediaStreamTrack.enabled = true/false` — no
+   renegotiation needed.
+
+**Key conflict note:** `T` is already bound to sky time-of-day and
+transmission controls. Voice uses `F` instead.
+
+### Native (TODO — parked)
+
+See `docs/PARKING_LOT.md` → "Voice chat native" for the blocker details.
+Short version: `cpal` + `webrtc-rs` glue is non-trivial under Bevy's
+executor, and the browser path is the primary deliverable. Native voice will
+be tackled in a future sprint.
+
+### Packet channels
+
+| Channel | Index | Type | Used for |
+|---------|-------|------|----------|
+| `CHANNEL_STATE` | 0 | Unreliable | Chassis state (20 Hz) |
+| `CHANNEL_VOICE_SIGNAL` | 1 | Reliable ordered | SDP Offer/Answer + ICE (voice only) |
+
+The game-state channel is unchanged. Voice signaling is additive.
+
+---
+
 ## Out of scope (later sprints)
 
-- Sprint 50: hosted signaling server deployment + live text-field editing
-  of room code / TURN / signaling URL in the panel.
-- Sprint 51: voice chat.
+- Native voice (cpal + webrtc-rs) — see PARKING_LOT.md.
 - Matchmaking, player names, server-authoritative physics.

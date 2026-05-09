@@ -1,5 +1,33 @@
 # Parking Lot — Features Worth Considering
 
+## Active deferrals (Sprint 51 — v0.14.0 voice chat)
+
+- **Voice chat — native path** (`src/voice.rs` native stub, no-op)
+  Browser voice (WebRTC + getUserMedia + web-sys) ships in v0.14.0.
+  Native audio is deferred due to three compounding issues:
+
+  1. **Async executor mismatch**: `webrtc-rs` uses `tokio` internally;
+     Bevy uses its own single-threaded executor on native; bridging them
+     without spawning a side-thread pool is non-trivial.
+  2. **cpal + webrtc-rs audio pipeline**: feeding `cpal` input frames into
+     a `webrtc-rs` `Track` requires manually encoding to Opus (no turnkey
+     crate as of 2026-05); the `webrtc-rs` docs lag the API surface.
+  3. **Build-time complexity**: `webrtc-rs` pulls in OpenSSL / boringssl
+     which conflicts with the project's current minimal native deps; adding
+     it as an optional `[target.'cfg(not(…))']` dep would push compile
+     times by ~3-5 min.
+
+  Resolution path:
+  - Add `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`
+    `cpal = "0.15"` + `opus = "0.3"` + `webrtc = { git = … }`.
+  - Spawn a side-thread with a `tokio::runtime::Runtime` for webrtc-rs.
+  - Bridge: `cpal` callback → ring-buffer → Bevy system → encode opus →
+    `webrtc-rs` sample track.
+  - The same `VoiceSignal` / `CHANNEL_VOICE_SIGNAL` signaling protocol
+    works unchanged; only the PC-management and track I/O differ.
+
+---
+
 ## Active deferrals (Sprint 46 polish / v0.10.4)
 
 - **WebGL DOF render-graph spam.** The browser console message
