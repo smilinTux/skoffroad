@@ -5,6 +5,36 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] — 2026-05-09 — Sprint 47 "three new vehicles"
+
+### Added
+- **Highland SK** (`src/vehicle_highland.rs`) — Bronco-style full-size SUV.
+  Wide boxy body with a separate hardtop (off-white / sand two-tone), near-
+  vertical windshield, stacked 2×2 square headlights with chrome bezels,
+  wide horizontal chrome grille, heavy skid plate, rock sliders, boxy fender
+  flares, roof rack, and a roof-mounted spare tire.
+- **Dune Skipper** (`src/vehicle_dune_skipper.rs`) — open-frame desert buggy.
+  Exposed orange tube frame (Cylinders throughout), very low stance, single
+  bucket seat, rear air-cooled engine block with cooling fins, upright exhaust
+  stack, roll hoop with X-braces, diagonal nose struts, four exposed coilover
+  shocks, and minimal headlamp pods.
+- **Hauler SK** (`src/vehicle_hauler.rs`) — cab-and-bed pickup truck.
+  Tall forest-green cab + dark-pewter open flatbed two-tier silhouette,
+  stacked dual rectangular headlights with chrome bezels, wide chrome grille
+  surround, front tow hooks, drop-down tailgate (slightly open angle), side
+  toolboxes on bed rails, mud flaps behind rear wheels, step bars, and a
+  passenger-side fuel cap.
+- `VehicleVariant` enum extended with `HighlandSK`, `DuneSkipper`, `HaulerSK`.
+  Cycle chain: JeepTJ → FordBronco → Pickup → Hummer → Buggy → **Highland SK
+  → Dune Skipper → Hauler SK** → JeepTJ. Key: `\` (Backslash, unchanged).
+- New modules declared in `src/lib.rs`:
+  `vehicle_highland`, `vehicle_dune_skipper`, `vehicle_hauler`.
+
+### Changed
+- `src/variants.rs` updated: imports the three new spawn helpers; extended
+  `VehicleVariant` enum, `next()`, `name()`, and the `cycle_variant` match
+  arm to dispatch to the new spawn functions.
+
 ## [0.10.4] — 2026-05-09 — Polish: browser console noise
 
 ### Fixed
