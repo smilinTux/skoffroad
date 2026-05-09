@@ -173,6 +173,10 @@ pub mod variants;
 pub mod vehicle;
 pub mod vehicle_detail;
 pub mod vehicle_dirt;
+// Sprint 47 — three new procedural vehicles
+pub mod vehicle_highland;
+pub mod vehicle_dune_skipper;
+pub mod vehicle_hauler;
 pub mod water;
 pub mod water_reflective;
 pub mod weather_clouds;

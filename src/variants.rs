@@ -6,9 +6,17 @@
 //   Arriving JeepTJ  → spawn_jeep_default (tagged DefaultSkin + VariantSkin)
 //
 // Mesh children are added via add_children (the only reliable parent API in 0.18).
+//
+// Sprint 47 additions — three new procedural vehicles:
+//   HighlandSK   (src/vehicle_highland.rs)     — Bronco-style full-size SUV
+//   DuneSkipper  (src/vehicle_dune_skipper.rs) — open-frame desert buggy
+//   HaulerSK     (src/vehicle_hauler.rs)       — cab+bed pickup truck
 
 use bevy::prelude::*;
 use crate::vehicle::{DefaultSkin, VehicleRoot};
+use crate::vehicle_highland::spawn_highland;
+use crate::vehicle_dune_skipper::spawn_dune_skipper;
+use crate::vehicle_hauler::spawn_hauler;
 
 // ---- Plugin -----------------------------------------------------------------
 
@@ -26,21 +34,43 @@ impl Plugin for VariantsPlugin {
 // ---- Public API -------------------------------------------------------------
 
 #[derive(Resource, Default, Clone, Copy, PartialEq, Eq)]
-pub enum VehicleVariant { #[default] JeepTJ, FordBronco, Pickup, Hummer, Buggy }
+pub enum VehicleVariant {
+    #[default] JeepTJ,
+    FordBronco,
+    Pickup,
+    Hummer,
+    Buggy,
+    /// Sprint 47: Bronco-style full-size SUV with hardtop
+    HighlandSK,
+    /// Sprint 47: open-frame desert buggy with rear engine
+    DuneSkipper,
+    /// Sprint 47: cab + open bed pickup truck
+    HaulerSK,
+}
 
 impl VehicleVariant {
     pub fn next(self) -> Self {
         match self {
-            Self::JeepTJ => Self::FordBronco, Self::FordBronco => Self::Pickup,
-            Self::Pickup => Self::Hummer,     Self::Hummer     => Self::Buggy,
-            Self::Buggy  => Self::JeepTJ,
+            Self::JeepTJ      => Self::FordBronco,
+            Self::FordBronco  => Self::Pickup,
+            Self::Pickup      => Self::Hummer,
+            Self::Hummer      => Self::Buggy,
+            Self::Buggy       => Self::HighlandSK,
+            Self::HighlandSK  => Self::DuneSkipper,
+            Self::DuneSkipper => Self::HaulerSK,
+            Self::HaulerSK    => Self::JeepTJ,
         }
     }
     pub fn name(self) -> &'static str {
         match self {
-            Self::JeepTJ => "Jeep TJ", Self::FordBronco => "Ford Bronco",
-            Self::Pickup => "Pickup",  Self::Hummer     => "Hummer",
-            Self::Buggy  => "Buggy",
+            Self::JeepTJ      => "Jeep TJ",
+            Self::FordBronco  => "Ford Bronco",
+            Self::Pickup      => "Pickup",
+            Self::Hummer      => "Hummer",
+            Self::Buggy       => "Buggy",
+            Self::HighlandSK  => "Highland SK",
+            Self::DuneSkipper => "Dune Skipper",
+            Self::HaulerSK    => "Hauler SK",
         }
     }
 }
@@ -118,11 +148,15 @@ fn cycle_variant(
     }
 
     let kids = match new {
-        VehicleVariant::JeepTJ     => spawn_jeep_default(&mut commands, &mut meshes, &mut materials),
-        VehicleVariant::FordBronco => spawn_bronco(&mut commands, &mut meshes, &mut materials),
-        VehicleVariant::Pickup     => spawn_pickup(&mut commands, &mut meshes, &mut materials),
-        VehicleVariant::Hummer     => spawn_hummer(&mut commands, &mut meshes, &mut materials),
-        VehicleVariant::Buggy      => spawn_buggy(&mut commands, &mut meshes, &mut materials),
+        VehicleVariant::JeepTJ      => spawn_jeep_default(&mut commands, &mut meshes, &mut materials),
+        VehicleVariant::FordBronco  => spawn_bronco(&mut commands, &mut meshes, &mut materials),
+        VehicleVariant::Pickup      => spawn_pickup(&mut commands, &mut meshes, &mut materials),
+        VehicleVariant::Hummer      => spawn_hummer(&mut commands, &mut meshes, &mut materials),
+        VehicleVariant::Buggy       => spawn_buggy(&mut commands, &mut meshes, &mut materials),
+        // Sprint 47 — three new procedural vehicles
+        VehicleVariant::HighlandSK  => spawn_highland(&mut commands, &mut meshes, &mut materials),
+        VehicleVariant::DuneSkipper => spawn_dune_skipper(&mut commands, &mut meshes, &mut materials),
+        VehicleVariant::HaulerSK    => spawn_hauler(&mut commands, &mut meshes, &mut materials),
     };
     commands.entity(chassis).add_children(&kids);
 
