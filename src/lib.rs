@@ -192,6 +192,7 @@ pub mod xp;
 
 pub mod engine_audio_layered;
 pub mod fuel_consumption_real;
+pub mod spectate;
 pub mod transfer_case;
 pub mod transmission;
 pub mod winch_cable_physics;

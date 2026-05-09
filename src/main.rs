@@ -2,7 +2,7 @@ use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use skoffroad::{
-    MultiplayerPlugin, VoicePlugin,
+    MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -366,8 +366,10 @@ fn main() {
         ))
         // Sprint 49: P2P multiplayer (position sync)
         // Sprint 51: WebRTC voice chat
+        // Sprint 53: webcam video + spectate mode
         .add_plugins(MultiplayerPlugin)
-        .add_plugins(VoicePlugin);
+        .add_plugins(VoicePlugin)
+        .add_plugins(SpectatePlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the
