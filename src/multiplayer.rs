@@ -87,8 +87,10 @@ use bevy_matchbox::prelude::*;
 use bevy_matchbox::matchbox_socket::RtcIceServerConfig;
 use bincode::{Decode, Encode};
 
+use crate::camera_modes::{CameraMode, CameraModesState};
 use crate::livery::LiveryState;
 use crate::platform_storage;
+use crate::spectate::{SpectateButton, SpectateState};
 use crate::variants::VehicleVariant;
 use crate::vehicle::Chassis;
 
@@ -209,6 +211,7 @@ impl MultiplayerConfig {
 // ---------------------------------------------------------------------------
 
 /// Chassis snapshot broadcast to peers at 20 Hz.
+/// Packet version: v2 (Sprint 53 added camera_mode byte).
 #[derive(Encode, Decode, Clone, Copy, Debug)]
 pub struct ChassisPacket {
     /// World translation [x, y, z]
@@ -223,6 +226,9 @@ pub struct ChassisPacket {
     pub paint_index:  u8,
     /// VehicleVariant discriminant (0 = JeepTJ, 1 = FordBronco, …)
     pub variant_disc: u8,
+    /// Active camera mode (mirrors CameraMode discriminant: 0=Chase, 1=WheelFL,
+    /// 2=WheelFR, 3=FirstPerson, 4=FreeOrbit).  Used by spectate.rs.
+    pub camera_mode:  u8,
 }
 
 // ---------------------------------------------------------------------------
@@ -237,17 +243,19 @@ struct PeerGhosts {
 }
 
 struct GhostEntry {
-    entity:    Entity,
+    entity:      Entity,
     /// Transform we are lerping *toward* (set on each received packet)
-    target:    Transform,
+    target:      Transform,
     /// Current smoothed transform (starts equal to target on first packet)
-    current:   Transform,
+    current:     Transform,
     /// 0.0 = at old position, 1.0 = arrived at target (reset to 0 on new packet)
-    lerp_t:    f32,
+    lerp_t:      f32,
     /// Last received paint index (used to tint ghost body)
-    paint:     u8,
+    paint:       u8,
     /// Last received variant discriminant
-    variant:   u8,
+    variant:     u8,
+    /// Last received camera mode (0=Chase, 1=WheelFL, 2=WheelFR, 3=FirstPerson, 4=FreeOrbit)
+    camera_mode: u8,
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +285,10 @@ enum MpText {
 
 #[derive(Component)]
 struct ConnectButton;
+
+/// Container for the peer list inside the I-panel (rows are rebuilt each frame).
+#[derive(Component)]
+struct PeerListContainer;
 
 // ---------------------------------------------------------------------------
 // UI colours (match the settings.rs palette)
@@ -381,6 +393,18 @@ fn spawn_panel(mut commands: Commands) {
         })
         .id();
 
+    // Peer list container — populated dynamically by update_panel_ui.
+    let peer_list = commands
+        .spawn((
+            PeerListContainer,
+            Node {
+                flex_direction: FlexDirection::Column,
+                row_gap:        Val::Px(4.0),
+                ..default()
+            },
+        ))
+        .id();
+
     let help = commands
         .spawn((
             MpText::Help,
@@ -396,7 +420,7 @@ fn spawn_panel(mut commands: Commands) {
 
     commands
         .entity(panel)
-        .add_children(&[title, status, peer_count, room_label, btn, help]);
+        .add_children(&[title, status, peer_count, room_label, btn, peer_list, help]);
     commands.entity(root).add_children(&[panel]);
 }
 
@@ -470,12 +494,13 @@ fn update_socket(
                 ghosts.entries.insert(
                     peer_id,
                     GhostEntry {
-                        entity:  ghost,
-                        target:  Transform::default(),
-                        current: Transform::default(),
-                        lerp_t:  1.0, // already at target
-                        paint:   0,
-                        variant: 0,
+                        entity:      ghost,
+                        target:      Transform::default(),
+                        current:     Transform::default(),
+                        lerp_t:      1.0, // already at target
+                        paint:       0,
+                        variant:     0,
+                        camera_mode: 0,
                     },
                 );
             }
@@ -525,6 +550,7 @@ fn send_chassis_state(
     livery:     Res<LiveryState>,
     variant:    Res<VehicleVariant>,
     mp:         Res<MultiplayerState>,
+    cam_modes:  Res<CameraModesState>,
 ) {
     // Only send while in a room or connecting
     match &*mp {
@@ -548,6 +574,7 @@ fn send_chassis_state(
         angular_vel:  ang_vel.0.to_array(),
         paint_index:  livery.current,
         variant_disc: variant_to_disc(*variant),
+        camera_mode:  cam_mode_to_u8(cam_modes.mode),
     };
 
     let bytes = match bincode::encode_to_vec(packet, bincode::config::standard()) {
@@ -566,9 +593,10 @@ fn send_chassis_state(
 // ---------------------------------------------------------------------------
 
 fn recv_chassis_state(
-    mut socket: Option<ResMut<MatchboxSocket>>,
-    mut ghosts: ResMut<PeerGhosts>,
-    mp:         Res<MultiplayerState>,
+    mut socket:  Option<ResMut<MatchboxSocket>>,
+    mut ghosts:  ResMut<PeerGhosts>,
+    mp:          Res<MultiplayerState>,
+    mut spectate: ResMut<SpectateState>,
 ) {
     match &*mp {
         MultiplayerState::InRoom { .. } | MultiplayerState::Connecting { .. } => {}
@@ -602,10 +630,16 @@ fn recv_chassis_state(
                 rotation:    entry.current.rotation,
                 scale:       Vec3::ONE,
             };
-            entry.target   = new_target;
-            entry.lerp_t   = 0.0; // restart lerp
-            entry.paint    = pkt.paint_index;
-            entry.variant  = pkt.variant_disc;
+            entry.target      = new_target;
+            entry.lerp_t      = 0.0; // restart lerp
+            entry.paint       = pkt.paint_index;
+            entry.variant     = pkt.variant_disc;
+            entry.camera_mode = pkt.camera_mode;
+        }
+
+        // Propagate camera mode to SpectateState if we are watching this peer.
+        if spectate.target_peer == Some(peer_id) {
+            spectate.target_cam_mode = pkt.camera_mode;
         }
     }
 }
@@ -662,49 +696,126 @@ fn cleanup_disconnected_ghosts(
 // ---------------------------------------------------------------------------
 
 fn update_panel_ui(
-    mp:     Res<MultiplayerState>,
-    cfg:    Res<MultiplayerConfig>,
+    mp:      Res<MultiplayerState>,
+    cfg:     Res<MultiplayerConfig>,
+    ghosts:  Res<PeerGhosts>,
+    spectate: Res<SpectateState>,
     mut texts: Query<(&MpText, &mut Text)>,
+    peer_list_q: Query<(Entity, &Children), With<PeerListContainer>>,
+    mut commands: Commands,
 ) {
-    if !mp.is_changed() && !cfg.is_changed() {
+    // Always update peer rows (they change whenever ghosts / spectate change).
+    // Only skip text updates when neither mp nor cfg changed.
+    let texts_changed = mp.is_changed() || cfg.is_changed();
+
+    if texts_changed {
+        let (status_str, peer_str) = match &*mp {
+            MultiplayerState::Disconnected => {
+                ("Status: Disconnected".into(), String::new())
+            }
+            MultiplayerState::Connecting { since_secs } => {
+                (
+                    format!("Status: Connecting… ({since_secs:.1}s)"),
+                    String::new(),
+                )
+            }
+            MultiplayerState::InRoom { peer_count } => {
+                (
+                    "Status: In room".into(),
+                    format!("Peers: {peer_count}"),
+                )
+            }
+            MultiplayerState::Failed { reason, since_secs } => {
+                (
+                    format!("Status: Failed ({since_secs:.0}s) — {reason}"),
+                    String::new(),
+                )
+            }
+        };
+
+        for (label, mut text) in &mut texts {
+            match label {
+                MpText::Status    => text.0 = status_str.clone(),
+                MpText::PeerCount => text.0 = peer_str.clone(),
+                MpText::RoomCode  => {
+                    let room = cfg.signaling_url.rsplit('/').next().unwrap_or("?");
+                    text.0 = format!("Room: {room}");
+                }
+                MpText::Help => { /* static */ }
+            }
+        }
+    }
+
+    // Rebuild peer list rows if ghosts or spectate changed.
+    if !ghosts.is_changed() && !spectate.is_changed() {
         return;
     }
 
-    let (status_str, peer_str) = match &*mp {
-        MultiplayerState::Disconnected => {
-            ("Status: Disconnected".into(), String::new())
-        }
-        MultiplayerState::Connecting { since_secs } => {
-            (
-                format!("Status: Connecting… ({since_secs:.1}s)"),
-                String::new(),
-            )
-        }
-        MultiplayerState::InRoom { peer_count } => {
-            (
-                "Status: In room".into(),
-                format!("Peers: {peer_count}"),
-            )
-        }
-        MultiplayerState::Failed { reason, since_secs } => {
-            (
-                format!("Status: Failed ({since_secs:.0}s) — {reason}"),
-                String::new(),
-            )
-        }
-    };
+    let Ok((list_entity, children)) = peer_list_q.single() else { return };
 
-    for (label, mut text) in &mut texts {
-        match label {
-            MpText::Status    => text.0 = status_str.clone(),
-            MpText::PeerCount => text.0 = peer_str.clone(),
-            MpText::RoomCode  => {
-                // Show the room portion of the URL
-                let room = cfg.signaling_url.rsplit('/').next().unwrap_or("?");
-                text.0 = format!("Room: {room}");
-            }
-            MpText::Help      => { /* static */ }
-        }
+    // Despawn all existing child rows.
+    for child in children.iter() {
+        commands.entity(child).despawn();
+    }
+
+    // Re-spawn one row per connected ghost.
+    let spectating = spectate.target_peer;
+    let btn_color = Color::srgb(0.18, 0.36, 0.50);
+    let btn_active = Color::srgb(0.72, 0.48, 0.10);
+
+    let new_children: Vec<Entity> = ghosts.entries.iter().map(|(peer_id, _entry)| {
+        let id_str = format!("{peer_id:?}");
+        let short_id: String = id_str.chars().filter(|c| c.is_alphanumeric()).take(8).collect();
+
+        let is_spectating = spectating == Some(*peer_id);
+        let btn_label = if is_spectating { "Exit" } else { "Spectate" };
+        let row_btn_color = if is_spectating { btn_active } else { btn_color };
+
+        let label_text = commands
+            .spawn((
+                Text::new(format!("Peer {short_id}")),
+                TextFont { font_size: 13.0, ..default() },
+                TextColor(COLOR_BODY),
+            ))
+            .id();
+
+        let btn_text = commands
+            .spawn((
+                Text::new(btn_label),
+                TextFont { font_size: 13.0, ..default() },
+                TextColor(COLOR_BODY),
+            ))
+            .id();
+
+        let spectate_btn = commands
+            .spawn((
+                SpectateButton { peer_id: *peer_id },
+                Button,
+                Node {
+                    padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
+                    ..default()
+                },
+                BackgroundColor(row_btn_color),
+            ))
+            .add_child(btn_text)
+            .id();
+
+        commands
+            .spawn((
+                Node {
+                    flex_direction:  FlexDirection::Row,
+                    align_items:     AlignItems::Center,
+                    justify_content: JustifyContent::SpaceBetween,
+                    width:           Val::Percent(100.0),
+                    ..default()
+                },
+            ))
+            .add_children(&[label_text, spectate_btn])
+            .id()
+    }).collect();
+
+    if !new_children.is_empty() {
+        commands.entity(list_entity).add_children(&new_children);
     }
 }
 
@@ -910,6 +1021,17 @@ fn resolve_turn() -> (String, String, String) {
 
     // 3. None — STUN-only fallback
     (String::new(), String::new(), String::new())
+}
+
+/// Map CameraMode to its wire byte (matches spectate.rs decoder).
+fn cam_mode_to_u8(mode: CameraMode) -> u8 {
+    match mode {
+        CameraMode::Chase       => 0,
+        CameraMode::WheelFL     => 1,
+        CameraMode::WheelFR     => 2,
+        CameraMode::FirstPerson => 3,
+        CameraMode::FreeOrbit   => 4,
+    }
 }
 
 /// Map VehicleVariant to its wire discriminant (u8).
