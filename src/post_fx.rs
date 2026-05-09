@@ -10,10 +10,14 @@
 // spawned during Startup.
 
 use bevy::core_pipeline::tonemapping::Tonemapping;
+#[cfg(not(target_arch = "wasm32"))]
 use bevy::pbr::ScreenSpaceAmbientOcclusion;
+#[cfg(not(target_arch = "wasm32"))]
 use bevy::pbr::ScreenSpaceAmbientOcclusionQualityLevel;
 use bevy::prelude::*;
-use bevy::render::view::{ColorGrading, Msaa};
+#[cfg(not(target_arch = "wasm32"))]
+use bevy::render::view::Msaa;
+use bevy::render::view::ColorGrading;
 
 use crate::graphics_quality::GraphicsQuality;
 
@@ -56,6 +60,13 @@ fn attach_post_fx(
         // SSAO is incompatible with MSAA — turn it off on this camera so
         // bevy_pbr::ssao doesn't spam validation errors. The Sample4
         // default is restored automatically on lower tiers.
+        //
+        // WASM/WebGL2: SSAO is explicitly unsupported (requires compute
+        // storage textures that WebGL2 lacks). Its depth prepass triggers
+        // hundreds of GL_INVALID_FRAMEBUFFER_OPERATION errors from wgpu's
+        // WebGL2 backend when it tries to copy depth textures. Skip entirely
+        // on wasm32; default quality will read High but we silently drop SSAO.
+        #[cfg(not(target_arch = "wasm32"))]
         commands.entity(cam).insert((
             ScreenSpaceAmbientOcclusion {
                 quality_level: ScreenSpaceAmbientOcclusionQualityLevel::Low,
