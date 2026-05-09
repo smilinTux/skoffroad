@@ -79,6 +79,10 @@ pub struct VoiceState {
     pub permission_granted: bool,
     /// Number of active peer audio connections.
     pub active_peer_connections: usize,
+    /// True when webcam is enabled (Q toggle).  False when denied or unavailable.
+    pub cam_enabled: bool,
+    /// True when getUserMedia({video}) was attempted but denied/unavailable.
+    pub cam_denied: bool,
 }
 
 impl Default for VoiceState {
@@ -89,6 +93,8 @@ impl Default for VoiceState {
             always_on:               false,
             permission_granted:      false,
             active_peer_connections: 0,
+            cam_enabled:             false,
+            cam_denied:              false,
         }
     }
 }
@@ -119,7 +125,7 @@ mod browser {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::{
-        Document, HtmlAudioElement,
+        Document, HtmlAudioElement, HtmlVideoElement,
         MediaStreamConstraints,
         RtcConfiguration, RtcIceServer,
         RtcPeerConnection,
@@ -208,6 +214,117 @@ mod browser {
 
     pub fn active_peer_count() -> usize {
         PEER_PCS.with(|cell| cell.borrow().len())
+    }
+
+    // -----------------------------------------------------------------------
+    // Webcam support — Q key toggle
+    // -----------------------------------------------------------------------
+
+    pub static CAM_READY: AtomicBool = AtomicBool::new(false);
+    /// True when getUserMedia video was denied.
+    pub static CAM_DENIED: AtomicBool = AtomicBool::new(false);
+
+    thread_local! {
+        /// Separate camera stream (video track only).
+        static CAM_STREAM: RefCell<Option<web_sys::MediaStream>> = RefCell::new(None);
+    }
+
+    pub fn set_cam_stream(s: web_sys::MediaStream) {
+        CAM_STREAM.with(|cell| *cell.borrow_mut() = Some(s));
+    }
+
+    pub fn cam_stream() -> Option<web_sys::MediaStream> {
+        CAM_STREAM.with(|cell| cell.borrow().clone())
+    }
+
+    /// Request camera (and mic if not yet acquired) via getUserMedia.
+    pub fn request_camera() {
+        wasm_bindgen_futures::spawn_local(async move {
+            let window = web_sys::window().unwrap();
+            let nav = window.navigator();
+            let devices = match nav.media_devices() {
+                Ok(d)  => d,
+                Err(e) => {
+                    bevy::log::warn!("voice: no MediaDevices for camera: {:?}", e);
+                    CAM_DENIED.store(true, std::sync::atomic::Ordering::Release);
+                    return;
+                }
+            };
+
+            let mut constraints = MediaStreamConstraints::new();
+            constraints.audio(&JsValue::from(false));
+            constraints.video(&JsValue::from(true));
+
+            let promise: Promise = match devices.get_user_media_with_constraints(&constraints) {
+                Ok(p)  => p,
+                Err(e) => {
+                    bevy::log::warn!("voice: getUserMedia(video) error: {:?}", e);
+                    CAM_DENIED.store(true, std::sync::atomic::Ordering::Release);
+                    return;
+                }
+            };
+
+            match JsFuture::from(promise).await {
+                Ok(stream_val) => {
+                    let stream = web_sys::MediaStream::from(stream_val);
+                    set_cam_stream(stream.clone());
+                    CAM_READY.store(true, std::sync::atomic::Ordering::Release);
+                    bevy::log::info!("voice: camera access granted");
+                    // Add video tracks to all existing peer PCs.
+                    add_video_tracks_to_all_peers(&stream);
+                }
+                Err(e) => {
+                    bevy::log::warn!("voice: getUserMedia(video) denied: {:?}", e);
+                    CAM_DENIED.store(true, std::sync::atomic::Ordering::Release);
+                }
+            }
+        });
+    }
+
+    /// Toggle video track.enabled on the local cam stream.
+    pub fn set_video_track_enabled(enabled: bool) {
+        CAM_STREAM.with(|cell| {
+            if let Some(stream) = cell.borrow().as_ref() {
+                let tracks = stream.get_video_tracks();
+                for i in 0..tracks.length() {
+                    let track = web_sys::MediaStreamTrack::from(tracks.get(i));
+                    track.set_enabled(enabled);
+                }
+            }
+        });
+    }
+
+    /// Add the local cam's video tracks to all existing peer PCs and renegotiate.
+    fn add_video_tracks_to_all_peers(cam_stream: &web_sys::MediaStream) {
+        PEER_PCS.with(|cell| {
+            for (peer_str, pc) in cell.borrow().iter() {
+                let tracks = cam_stream.get_video_tracks();
+                for i in 0..tracks.length() {
+                    let track = web_sys::MediaStreamTrack::from(tracks.get(i));
+                    let _ = pc.add_track(&track, cam_stream, &js_sys::Array::new());
+                }
+                // Renegotiate: send a new offer to this peer.
+                let peer_clone = peer_str.clone();
+                // We use local_peer_str = "renegotiate" as a placeholder
+                // (the actual local_peer_str isn't available here, but the
+                // receiver only needs the SDP/ICE to connect the video channel).
+                let _promise = create_offer_for(peer_clone, "renegotiate".to_string());
+            }
+        });
+    }
+
+    /// Add local video tracks to a specific PC (called when a new peer connects
+    /// while cam is already active).
+    pub fn add_local_video_tracks_to_pc(pc: &RtcPeerConnection) {
+        CAM_STREAM.with(|cell| {
+            if let Some(stream) = cell.borrow().as_ref() {
+                let tracks = stream.get_video_tracks();
+                for i in 0..tracks.length() {
+                    let track = web_sys::MediaStreamTrack::from(tracks.get(i));
+                    let _ = pc.add_track(&track, stream, &js_sys::Array::new());
+                }
+            }
+        });
     }
 
     // -----------------------------------------------------------------------
@@ -393,41 +510,56 @@ mod browser {
     }
 
     // -----------------------------------------------------------------------
-    // ontrack handler: auto-play received audio
+    // ontrack handler: auto-play received audio; display video tiles
     // -----------------------------------------------------------------------
 
     fn set_ontrack_handler(pc: &RtcPeerConnection, peer_id_str: &str) {
         let peer_id_owned = peer_id_str.to_string();
         let closure = Closure::wrap(Box::new(move |evt: web_sys::RtcTrackEvent| {
+            let track = evt.track();
             let streams = evt.streams();
-            if streams.length() == 0 {
-                return;
-            }
-            let stream = web_sys::MediaStream::from(streams.get(0));
+            let stream = if streams.length() > 0 {
+                web_sys::MediaStream::from(streams.get(0))
+            } else {
+                // Create a synthetic stream for the single track
+                match web_sys::MediaStream::new_with_tracks(&{
+                    let arr = js_sys::Array::new();
+                    arr.push(&track);
+                    arr
+                }) {
+                    Ok(s) => s,
+                    Err(_) => return,
+                }
+            };
 
-            // Append an <audio autoplay> element to <body>
+            let kind = track.kind();
+
             if let Some(window) = web_sys::window() {
                 if let Some(doc) = window.document() {
-                    if let Ok(audio_el) = doc.create_element("audio") {
-                        let audio: HtmlAudioElement = match audio_el.clone().dyn_into::<HtmlAudioElement>() {
-                            Ok(a) => a,
-                            Err(_) => continue,
-                        };
-                        audio.set_autoplay(true);
-                        let _ = Reflect::set(
-                            &audio_el,
-                            &JsValue::from_str("srcObject"),
-                            &stream,
-                        );
-                        let _ = Reflect::set(
-                            &audio_el,
-                            &JsValue::from_str("data-voice-peer"),
-                            &JsValue::from_str(&peer_id_owned),
-                        );
-                        if let Some(body) = doc.body() {
-                            let _ = body.append_child(&audio_el);
+                    if kind == "audio" {
+                        // Append an <audio autoplay> element to <body>
+                        if let Ok(audio_el) = doc.create_element("audio") {
+                            if let Ok(audio) = audio_el.clone().dyn_into::<HtmlAudioElement>() {
+                                audio.set_autoplay(true);
+                                let _ = Reflect::set(
+                                    &audio_el,
+                                    &JsValue::from_str("srcObject"),
+                                    &stream,
+                                );
+                                let _ = Reflect::set(
+                                    &audio_el,
+                                    &JsValue::from_str("data-voice-peer"),
+                                    &JsValue::from_str(&peer_id_owned),
+                                );
+                                if let Some(body) = doc.body() {
+                                    let _ = body.append_child(&audio_el);
+                                }
+                                bevy::log::info!("voice: audio element created for peer {peer_id_owned}");
+                            }
                         }
-                        bevy::log::info!("voice: audio element created for peer {peer_id_owned}");
+                    } else if kind == "video" {
+                        // Add a webcam tile to #voice-tiles
+                        add_video_tile(&doc, &peer_id_owned, &stream);
                     }
                 }
             }
@@ -435,6 +567,55 @@ mod browser {
 
         pc.set_ontrack(Some(closure.as_ref().unchecked_ref()));
         closure.forget();
+    }
+
+    /// Create a 180×135 px video tile in the #voice-tiles container.
+    fn add_video_tile(doc: &web_sys::Document, peer_id: &str, stream: &web_sys::MediaStream) {
+        // Remove existing tile for this peer first (in case of renegotiation).
+        remove_peer_video_tile(peer_id);
+
+        let Ok(tile_container) = doc.query_selector("#voice-tiles") else { return };
+        let Some(container) = tile_container else {
+            bevy::log::warn!("voice: #voice-tiles container not found in DOM");
+            return;
+        };
+
+        // Count existing tiles — max 6.
+        let child_count = container.child_element_count();
+        if child_count >= 6 {
+            bevy::log::info!("voice: max 6 video tiles reached, hiding overflow for peer {peer_id}");
+            return;
+        }
+
+        let Ok(tile_el) = doc.create_element("div") else { return };
+        let _ = tile_el.set_attribute("class", "voice-tile");
+        let _ = tile_el.set_attribute("data-video-peer", peer_id);
+
+        let short_id: String = peer_id.chars().filter(|c| c.is_alphanumeric()).take(8).collect();
+
+        if let Ok(video_el) = doc.create_element("video") {
+            if let Ok(video) = video_el.clone().dyn_into::<HtmlVideoElement>() {
+                video.set_autoplay(true);
+                video.set_muted(true);
+                let _ = video.set_attribute("playsinline", "");
+                let _ = Reflect::set(
+                    &video_el,
+                    &JsValue::from_str("srcObject"),
+                    stream,
+                );
+                let _ = tile_el.append_child(&video_el);
+            }
+        }
+
+        // Peer ID label overlay.
+        if let Ok(label_el) = doc.create_element("span") {
+            let _ = label_el.set_attribute("class", "voice-tile-label");
+            label_el.set_text_content(Some(&short_id));
+            let _ = tile_el.append_child(&label_el);
+        }
+
+        let _ = container.append_child(&tile_el);
+        bevy::log::info!("voice: video tile created for peer {peer_id}");
     }
 
     // -----------------------------------------------------------------------
@@ -464,9 +645,27 @@ mod browser {
     pub fn remove_peer_audio(peer_id_str: &str) {
         if let Some(window) = web_sys::window() {
             if let Some(doc) = window.document() {
-                // query all audio elements with our data attribute
                 if let Ok(Some(el)) = doc.query_selector(&format!(
                     "audio[data-voice-peer=\"{peer_id_str}\"]"
+                )) {
+                    let _ = el.parent_element()
+                        .and_then(|p| p.remove_child(&el).ok());
+                }
+                // Also remove video tile.
+                remove_peer_video_tile(peer_id_str);
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Remove peer video tile from DOM
+    // -----------------------------------------------------------------------
+
+    pub fn remove_peer_video_tile(peer_id_str: &str) {
+        if let Some(window) = web_sys::window() {
+            if let Some(doc) = window.document() {
+                if let Ok(Some(el)) = doc.query_selector(&format!(
+                    "div[data-video-peer=\"{peer_id_str}\"]"
                 )) {
                     let _ = el.parent_element()
                         .and_then(|p| p.remove_child(&el).ok());
@@ -500,6 +699,12 @@ mod native {
     pub fn handle_answer(_from_peer: &str, _sdp: &str) {}
     pub fn handle_ice_candidate(_from_peer: &str, _candidate: &str, _sdp_mid: &str) {}
     pub fn create_offer_for_peers(_peers: &[String], _local_peer: &str) {}
+
+    // Sprint 53: webcam stubs (browser-only feature)
+    pub fn request_camera() {
+        bevy::log::info!("voice: native webcam not implemented");
+    }
+    pub fn set_video_track_enabled(_enabled: bool) {}
 }
 
 // ---------------------------------------------------------------------------
@@ -512,7 +717,7 @@ fn setup_voice(_commands: Commands) {
     // Nothing to do at startup.  Mic is requested lazily on first PTT press.
 }
 
-/// Handle F (PTT) and Shift+F (always-on toggle).
+/// Handle F (PTT), Shift+F (always-on), and Q (webcam toggle).
 fn handle_voice_keys(
     keys:     Res<ButtonInput<KeyCode>>,
     mut vs:   ResMut<VoiceState>,
@@ -554,6 +759,27 @@ fn handle_voice_keys(
         }
     }
 
+    // Q — toggle webcam (browser-only; silently no-ops on native)
+    if keys.just_pressed(KeyCode::KeyQ) && in_room && !vs.cam_denied {
+        #[cfg(target_arch = "wasm32")]
+        {
+            if !browser::CAM_READY.load(std::sync::atomic::Ordering::Acquire) {
+                // First press: request camera permission
+                browser::request_camera();
+                bevy::log::info!("voice: requesting camera…");
+            } else {
+                // Toggle on/off
+                vs.cam_enabled = !vs.cam_enabled;
+                browser::set_video_track_enabled(vs.cam_enabled);
+                bevy::log::info!("voice: cam_enabled = {}", vs.cam_enabled);
+            }
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            bevy::log::info!("voice: webcam is browser-only");
+        }
+    }
+
     // Poll whether mic access was granted
     #[cfg(target_arch = "wasm32")]
     {
@@ -563,6 +789,21 @@ fn handle_voice_keys(
             vs.mic_live = true;
             vs.permission_granted = true;
             bevy::log::info!("voice: mic ready");
+        }
+
+        // Poll webcam ready / denied
+        if !vs.cam_enabled && !vs.cam_denied
+            && browser::CAM_READY.load(std::sync::atomic::Ordering::Acquire)
+        {
+            vs.cam_enabled = true;
+            bevy::log::info!("voice: camera ready");
+        }
+        if !vs.cam_denied
+            && browser::CAM_DENIED.load(std::sync::atomic::Ordering::Acquire)
+        {
+            vs.cam_denied = true;
+            vs.cam_enabled = false;
+            bevy::log::warn!("voice: camera denied — falling back to voice-only");
         }
     }
 
@@ -694,6 +935,10 @@ fn poll_voice_signals(
                 bevy::log::info!("voice: initiating audio PC for new peer {peer_str}");
                 if let Some(pc) = browser::create_peer_pc(&peer_str) {
                     browser::add_local_tracks_to_pc(&pc);
+                    // Also add video track if cam is already active.
+                    if vs.cam_enabled {
+                        browser::add_local_video_tracks_to_pc(&pc);
+                    }
                     let _promise = browser::create_offer_for(
                         peer_str.clone(),
                         local_peer_str.clone(),

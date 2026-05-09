@@ -24,6 +24,54 @@
   --bone:     #fafaf9;
   --steel:    #a8a29e;
 }
+
+/* Sprint 53: webcam video tiles */
+#voice-tiles {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: row-reverse;
+  flex-wrap: wrap-reverse;
+  gap: 6px;
+  max-width: 1116px; /* 6 × 180 + 5 × 6 gap */
+  pointer-events: none;
+  z-index: 40;
+}
+.voice-tile {
+  position: relative;
+  width: 180px;
+  height: 135px;
+  border: 2px solid #57534e;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #1c1917;
+  flex-shrink: 0;
+}
+.voice-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.voice-tile-label {
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--bone);
+  background: rgba(0,0,0,0.55);
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.voice-tile[data-muted] {
+  border-color: #a8a29e; /* silver = muted */
+}
+.voice-tile[data-talking] {
+  border-color: var(--mud-500); /* mud-orange = talking */
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
   font-family: 'Inter', system-ui, sans-serif; overflow: hidden; }
@@ -102,7 +150,7 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
     <strong>WASD</strong> drive · <strong>Space</strong> brake · <strong>R</strong> reset · <strong>1–6</strong> paint · <strong>V</strong> camera · <strong>Esc</strong> menu
   </div>
   <div class="tip">
-    <strong>I</strong> multiplayer · <strong>F</strong> push-to-talk voice · <strong>Shift+F</strong> always-on mic
+    <strong>I</strong> multiplayer · <strong>F</strong> push-to-talk voice · <strong>Shift+F</strong> always-on mic · <strong>Q</strong> webcam
   </div>
   <div class="tip" id="splash-touch-tip" style="display:none">
     <strong>Touch device detected</strong> — on-screen controls will appear after loading
@@ -114,6 +162,9 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
 </div>
 
 <canvas id="bevy"></canvas>
+
+<!-- Sprint 53: webcam video tile container (filled by voice.rs JS-side) -->
+<div id="voice-tiles"></div>
 
 <script>
 // Hide splash once the canvas reports a non-zero size — Bevy starts
