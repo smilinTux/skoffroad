@@ -195,6 +195,8 @@ pub mod fuel_consumption_real;
 pub mod transfer_case;
 pub mod transmission;
 pub mod winch_cable_physics;
+pub mod vehicle_mods;
+pub use vehicle_mods::{VehicleModsPlugin, VehicleModsState, TireSize, BumperKind};
 pub use engine_audio_layered::EngineAudioLayeredPlugin;
 pub use fuel_consumption_real::FuelConsumptionRealPlugin;
 pub use transfer_case::TransferCasePlugin;

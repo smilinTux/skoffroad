@@ -5,6 +5,32 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] — 2026-05-09 — Sprint 48 "vehicle mods"
+
+### Added
+- **Vehicle modification system** (`src/vehicle_mods.rs`, `VehicleModsPlugin`).
+  - `VehicleModsState` resource: `long_arm: bool`, `tire_size: TireSize`,
+    `bumper: BumperKind`, `winch: bool`.
+  - Persisted to `vehicle_mods.json` via `platform_storage`
+    (native: `~/.skoffroad/vehicle_mods.json`; WASM: localStorage).
+  - **Long-arm suspension kit** (key `1` in mods panel):
+    suspension travel 0.60 m → 0.85 m, chassis spawn +0.20 m.
+    Four visible strut cylinders attached to chassis as `DefaultSkin` children.
+  - **Tire size preset** (key `2`): Stock 33" / 35" / 37" cycles wheel
+    mesh radius (0.35 / 0.40 / 0.45 m) and raycast length.
+  - **Bumper kit** (key `3`): Stock / Steel Front / Steel Front+Rear.
+    Steel bumpers are 10 cm thicker with D-ring sphere accents;
+    add +30 kg per steel piece to chassis mass.
+  - **Winch visual** (key `4`, requires steel bumper): spool cylinder +
+    horizontal cable cylinder mounted on front bumper face.
+  - **Mods panel** toggled by **M**. Keys 1–4 toggle/cycle each mod
+    while the panel is open; Esc closes. Changes apply on next respawn (R).
+
+### Changed
+- `src/vehicle.rs`: `spawn_vehicle`, `suspension_system`, `update_wheel_visuals`
+  now read `Option<Res<VehicleModsState>>`, falling back to stock defaults in
+  the headless test harness so all four `drive_test` physics tests remain green.
+
 ## [0.11.0] — 2026-05-09 — Sprint 47 "three new vehicles"
 
 ### Added

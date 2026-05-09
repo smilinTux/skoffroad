@@ -44,7 +44,7 @@ use skoffroad::{
     TransitionPlugin, TreeVariantsPlugin, TrialPlugin,
     TruckBedCargoPlugin,
     TutorialPlugin, UfoPlugin, UnlocksPlugin, VariantsPlugin, VehicleDetailPlugin,
-    VehicleDirtPlugin, VehiclePlugin, WaterPlugin, WeatherCloudsPlugin, WheelDetailPlugin,
+    VehicleDirtPlugin, VehicleModsPlugin, VehiclePlugin, WaterPlugin, WeatherCloudsPlugin, WheelDetailPlugin,
     WheelRimsPlugin, WheelWellPlugin,
     WheelieCounterPlugin, WildlifePlugin,
     WindPlugin, WinchPlugin, WorldAudioPlugin, XpPlugin,
@@ -96,6 +96,7 @@ fn main() {
         // ClearColor and the old setup_lighting are no longer needed.
         .add_plugins((
             TerrainPlugin,
+            VehicleModsPlugin,  // must register before VehiclePlugin reads VehicleModsState
             VehiclePlugin,
             CameraPlugin,
             DustPlugin,

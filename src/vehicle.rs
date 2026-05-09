@@ -15,6 +15,7 @@
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use crate::terrain::terrain_height_at;
+use crate::vehicle_mods::{BumperKind, VehicleModsState};
 
 pub struct VehiclePlugin;
 impl Plugin for VehiclePlugin {
@@ -73,12 +74,14 @@ pub struct DriveInput {
 // ---- Constants ----
 
 const CHASSIS_HALF: Vec3         = Vec3::new(1.0, 0.4, 2.0);
+#[allow(dead_code)]
 const WHEEL_RADIUS: f32          = 0.35;
 const WHEEL_HALF_WIDTH: f32      = 0.18;
 const RIM_RADIUS: f32            = 0.20;
 const CHASSIS_MASS: f32          = 1500.0;
 const SPRING_K: f32              = 50_000.0;
 const DAMPING_C: f32             = 5_000.0;
+#[allow(dead_code)]
 const SUSPENSION_LEN: f32        = 0.60;
 // Bumped 700 → 1800. With 4 wheels = 7200 N, mass 1500 = 4.8 m/s² flat-
 // ground accel, enough to climb ~28° slopes and push out of water under
@@ -107,7 +110,20 @@ fn spawn_vehicle(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     quality: Res<crate::graphics_quality::GraphicsQuality>,
+    // Sprint 48: Option<Res> so the headless test harness (which doesn't
+    // register VehicleModsPlugin) still works — falls back to all-stock defaults,
+    // which are identical to the pre-Sprint-48 constants.
+    mods_opt: Option<Res<VehicleModsState>>,
 ) {
+    let _default_mods = VehicleModsState::default();
+    let mods: &VehicleModsState = mods_opt.as_deref().unwrap_or(&_default_mods);
+
+    // Sprint 48: read active mod values.  All defaults equal the pre-mod
+    // constants so drive_test results are unchanged when mods are stock.
+    let susp_len    = mods.suspension_len();       // 0.60 when stock
+    let wheel_r     = mods.wheel_radius();          // 0.35 when stock
+    let spawn_lift  = mods.spawn_y_lift();          // 0.0 when stock
+    let extra_mass  = mods.extra_mass();            // 0.0 when stock
     // Sprint 43: Medium+ uses a glossier "car paint" material on the chassis.
     // Metal flakes + low roughness + bumped reflectance read as clearcoat
     // even without Bevy's optional clearcoat feature. Low keeps the matte
@@ -169,10 +185,9 @@ fn spawn_vehicle(
     let body_mesh        = meshes.add(Cuboid::new(CHASSIS_HALF.x*2.0, CHASSIS_HALF.y*2.0, CHASSIS_HALF.z*2.0));
     let hood_mesh        = meshes.add(Cuboid::new(1.9, 0.22, 1.2));
     let windshield_mesh  = meshes.add(Cuboid::new(1.8, 0.05, 0.8));
-    let front_bumper     = meshes.add(Cuboid::new(2.1, 0.15, 0.12));
-    let rear_bumper      = meshes.add(Cuboid::new(2.1, 0.15, 0.12));
     let headlight_mesh   = meshes.add(Sphere::new(0.10));
-    let wheel_mesh       = meshes.add(Cylinder::new(WHEEL_RADIUS, WHEEL_HALF_WIDTH * 2.0));
+    // Sprint 48: wheel radius driven by TireSize mod (stock = WHEEL_RADIUS = 0.35).
+    let wheel_mesh       = meshes.add(Cylinder::new(wheel_r, WHEEL_HALF_WIDTH * 2.0));
     let rim_mesh         = meshes.add(Cylinder::new(RIM_RADIUS, WHEEL_HALF_WIDTH * 1.4));
 
     // Sprint 45 — Skrambler detail meshes:
@@ -186,7 +201,8 @@ fn spawn_vehicle(
     let door_mesh        = meshes.add(Cuboid::new(0.06, 0.46, 1.10));
     let mirror_mesh      = meshes.add(Cuboid::new(0.12, 0.06, 0.18));
     let light_bar_mesh   = meshes.add(Cuboid::new(1.50, 0.07, 0.10));
-    let spare_tire_mesh  = meshes.add(Cylinder::new(WHEEL_RADIUS * 0.95, WHEEL_HALF_WIDTH * 1.7));
+    // Sprint 48: spare tire scales with active tire size.
+    let spare_tire_mesh  = meshes.add(Cylinder::new(wheel_r * 0.95, WHEEL_HALF_WIDTH * 1.7));
 
     // Matte-black roll-cage / grille / mirror material.
     let cage_mat = materials.add(StandardMaterial {
@@ -196,10 +212,11 @@ fn spawn_vehicle(
         ..default()
     });
 
+    // Sprint 48: use active suspension length and long-arm spawn lift.
     let spawn_y = {
         let sum: f32 = WHEEL_OFFSETS.iter()
-            .map(|o| terrain_height_at(o.x, o.z) + SUSPENSION_LEN - o.y).sum();
-        sum / WHEEL_OFFSETS.len() as f32
+            .map(|o| terrain_height_at(o.x, o.z) + susp_len - o.y).sum();
+        sum / WHEEL_OFFSETS.len() as f32 + spawn_lift
     };
 
     // Chassis: full-size collider, centred at the rigid-body origin. Earlier
@@ -210,13 +227,14 @@ fn spawn_vehicle(
     // asymmetry is now compensated by giving reverse 1.6x drive force
     // (see compute_input drive shaping below — see Round 13 fix in
     // suspension_system).
+    // Sprint 48: bumper kit adds up to 60 kg for steel front+rear.
     let chassis_id = commands.spawn((
         Chassis,
         Transform::from_translation(Vec3::new(0.0, spawn_y, 0.0)),
         Visibility::default(),
         RigidBody::Dynamic,
         Collider::cuboid(CHASSIS_HALF.x, CHASSIS_HALF.y, CHASSIS_HALF.z),
-        Mass(CHASSIS_MASS),
+        Mass(CHASSIS_MASS + extra_mass),
         LinearDamping(0.5),
         AngularDamping(ANG_DAMP),
         SleepingDisabled,
@@ -233,15 +251,36 @@ fn spawn_vehicle(
     let windshield = commands.spawn((DefaultSkin, Mesh3d(windshield_mesh), MeshMaterial3d(glass_mat),
         Transform::from_translation(Vec3::new(0.0, 0.32, -0.88))
             .with_rotation(Quat::from_rotation_x(-25_f32.to_radians())))).id();
-    let front_bp = commands.spawn((DefaultSkin, Mesh3d(front_bumper), MeshMaterial3d(bumper_mat.clone()),
-        Transform::from_translation(Vec3::new(0.0, -0.30, -2.10)))).id();
-    let rear_bp = commands.spawn((DefaultSkin, Mesh3d(rear_bumper), MeshMaterial3d(bumper_mat),
-        Transform::from_translation(Vec3::new(0.0, -0.30, 2.10)))).id();
     let hl_l = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh.clone()),
         MeshMaterial3d(headlight_mat.clone()),
         Transform::from_translation(Vec3::new(-0.75, -0.12, -2.10)))).id();
     let hl_r = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh.clone()), MeshMaterial3d(headlight_mat.clone()),
         Transform::from_translation(Vec3::new( 0.75, -0.12, -2.10)))).id();
+
+    // Sprint 48: bumper meshes depend on active BumperKind mod.
+    //   Stock         → thin plastic-look cuboid (original).
+    //   SteelFront    → chunky steel front + stock rear.
+    //   SteelFrontRear → chunky steel both ends.
+    // Steel bumpers are 10 cm thicker (0.22 depth vs 0.12) and include
+    // two D-ring spheres on each end face.
+    let steel_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.28, 0.28, 0.28),
+        perceptual_roughness: 0.55,
+        metallic: 0.70,
+        ..default()
+    });
+    let dring_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.50, 0.50, 0.52),
+        perceptual_roughness: 0.35,
+        metallic: 0.90,
+        ..default()
+    });
+
+    let front_bp = spawn_bumper_front(&mut commands, &mut meshes, &mods.bumper,
+        bumper_mat.clone(), steel_mat.clone(), dring_mat.clone());
+    let rear_bp  = spawn_bumper_rear(&mut commands, &mut meshes, &mods.bumper,
+        bumper_mat.clone(), steel_mat.clone(), dring_mat.clone());
+
     commands.entity(chassis_id).add_children(&[body, hood, windshield, front_bp, rear_bp, hl_l, hl_r]);
 
     // ----- Sprint 45: Skrambler detail layer -----------------------------
@@ -362,6 +401,78 @@ fn spawn_vehicle(
     )).id();
     details.push(spare);
 
+    // ----- Sprint 48: mod-driven extra meshes --------------------------------
+    //
+    // Long-arm suspension kit: four visible strut cylinders, one per wheel,
+    // running from the chassis bottom-edge down to just above the wheel centre.
+    // They are tagged DefaultSkin so they get despawned on the next respawn
+    // together with all other chassis children, which is the correct behaviour
+    // since the new spawn call will re-evaluate mods.
+    if mods.long_arm {
+        let strut_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.22, 0.22, 0.24),
+            perceptual_roughness: 0.50,
+            metallic: 0.65,
+            ..default()
+        });
+        // Strut length: from chassis bottom (y = -CHASSIS_HALF.y) to just above
+        // the wheel centre.  We visualise half of that travel.
+        let strut_len = susp_len * 0.55; // visual, not physical
+        let strut_mesh = meshes.add(Cylinder::new(0.035, strut_len));
+        for &offset in WHEEL_OFFSETS.iter() {
+            // Position: mid-point between chassis bottom and wheel anchor,
+            // slightly inside (chassis-local X) so it doesn't clip the tire.
+            let inner_x = offset.x * 0.70;
+            let strut = commands.spawn((
+                DefaultSkin,
+                Mesh3d(strut_mesh.clone()),
+                MeshMaterial3d(strut_mat.clone()),
+                Transform::from_translation(Vec3::new(
+                    inner_x,
+                    -CHASSIS_HALF.y - strut_len * 0.5,
+                    offset.z,
+                )),
+            )).id();
+            details.push(strut);
+        }
+    }
+
+    // Winch visual: small spool cylinder on top of the front bumper face,
+    // plus a horizontal cable cylinder extending forward ~0.5 m.
+    // Only spawned when bumper != Stock and winch == true.
+    if mods.winch && mods.bumper != BumperKind::Stock {
+        let winch_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.15, 0.15, 0.15),
+            perceptual_roughness: 0.60,
+            metallic: 0.80,
+            ..default()
+        });
+        let cable_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.60, 0.55, 0.45),
+            perceptual_roughness: 0.80,
+            ..default()
+        });
+        // Spool: cylinder lying flat along X, mounted at bumper top-centre.
+        let spool = commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.08, 0.42))),
+            MeshMaterial3d(winch_mat.clone()),
+            Transform::from_translation(Vec3::new(0.0, -0.22, -2.12))
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        )).id();
+        // Cable: thin cylinder extending 0.5 m forward from the spool.
+        let cable = commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.018, 0.50))),
+            MeshMaterial3d(cable_mat),
+            Transform::from_translation(Vec3::new(0.0, -0.22, -2.36))
+                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+        )).id();
+        details.push(spool);
+        details.push(cable);
+    }
+    // -------------------------------------------------------------------------
+
     commands.entity(chassis_id).add_children(&details);
     // ---------------------------------------------------------------------
 
@@ -382,6 +493,77 @@ fn spawn_vehicle(
     commands.insert_resource(VehicleRoot { chassis: chassis_id });
 }
 
+// ---- Bumper helpers (Sprint 48) ----
+//
+// Returns a single DefaultSkin entity whose mesh depends on the active BumperKind.
+// Stock → original thin cuboid.
+// Steel → 10 cm thicker cuboid + two D-ring spheres on each end face.
+//
+// Splitting front / rear into separate functions keeps things readable.
+
+fn spawn_bumper_front(
+    commands:   &mut Commands,
+    meshes:     &mut Assets<Mesh>,
+    bumper:     &BumperKind,
+    stock_mat:  Handle<StandardMaterial>,
+    steel_mat:  Handle<StandardMaterial>,
+    dring_mat:  Handle<StandardMaterial>,
+) -> Entity {
+    match bumper {
+        BumperKind::Stock => {
+            let m = meshes.add(Cuboid::new(2.1, 0.15, 0.12));
+            commands.spawn((DefaultSkin, Mesh3d(m), MeshMaterial3d(stock_mat),
+                Transform::from_translation(Vec3::new(0.0, -0.30, -2.10)))).id()
+        }
+        _ => {
+            // Chunky steel front bumper: wider, thicker, slightly lower.
+            let m = meshes.add(Cuboid::new(2.2, 0.22, 0.22));
+            let bp = commands.spawn((DefaultSkin, Mesh3d(m), MeshMaterial3d(steel_mat),
+                Transform::from_translation(Vec3::new(0.0, -0.32, -2.12)))).id();
+            // Two D-ring shackles on each end.
+            let ring_mesh = meshes.add(Sphere::new(0.06));
+            for &rx in &[-0.85_f32, 0.85] {
+                commands.spawn((DefaultSkin,
+                    Mesh3d(ring_mesh.clone()),
+                    MeshMaterial3d(dring_mat.clone()),
+                    Transform::from_translation(Vec3::new(rx, -0.32, -2.24))));
+            }
+            bp
+        }
+    }
+}
+
+fn spawn_bumper_rear(
+    commands:   &mut Commands,
+    meshes:     &mut Assets<Mesh>,
+    bumper:     &BumperKind,
+    stock_mat:  Handle<StandardMaterial>,
+    steel_mat:  Handle<StandardMaterial>,
+    dring_mat:  Handle<StandardMaterial>,
+) -> Entity {
+    match bumper {
+        BumperKind::Stock | BumperKind::SteelFront => {
+            // Stock rear for both Stock and SteelFront kit.
+            let m = meshes.add(Cuboid::new(2.1, 0.15, 0.12));
+            commands.spawn((DefaultSkin, Mesh3d(m), MeshMaterial3d(stock_mat),
+                Transform::from_translation(Vec3::new(0.0, -0.30, 2.10)))).id()
+        }
+        BumperKind::SteelFrontRear => {
+            let m = meshes.add(Cuboid::new(2.2, 0.22, 0.22));
+            let bp = commands.spawn((DefaultSkin, Mesh3d(m), MeshMaterial3d(steel_mat),
+                Transform::from_translation(Vec3::new(0.0, -0.32, 2.12)))).id();
+            let ring_mesh = meshes.add(Sphere::new(0.06));
+            for &rx in &[-0.85_f32, 0.85] {
+                commands.spawn((DefaultSkin,
+                    Mesh3d(ring_mesh.clone()),
+                    MeshMaterial3d(dring_mat.clone()),
+                    Transform::from_translation(Vec3::new(rx, -0.32, 2.24))));
+            }
+            bp
+        }
+    }
+}
+
 // ---- Input ----
 
 pub fn drive_input_keyboard(keys: Res<ButtonInput<KeyCode>>, mut input: ResMut<DriveInput>) {
@@ -399,14 +581,21 @@ pub fn apply_drive_input() {} // stub — kept for external references
 // ---- Suspension + drive (PhysicsSchedule, after narrow phase, before solver) ----
 
 fn suspension_system(
-    input: Res<DriveInput>,
-    vehicle: Option<Res<VehicleRoot>>,
+    input:    Res<DriveInput>,
+    vehicle:  Option<Res<VehicleRoot>>,
+    mods_opt: Option<Res<VehicleModsState>>,
     mut chassis_q: Query<(Forces, &Transform), With<Chassis>>,
     mut wheel_q: Query<&mut Wheel>,
     spatial: SpatialQuery,
 ) {
     let Some(vehicle) = vehicle else { return };
     let Ok((mut forces, transform)) = chassis_q.get_mut(vehicle.chassis) else { return };
+
+    // Sprint 48: read effective suspension length from active mods.
+    // Falls back to stock default (0.60) when VehicleModsPlugin is absent (headless tests).
+    let _default_mods = VehicleModsState::default();
+    let mods: &VehicleModsState = mods_opt.as_deref().unwrap_or(&_default_mods);
+    let susp_len = mods.suspension_len();
 
     let chassis_pos = transform.translation;
     let chassis_rot = transform.rotation;
@@ -419,7 +608,7 @@ fn suspension_system(
     let effective_steer = MAX_STEER_ANGLE * (1.0 / (1.0 + 0.1 * lin_vel_v.length()));
 
     let filter  = SpatialQueryFilter::from_excluded_entities([vehicle.chassis]);
-    let ray_len = SUSPENSION_LEN + 0.5;
+    let ray_len = susp_len + 0.5;
 
     let mut compressions  = [0.0_f32; 4];
     let mut world_anchors = [Vec3::ZERO; 4];
@@ -430,7 +619,7 @@ fn suspension_system(
         let world_anchor = chassis_pos + chassis_rot * local_anchor;
         world_anchors[i] = world_anchor;
         if let Some(hit) = spatial.cast_ray(world_anchor, Dir3::NEG_Y, ray_len, true, &filter) {
-            let c = (SUSPENSION_LEN - hit.distance).max(0.0);
+            let c = (susp_len - hit.distance).max(0.0);
             compressions[i] = c;
             normals[i]  = Vec3::new(hit.normal.x, hit.normal.y, hit.normal.z);
             contacts[i] = c > 0.0;
@@ -522,14 +711,21 @@ fn suspension_system(
 // ---- Visual wheel update ----
 
 fn update_wheel_visuals(
-    vehicle: Option<Res<VehicleRoot>>,
+    vehicle:  Option<Res<VehicleRoot>>,
     chassis_q: Query<(&Transform, &LinearVelocity), With<Chassis>>,
     mut wheel_q: Query<(&mut Transform, &mut Wheel), Without<Chassis>>,
-    input: Res<DriveInput>,
-    time: Res<Time>,
+    input:    Res<DriveInput>,
+    mods_opt: Option<Res<VehicleModsState>>,
+    time:     Res<Time>,
 ) {
     let Some(vehicle) = vehicle else { return };
     let Ok((c_transform, lin_vel)) = chassis_q.get(vehicle.chassis) else { return };
+
+    // Sprint 48: spin rate uses active wheel radius so large tires roll
+    // at the correct angular speed. Falls back to stock default in headless mode.
+    let _default_mods = VehicleModsState::default();
+    let mods: &VehicleModsState = mods_opt.as_deref().unwrap_or(&_default_mods);
+    let wheel_r = mods.wheel_radius();
 
     let fwd   = *c_transform.forward();
     let speed = Vec3::new(lin_vel.x, lin_vel.y, lin_vel.z).dot(fwd);
@@ -549,7 +745,7 @@ fn update_wheel_visuals(
     let slip_omega  = slip_factor * 25.0;  // rad/s extra spin
 
     for (mut transform, mut wheel) in wheel_q.iter_mut() {
-        wheel.spin += (speed * dt / WHEEL_RADIUS) + slip_omega * dt * input.drive.signum();
+        wheel.spin += (speed * dt / wheel_r) + slip_omega * dt * input.drive.signum();
         let base_offset    = WHEEL_OFFSETS[wheel.index];
         let compress_delta = Vec3::new(0.0, -wheel.current_compression, 0.0);
         // base_rot aligns Cylinder Y-axis → chassis X (lateral). spin_rot around local Y
