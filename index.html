@@ -13,6 +13,9 @@
 <!-- Bake all game assets next to the .wasm so AssetServer can find them. -->
 <link data-trunk rel="copy-dir" href="assets" />
 
+<!-- Sprint 52: mobile touch controls (CSS + JS live in assets/, copied by Trunk's copy-dir) -->
+<link rel="stylesheet" href="assets/touch-controls.css" />
+
 <style>
 :root {
   --dirt-900: #0c0a09;
@@ -101,6 +104,9 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
   <div class="tip">
     <strong>I</strong> multiplayer · <strong>F</strong> push-to-talk voice · <strong>Shift+F</strong> always-on mic
   </div>
+  <div class="tip" id="splash-touch-tip" style="display:none">
+    <strong>Touch device detected</strong> — on-screen controls will appear after loading
+  </div>
   <div class="warn">
     if the canvas stays black, your browser may not support WebGPU yet —
     try Chrome / Brave / Edge.
@@ -124,7 +130,21 @@ const ro = new ResizeObserver(() => {
 ro.observe(canvas);
 // Fallback: hide after 30 s no matter what.
 setTimeout(() => splash.classList.add('gone'), 30_000);
+
+// Sprint 52: show touch tip on the splash if this is a touch device.
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const isTouch = params.has('force-touch') ||
+    'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  if (isTouch) {
+    const tip = document.getElementById('splash-touch-tip');
+    if (tip) tip.style.display = '';
+  }
+})();
 </script>
+
+<!-- Sprint 52: touch controls JS — assets/ is already copied by Trunk's copy-dir above -->
+<script src="assets/touch-controls.js" defer></script>
 
 </body>
 </html>

@@ -1,0 +1,185 @@
+/* ============================================================
+   skoffroad – mobile touch controls overlay
+   Sprint 52 — v0.15.0
+   ============================================================ */
+
+:root {
+  --tc-mud:    #d97706;   /* mud-500 */
+  --tc-mud-lt: #fbbf24;   /* mud-300 */
+  --tc-bg:     rgba(12, 10, 9, 0.55);
+  --tc-border: rgba(217, 119, 6, 0.45);
+  --tc-ring:   rgba(217, 119, 6, 0.20);
+  --tc-thumb:  rgba(251, 191, 36, 0.75);
+  --tc-btn:    rgba(12, 10, 9, 0.60);
+  --tc-btn-act:rgba(217, 119, 6, 0.80);
+  --tc-text:   #fafaf9;
+  --tc-radius: 14px;
+}
+
+/* ── Overlay root ───────────────────────────────────────────── */
+#touch-controls {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;       /* children opt-in selectively */
+  z-index: 100;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+/* ── Toggle pill (desktop testing) ─────────────────────────── */
+#tc-toggle {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--tc-bg);
+  border: 1px solid var(--tc-border);
+  color: var(--tc-mud-lt);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 101;
+  letter-spacing: 0.05em;
+  transition: background 0.15s;
+}
+#tc-toggle:hover { background: rgba(217,119,6,0.25); }
+
+/* ── Joystick (bottom-left) ─────────────────────────────────── */
+#tc-stick-zone {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 140px;
+  height: 140px;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#tc-stick-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--tc-ring);
+  border: 2px solid var(--tc-border);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#tc-stick-thumb {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--tc-thumb);
+  border: 2px solid var(--tc-mud-lt);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: transform 0.05s ease;
+  pointer-events: none;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+}
+
+/* direction arrows inside ring (decorative) */
+#tc-stick-ring::before {
+  content: "▲";
+  position: absolute;
+  top: 6px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--tc-border);
+  line-height: 1;
+}
+#tc-stick-ring::after {
+  content: "▼";
+  position: absolute;
+  bottom: 6px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--tc-border);
+  line-height: 1;
+}
+
+/* ── Button grid (bottom-right) ─────────────────────────────── */
+#tc-buttons {
+  position: fixed;
+  bottom: 24px;
+  right: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, 68px);
+  grid-template-rows: repeat(2, 64px) 48px;
+  gap: 8px;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* ── Base button ────────────────────────────────────────────── */
+.tc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: var(--tc-btn);
+  border: 1.5px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  color: var(--tc-text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.1s, border-color 0.1s, transform 0.05s;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.tc-btn-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.tc-btn:active,
+.tc-btn.tc-pressed {
+  background: var(--tc-btn-act);
+  border-color: var(--tc-mud-lt);
+  transform: scale(0.93);
+}
+
+/* Brake — full-width bottom row */
+#tc-btn-brake {
+  grid-column: 1 / -1;
+  background: rgba(30, 10, 5, 0.70);
+  border-color: rgba(220, 60, 30, 0.55);
+  color: #fca5a5;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+#tc-btn-brake:active,
+#tc-btn-brake.tc-pressed {
+  background: rgba(185, 28, 28, 0.80);
+  border-color: #fca5a5;
+}
+
+/* PTT button distinct colour */
+#tc-btn-ptt {
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+#tc-btn-ptt.tc-pressed {
+  background: rgba(21, 128, 61, 0.75);
+  border-color: #86efac;
+}
+
+/* ── Hidden state ───────────────────────────────────────────── */
+#touch-controls.tc-hidden #tc-stick-zone,
+#touch-controls.tc-hidden #tc-buttons {
+  display: none;
+}
