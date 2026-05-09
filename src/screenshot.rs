@@ -10,9 +10,11 @@
 // Uses Bevy 0.18's Screenshot component + save_to_disk observer.
 // A 2-second top-center HUD popup confirms the save path.
 
-use std::{path::PathBuf, time::{SystemTime, UNIX_EPOCH}};
+use std::path::PathBuf;
 
 use bevy::{prelude::*, render::view::screenshot::{save_to_disk, Screenshot}};
+
+use crate::platform_storage::epoch_seconds;
 
 // ---- Plugin -----------------------------------------------------------------
 
@@ -43,10 +45,7 @@ struct ScreenshotHudText;
 // ---- Path resolution --------------------------------------------------------
 
 fn resolve_screenshot_path() -> PathBuf {
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let ts = epoch_seconds();
     let filename = format!("sandk_{}.png", ts);
 
     let base: Option<PathBuf> = {

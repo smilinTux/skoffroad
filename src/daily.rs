@@ -8,7 +8,7 @@
 //                progress_value }
 
 use bevy::prelude::*;
-use std::time::{SystemTime, UNIX_EPOCH};
+use crate::platform_storage::epoch_seconds;
 
 use crate::airtime::AirtimeStats;
 use crate::collectibles::CollectibleCount;
@@ -91,11 +91,7 @@ struct DailyHudBar;
 // ---- Startup: build challenge ------------------------------------------------
 
 fn build_daily_challenge(mut state: ResMut<DailyState>) {
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
-    let today_seed = secs / 86400;
+    let today_seed = epoch_seconds() / 86400;
     state.today_seed = today_seed;
 
     let index = today_seed % 5;

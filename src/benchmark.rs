@@ -5,12 +5,11 @@
 //   BenchmarkPlugin
 //   BenchmarkState (resource)
 
-use std::{
-    path::PathBuf,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::path::PathBuf;
 
 use bevy::prelude::*;
+
+use crate::platform_storage::epoch_seconds;
 
 // ---- Public plugin ----------------------------------------------------------
 
@@ -194,10 +193,7 @@ fn finalize_and_write(mut state: ResMut<BenchmarkState>) {
 
     // --- Resolve output path -------------------------------------------------
 
-    let ts = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
+    let ts = epoch_seconds();
 
     let path = bench_report_path(ts);
 

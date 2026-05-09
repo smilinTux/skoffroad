@@ -2,7 +2,7 @@
 
 [package]
 name = "skoffroad"
-version = "0.10.2"
+version = "0.10.3"
 edition = "2021"
 default-run = "skoffroad"
 license = "GPL-3.0-or-later"

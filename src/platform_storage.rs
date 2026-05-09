@@ -98,6 +98,49 @@ pub use native::{exists, read_string, write_string};
 #[cfg(target_arch = "wasm32")]
 pub use wasm::{exists, read_string, write_string};
 
+// ---------------------------------------------------------------------------
+// Wall-clock helpers
+// ---------------------------------------------------------------------------
+//
+// `std::time::SystemTime::now()` panics on wasm32-unknown-unknown
+// ("time not implemented on this platform"). The browser equivalent is
+// `Date.now()`. This helper hides the difference and is safe to call from
+// any plugin Startup / Update system.
+
+/// Seconds since the Unix epoch. Falls back to 0 if the clock is unavailable.
+pub fn epoch_seconds() -> u64 {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        // `Date.now()` returns milliseconds since epoch as f64.
+        let ms = js_sys_date_now();
+        if ms.is_finite() && ms >= 0.0 {
+            (ms / 1000.0) as u64
+        } else {
+            0
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn js_sys_date_now() -> f64 {
+    // Inline binding to JS `Date.now()` so we don't have to pull in `js-sys`
+    // as a dependency. `web-sys` already ships with the wasm-bindgen runtime.
+    use wasm_bindgen::prelude::*;
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(js_namespace = Date)]
+        fn now() -> f64;
+    }
+    now()
+}
+
 /// Native-only helper: returns the on-disk path for a key. Useful for log
 /// messages ("config: loaded from /home/.../config.json"). Returns `None`
 /// in WASM where the concept doesn't apply.
