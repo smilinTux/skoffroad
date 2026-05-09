@@ -21,13 +21,47 @@ pub struct VehiclePlugin;
 impl Plugin for VehiclePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DriveInput>()
+           .init_resource::<RespawnRequest>()
            .add_systems(Startup, spawn_vehicle)
-           .add_systems(Update, drive_input_keyboard)
+           .add_systems(Update, (drive_input_keyboard, respawn_on_request).chain())
            .add_systems(PhysicsSchedule, suspension_system
                .after(PhysicsStepSystems::NarrowPhase)
                .before(PhysicsStepSystems::Solver))
            .add_systems(Update, update_wheel_visuals);
     }
+}
+
+/// Public flag any plugin can set to request a full chassis respawn next frame.
+/// vehicle_mods.rs sets this on `VehicleModsState` change so swapping tire size,
+/// long-arm kit, bumpers, or winch is instantly visible without `cargo run`-ing.
+#[derive(Resource, Default)]
+pub struct RespawnRequest(pub bool);
+
+fn respawn_on_request(
+    mut commands: Commands,
+    mut request: ResMut<RespawnRequest>,
+    vehicle: Option<Res<VehicleRoot>>,
+    meshes: ResMut<Assets<Mesh>>,
+    materials: ResMut<Assets<StandardMaterial>>,
+    quality: Res<crate::graphics_quality::GraphicsQuality>,
+    mods_opt: Option<Res<VehicleModsState>>,
+) {
+    if !request.0 {
+        return;
+    }
+    request.0 = false;
+
+    // Despawn the previous chassis entity tree (chassis + body + wheels +
+    // mods + variant skin children all under the same root).
+    if let Some(v) = vehicle.as_deref() {
+        if let Ok(mut e) = commands.get_entity(v.chassis) {
+            e.despawn();
+        }
+    }
+
+    // Re-run the same spawn logic so the new chassis reflects the latest
+    // mods + quality settings.
+    spawn_vehicle(commands, meshes, materials, quality, mods_opt);
 }
 
 pub struct VehiclePluginHeadless;

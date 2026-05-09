@@ -394,7 +394,6 @@ fn recv_recovery_messages(
     mut state:  ResMut<RecoveryState>,
 ) {
     let Some(ref mut socket) = socket else { return };
-    if socket.channel_count() <= CHANNEL_RECOVERY { return; }
 
     let messages: Vec<(PeerId, Vec<u8>)> = socket
         .channel_mut(CHANNEL_RECOVERY)
@@ -514,10 +513,8 @@ fn handle_retract_key(
     };
 
     if let Some(ref mut socket) = socket {
-        if socket.channel_count() > CHANNEL_RECOVERY {
-            if let Ok(b) = (RecoveryMessage::Retract { attach_id }).encode_bytes() {
-                socket.channel_mut(CHANNEL_RECOVERY).send(b.into(), peer_id);
-            }
+        if let Ok(b) = (RecoveryMessage::Retract { attach_id }).encode_bytes() {
+            socket.channel_mut(CHANNEL_RECOVERY).send(b.into(), peer_id);
         }
     }
 }
@@ -535,10 +532,8 @@ fn handle_detach_key(
     let Some(conn) = state.active.take() else { return };
 
     if let Some(ref mut socket) = socket {
-        if socket.channel_count() > CHANNEL_RECOVERY {
-            if let Ok(b) = (RecoveryMessage::Detach { attach_id: conn.attach_id }).encode_bytes() {
-                socket.channel_mut(CHANNEL_RECOVERY).send(b.into(), conn.peer_id);
-            }
+        if let Ok(b) = (RecoveryMessage::Detach { attach_id: conn.attach_id }).encode_bytes() {
+            socket.channel_mut(CHANNEL_RECOVERY).send(b.into(), conn.peer_id);
         }
     }
     // state.active already taken to None above
@@ -549,15 +544,16 @@ fn handle_detach_key(
 // ---------------------------------------------------------------------------
 
 fn apply_recovery_force(
-    mut state:  ResMut<RecoveryState>,
-    vehicle:    Option<Res<VehicleRoot>>,
-    chassis_q:  Query<(Forces, &Transform), With<Chassis>>,
-    ghosts_q:   Query<(&GhostMarker, &Transform)>,
+    mut state:     ResMut<RecoveryState>,
+    vehicle:       Option<Res<VehicleRoot>>,
+    mut chassis_q: Query<(Forces, &Transform), With<Chassis>>,
+    ghosts_q:      Query<(&GhostMarker, &Transform)>,
 ) {
     let Some(vehicle) = vehicle else { return };
+    let cable_len = state.cable_len;
     let Some(conn) = &mut state.active else { return };
 
-    let Ok((mut forces, chassis_tf)) = chassis_q.get(vehicle.chassis) else { return };
+    let Ok((mut forces, chassis_tf)) = chassis_q.get_mut(vehicle.chassis) else { return };
 
     let ghost_tf = ghosts_q.iter().find_map(|(gm, tf)| {
         if gm.peer_id == conn.peer_id { Some(*tf) } else { None }
@@ -579,7 +575,7 @@ fn apply_recovery_force(
         RecoveryKind::Winch => {
             if conn.rescuer {
                 // Rescuer is pulled toward victim when cable taut
-                dist > state.cable_len
+                dist > cable_len
             } else {
                 // Victim is pulled toward rescuer when Retract arrives
                 conn.retracting
@@ -606,16 +602,16 @@ fn apply_recovery_force(
 // ---------------------------------------------------------------------------
 
 fn apply_tow_strap_force(
-    state:     Res<RecoveryState>,
-    vehicle:   Option<Res<VehicleRoot>>,
-    chassis_q: Query<(Forces, &Transform), With<Chassis>>,
-    ghosts_q:  Query<(&GhostMarker, &Transform)>,
+    state:         Res<RecoveryState>,
+    vehicle:       Option<Res<VehicleRoot>>,
+    mut chassis_q: Query<(Forces, &Transform), With<Chassis>>,
+    ghosts_q:      Query<(&GhostMarker, &Transform)>,
 ) {
     let Some(vehicle) = vehicle else { return };
     let Some(conn) = &state.active else { return };
     if conn.kind != RecoveryKind::TowStrap || !conn.rescuer { return; }
 
-    let Ok((mut forces, chassis_tf)) = chassis_q.get(vehicle.chassis) else { return };
+    let Ok((mut forces, chassis_tf)) = chassis_q.get_mut(vehicle.chassis) else { return };
     let ghost_tf = ghosts_q.iter().find_map(|(gm, tf)| {
         if gm.peer_id == conn.peer_id { Some(*tf) } else { None }
     });
@@ -727,8 +723,6 @@ fn update_cable_visual(
 // ---------------------------------------------------------------------------
 
 /// Initiate a recovery connection to a remote peer.
-///
-/// Caller is responsible for ensuring `socket.channel_count() > CHANNEL_RECOVERY`.
 pub fn request_recovery(
     our_hook:  HookKind,
     peer_id:   PeerId,
@@ -738,7 +732,6 @@ pub fn request_recovery(
     socket:    &mut bevy_matchbox::prelude::MatchboxSocket,
 ) {
     if state.active.is_some() || state.pending_request.is_some() { return; }
-    if socket.channel_count() <= CHANNEL_RECOVERY { return; }
 
     let attach_id = next_attach_id();
     let msg = RecoveryMessage::Request {

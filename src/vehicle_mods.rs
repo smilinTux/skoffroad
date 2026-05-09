@@ -238,7 +238,7 @@ fn spawn_mods_panel(mut commands: Commands) {
 
     // Footer hint.
     let footer = commands.spawn((
-        Text::new("1 long-arm   2 tire size   3 bumper   4 winch   Esc close\nChanges apply on next respawn (R)"),
+        Text::new("1 long-arm   2 tire size   3 bumper   4 winch   Esc close\nChanges apply instantly (chassis respawns)"),
         TextFont { font_size: 12.0, ..default() },
         TextColor(COLOR_HINT),
     )).id();
@@ -255,7 +255,9 @@ fn toggle_mods_panel(
     keys:      Res<ButtonInput<KeyCode>>,
     mut panel: ResMut<ModsPanelState>,
 ) {
-    if keys.just_pressed(KeyCode::KeyM) {
+    // Shift+M: M alone is taken by minimap (toggle) and medals (panel).
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    if shift && keys.just_pressed(KeyCode::KeyM) {
         panel.open = !panel.open;
     }
     if keys.just_pressed(KeyCode::Escape) {
@@ -264,22 +266,27 @@ fn toggle_mods_panel(
 }
 
 fn handle_mods_keys(
-    keys:       Res<ButtonInput<KeyCode>>,
-    panel:      Res<ModsPanelState>,
-    mut state:  ResMut<VehicleModsState>,
+    keys:        Res<ButtonInput<KeyCode>>,
+    panel:       Res<ModsPanelState>,
+    mut state:   ResMut<VehicleModsState>,
+    mut respawn: ResMut<crate::vehicle::RespawnRequest>,
 ) {
     if !panel.open {
         return;
     }
 
+    let mut changed = false;
+
     // 1 — toggle long-arm kit.
     if keys.just_pressed(KeyCode::Digit1) {
         state.long_arm = !state.long_arm;
+        changed = true;
     }
 
     // 2 — cycle tire size.
     if keys.just_pressed(KeyCode::Digit2) {
         state.tire_size = state.tire_size.next();
+        changed = true;
     }
 
     // 3 — cycle bumper.
@@ -289,14 +296,22 @@ fn handle_mods_keys(
         if state.bumper == BumperKind::Stock {
             state.winch = false;
         }
+        changed = true;
     }
 
     // 4 — toggle winch (requires steel bumper).
     if keys.just_pressed(KeyCode::Digit4) {
         if state.bumper != BumperKind::Stock {
             state.winch = !state.winch;
+            changed = true;
         }
         // If bumper is Stock, silently ignore (or show a subtle hint via panel text).
+    }
+
+    // Trigger an immediate chassis respawn so the visual changes are visible
+    // without the player having to remember to press R.
+    if changed {
+        respawn.0 = true;
     }
 }
 
