@@ -653,8 +653,8 @@ fn check_tier_start(
     for tier in 0..NUM_TIERS {
         let sp = layout.start_pos[tier];
         let dx = pos.x - sp.x;
-        let dz = (pos.z - sp.z).abs();
-        let xz_dist = (dx * dx + (pos.z - sp.z) * (pos.z - sp.z)).sqrt();
+        let ddz = pos.z - sp.z;
+        let xz_dist = (dx * dx + ddz * ddz).sqrt();
 
         // Enter when chassis is within START_RADIUS on XZ of start gate
         // and has just crossed the gate (dx >= 0).
@@ -672,7 +672,6 @@ fn check_tier_start(
                 "hillclimb_tiers: started {} tier at ({:.1},{:.1},{:.1})",
                 TIER_NAMES[tier], pos.x, pos.y, pos.z
             );
-            let _ = dz; // consumed above in the check
             break;
         }
     }
@@ -860,13 +859,26 @@ fn update_tier_hud(
 
 // ---------------------------------------------------------------------------
 // System: rebuild_leaderboard_content — populate the leaderboard panel
+// Only runs when state changed (Bevy change-detection) so we don't spawn/
+// despawn entities every frame while the panel is hidden.
 // ---------------------------------------------------------------------------
 
 fn rebuild_leaderboard_content(
     state:        Res<HillclimbTiersState>,
+    lb_vis_q:     Query<&Visibility, With<LeaderboardPanelRoot>>,
     content_q:    Query<Entity, With<LeaderboardContent>>,
     mut commands: Commands,
 ) {
+    // Skip if panel is hidden and state hasn't changed.
+    let panel_visible = lb_vis_q
+        .single()
+        .map(|v| *v == Visibility::Visible)
+        .unwrap_or(false);
+
+    if !panel_visible && !state.is_changed() {
+        return;
+    }
+
     let Ok(content_entity) = content_q.single() else { return };
     commands.entity(content_entity).despawn_related::<Children>();
 
