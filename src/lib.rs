@@ -79,6 +79,8 @@ pub mod headlights;
 pub mod heightmap_loader;
 pub mod help;
 pub mod hillclimb;
+pub mod hillclimb_tiers;
+pub use hillclimb_tiers::{HillclimbTiersPlugin, HillclimbTiersState, CHANNEL_LEADERBOARD};
 pub mod hillclimb_track;
 pub mod horn;
 pub mod hud;

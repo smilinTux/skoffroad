@@ -24,7 +24,7 @@ use skoffroad::{
     FogHornPlugin, FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin,
     GaugePlugin, GlbLoaderPlugin, GodraysPlugin, GrassTuftsPlugin, GraphicsQualityPlugin, HeadlightsPlugin,
     HeatHazePlugin, HeightmapLoaderPlugin,
-    HelpPlugin, HillclimbPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
+    HelpPlugin, HillclimbPlugin, HillclimbTiersPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
     ImpactFlashPlugin, InputRemapPlugin, Interior3dPlugin,
     IntroVideoPlugin, JumpMeterPlugin, LandmarksPlugin, LicensePlatePlugin, LiveryPlugin,
     LoadingScreenPlugin, LowFuelWarningPlugin, LowRangePlugin, MapSelectPlugin, MapsPlugin,
@@ -326,10 +326,11 @@ fn main() {
         .add_plugins((
             HillclimbTrackPlugin,
             HillclimbPlugin,
+            HillclimbTiersPlugin,
             LowRangePlugin,
             TirePressurePlugin,
-            WinchPlugin,
         ))
+        .add_plugins(WinchPlugin)
         // Sprint 54: group rock-crawl trail mode (3 sections, timer, HUD, auto-spectate)
         .add_plugins(RockCrawlTrailPlugin)
         .add_plugins((

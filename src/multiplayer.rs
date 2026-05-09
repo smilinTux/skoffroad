@@ -1104,6 +1104,7 @@ fn build_socket_builder(cfg: &MultiplayerConfig) -> WebRtcSocketBuilder {
         .add_channel(ChannelConfig::unreliable()) // channel 0: chassis state
         .add_channel(ChannelConfig::reliable())   // channel 1: voice SDP / ICE signaling
         .add_channel(ChannelConfig::reliable())   // channel 2: recovery (Sprint 55)
+        .add_channel(ChannelConfig::reliable())   // channel 3: hillclimb leaderboard (Sprint 56)
 }
 
 // ---------------------------------------------------------------------------
