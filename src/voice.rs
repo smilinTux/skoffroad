@@ -263,7 +263,7 @@ mod browser {
             let tracks = stream.get_audio_tracks();
             for i in 0..tracks.length() {
                 let track = web_sys::MediaStreamTrack::from(tracks.get(i));
-                let _ = pc.add_track_0(&track, &stream);
+                let _ = pc.add_track(&track, &stream, &js_sys::Array::new());
             }
         }
     }
@@ -409,7 +409,10 @@ mod browser {
             if let Some(window) = web_sys::window() {
                 if let Some(doc) = window.document() {
                     if let Ok(audio_el) = doc.create_element("audio") {
-                        let audio = HtmlAudioElement::from(audio_el.clone());
+                        let audio: HtmlAudioElement = match audio_el.clone().dyn_into::<HtmlAudioElement>() {
+                            Ok(a) => a,
+                            Err(_) => continue,
+                        };
                         audio.set_autoplay(true);
                         let _ = Reflect::set(
                             &audio_el,
@@ -629,17 +632,20 @@ fn poll_voice_signals(
                     }
                     browser::handle_offer(from, sdp, local_peer_str.clone());
                 }
+                #[cfg(not(target_arch = "wasm32"))]
                 let _ = (from, sdp, peer_str);
             }
             VoiceSignal::Answer { from, sdp } => {
                 bevy::log::info!("voice: received Answer from {from}");
                 #[cfg(target_arch = "wasm32")]
                 browser::handle_answer(&from, &sdp);
+                #[cfg(not(target_arch = "wasm32"))]
                 let _ = (from, sdp);
             }
             VoiceSignal::IceCandidate { from, candidate, sdp_mid } => {
                 #[cfg(target_arch = "wasm32")]
                 browser::handle_ice_candidate(&from, &candidate, &sdp_mid);
+                #[cfg(not(target_arch = "wasm32"))]
                 let _ = (from, candidate, sdp_mid);
             }
             VoiceSignal::HangUp { from } => {
@@ -649,6 +655,7 @@ fn poll_voice_signals(
                     browser::remove_peer_pc(&from);
                     browser::remove_peer_audio(&from);
                 }
+                #[cfg(not(target_arch = "wasm32"))]
                 let _ = from;
             }
         }
