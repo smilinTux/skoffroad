@@ -21,18 +21,31 @@ pub struct DamagePlugin;
 impl Plugin for DamagePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<DamageState>()
-            .add_systems(Startup, (spawn_damage_hud, setup_smoke_effect))
+            .add_systems(Startup, spawn_damage_hud);
+
+        // Smoke uses bevy_hanabi (compute storage buffers); browser WebGL2
+        // can't run those. Skip the smoke pipeline on wasm32 so the rest
+        // of the damage system (HUD, wreck flash, accumulator) still runs.
+        #[cfg(not(target_arch = "wasm32"))]
+        app.add_systems(Startup, setup_smoke_effect)
             .add_systems(
                 Update,
                 (
-                    accumulate_damage,
                     attach_smoke_emitter.run_if(resource_exists::<SmokeEffect>),
                     update_smoke.run_if(resource_exists::<SmokeEffect>),
-                    update_damage_hud,
-                    update_wreck_flash,
                 )
                     .run_if(resource_exists::<VehicleRoot>),
             );
+
+        app.add_systems(
+            Update,
+            (
+                accumulate_damage,
+                update_damage_hud,
+                update_wreck_flash,
+            )
+                .run_if(resource_exists::<VehicleRoot>),
+        );
     }
 }
 

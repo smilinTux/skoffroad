@@ -27,16 +27,29 @@ pub struct DustPlugin;
 
 impl Plugin for DustPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(HanabiPlugin)
-           .init_resource::<DustGlobalState>()
-           .add_systems(Startup, setup_dust_effect)
-           .add_systems(Update, attach_wheel_emitters.run_if(resource_exists::<DustEffect>))
-           .add_systems(
-               PostUpdate,
-               modulate_wheel_emitters
-                   .after(EffectSystems::TickSpawners)
-                   .run_if(resource_exists::<DustEffect>),
-           );
+        // bevy_hanabi 0.18 requires compute storage buffers, which WebGL2
+        // (and therefore most browser WASM environments today) does not
+        // provide. Skip the entire plugin on wasm32 — wheels still spin and
+        // physics still works, the dust trail is just absent.
+        #[cfg(target_arch = "wasm32")]
+        {
+            let _ = app;
+            return;
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            app.add_plugins(HanabiPlugin)
+               .init_resource::<DustGlobalState>()
+               .add_systems(Startup, setup_dust_effect)
+               .add_systems(Update, attach_wheel_emitters.run_if(resource_exists::<DustEffect>))
+               .add_systems(
+                   PostUpdate,
+                   modulate_wheel_emitters
+                       .after(EffectSystems::TickSpawners)
+                       .run_if(resource_exists::<DustEffect>),
+               );
+        }
     }
 }
 
