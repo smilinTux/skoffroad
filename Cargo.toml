@@ -14,10 +14,12 @@ dev = ["bevy/dynamic_linking", "dep:bevy-inspector-egui"]
 [lib]
 name = "skoffroad"
 path = "src/lib.rs"
-# `cdylib` is required by Trunk / wasm-bindgen so the WASM toolchain can
-# emit the .wasm + JS glue. `rlib` is what `cargo run` uses on native and
-# what the `sim` / `skoffroad` bins link against. Both are needed.
-crate-type = ["cdylib", "rlib"]
+# Default crate-type ("rlib") is what `cargo run` and the `sim` /
+# `skoffroad` bins link against. We do NOT add "cdylib" here because
+# Trunk's pipeline builds the `[[bin]]` target directly when the index
+# uses `data-bin`, and adding cdylib alongside a same-named bin makes
+# `cargo build --target wasm32` emit two artifacts named "skoffroad"
+# which Trunk can't disambiguate.
 
 [[bin]]
 name = "skoffroad"
