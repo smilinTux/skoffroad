@@ -2,6 +2,7 @@ use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use skoffroad::{
+    MultiplayerPlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -362,7 +363,9 @@ fn main() {
             TerrainGrassBladesPlugin,
             TerrainDecalsPlugin,
             PhotoHudPlugin,
-        ));
+        ))
+        // Sprint 49: P2P multiplayer (position sync)
+        .add_plugins(MultiplayerPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

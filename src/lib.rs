@@ -203,6 +203,9 @@ pub use transfer_case::TransferCasePlugin;
 pub use transmission::TransmissionPlugin;
 pub use winch_cable_physics::WinchCablePhysicsPlugin;
 
+pub mod multiplayer;
+pub use multiplayer::MultiplayerPlugin;
+
 pub mod hdr_skybox;
 pub mod photo_hud;
 pub mod photoreal_rocks;
