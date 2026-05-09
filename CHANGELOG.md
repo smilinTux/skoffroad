@@ -5,6 +5,45 @@ All notable changes to the skoffroad game project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] — 2026-05-09 — Sprint 52 "mobile touch controls"
+
+### Added
+- **Mobile touch controls overlay** (`assets/touch-controls.css`,
+  `assets/touch-controls.js`) — phones and tablets can now drive without a
+  keyboard.
+  - **Detection**: `'ontouchstart' in window || navigator.maxTouchPoints > 0`;
+    overlay is injected only on touch devices. `?force-touch=1` URL param
+    forces the overlay visible on desktop for testing.
+  - **Virtual joystick** (bottom-left, 140 px outer ring, 60 px thumb):
+    - Dragging maps to WASD via dead-zone threshold (0.25) on each axis.
+    - Up component → W (throttle); down → S (reverse); left → A; right → D.
+    - Pointer capture keeps the drag locked to the zone; release fires all
+      WASD keyup events.
+  - **Action buttons** (bottom-right, 3-column grid):
+    - Row 1: R (reset), V (camera), P (photo mode)
+    - Row 2: I (multiplayer panel), F (push-to-talk PTT), Esc (pause)
+    - Row 3: Space brake bar (full-width, PTT style)
+  - **Event synthesis**: each button/stick fires `new KeyboardEvent('keydown'
+    / 'keyup', { code, key, bubbles: true })` on `window` — the existing
+    `drive_input_keyboard` Rust system reads these events unchanged via
+    Bevy's winit layer.
+  - **No Rust changes**: pure HTML/JS approach; zero-regression on the
+    `cargo test --test drive_test` suite.
+  - **Toggle pill**: small pill button at bottom-centre lets desktop users
+    manually show/hide the overlay for testing.
+  - **Splash hint**: "Touch device detected" tip shown in the loading screen
+    on mobile.
+  - **Styling**: mud-orange accents (`#d97706` / `#fbbf24`), ~55-60%
+    opacity backgrounds, `backdrop-filter: blur`, 60-68 px touch targets —
+    readable against dark terrain.
+
+### Changed
+- `Cargo.toml`: bumped `0.14.0 → 0.15.0`.
+- `index.html`:
+  - Links `assets/touch-controls.css` and `assets/touch-controls.js`
+    (both live in `assets/` which Trunk already copies via `copy-dir`).
+  - Added `id="splash-touch-tip"` hint line, revealed by JS on touch devices.
+
 ## [0.14.0] — 2026-05-09 — Sprint 51 "voice chat"
 
 ### Added
