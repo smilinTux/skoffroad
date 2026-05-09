@@ -101,6 +101,10 @@ fn tick_idle_timer(
         state.active = false;
     } else {
         state.idle_time_s += dt;
+        // On WASM the player drives immediately after landing on the page;
+        // the attract loop is confusing and undesirable in a browser context.
+        // cfg-gate the activation so the 30-second timeout is native-only.
+        #[cfg(not(target_arch = "wasm32"))]
         if state.idle_time_s >= 30.0 && !state.active {
             state.active = true;
             info!("demo mode engaged");
