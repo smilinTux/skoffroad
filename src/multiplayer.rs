@@ -62,6 +62,26 @@ const GHOST_ALPHA: f32 = 0.55;
 /// Channel index for our unreliable state channel.
 const CHANNEL_STATE: usize = 0;
 
+/// Channel index for reliable signaling (voice SDP / ICE candidates).
+pub const CHANNEL_VOICE_SIGNAL: usize = 1;
+
+// ---------------------------------------------------------------------------
+// Packet-kind prefix byte — sits at byte 0 of every CHANNEL_STATE message
+// so that future packet types can be dispatched without breaking the existing
+// chassis decoder.  Voice signaling rides CHANNEL_VOICE_SIGNAL instead and
+// does NOT use this prefix; it is included here for documentation parity.
+// ---------------------------------------------------------------------------
+
+/// The first byte of every CHANNEL_STATE datagram identifies its kind.
+#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum MessageKind {
+    /// Existing chassis-state broadcast (bytes 1..N are a `ChassisPacket`).
+    Game  = 0,
+    /// Reserved — voice signaling rides CHANNEL_VOICE_SIGNAL, not this channel.
+    Voice = 1,
+}
+
 use bevy::prelude::*;
 use bevy_matchbox::prelude::*;
 use bevy_matchbox::matchbox_socket::RtcIceServerConfig;
@@ -113,6 +133,10 @@ impl Plugin for MultiplayerPlugin {
 // ---------------------------------------------------------------------------
 // Public state machine
 // ---------------------------------------------------------------------------
+
+/// Re-export PeerId so voice.rs (and other plugins) don't need a direct
+/// `bevy_matchbox` import just for the type.
+pub use bevy_matchbox::prelude::PeerId;
 
 /// Current multiplayer connection state, readable by other plugins.
 #[derive(Resource, Default)]
@@ -827,6 +851,7 @@ fn build_socket_builder(cfg: &MultiplayerConfig) -> WebRtcSocketBuilder {
     WebRtcSocketBuilder::new(&cfg.signaling_url)
         .ice_server(ice_server)
         .add_channel(ChannelConfig::unreliable()) // channel 0: chassis state
+        .add_channel(ChannelConfig::reliable())   // channel 1: voice SDP / ICE signaling
 }
 
 // ---------------------------------------------------------------------------
