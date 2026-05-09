@@ -103,6 +103,20 @@ trunk build --release              # static dist/ ready for any HTTP server
 | . (period) | Replay last 10 s as a translucent ghost |
 | P | Photo mode (pauses physics, hides cursor, banner) |
 
+## Mobile (Sprint 52)
+
+skoffroad is playable on phones and tablets — no keyboard required.
+
+- Open [play.skoffroad.skworld.io](https://play.skoffroad.skworld.io) in a
+  mobile browser (Chrome/Brave on Android, Safari 16.4+ on iOS).
+- Touch device is detected automatically; the on-screen overlay appears once
+  the game loads.
+- **Joystick** (bottom-left): drag to steer and throttle/reverse.
+- **Buttons** (bottom-right): R (reset), V (camera), P (photo), I (multiplayer),
+  F (push-to-talk), Esc (pause), and a wide Brake bar.
+- Desktop testing: add `?force-touch=1` to the URL to make the overlay
+  appear regardless of device.
+
 ## Multiplayer (Sprint 49 + Sprint 51)
 
 P2P position sync and voice chat via WebRTC / matchbox. Two players in
