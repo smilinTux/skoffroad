@@ -45,10 +45,14 @@ impl Plugin for SpectatePlugin {
 /// Current spectate target (None = watching own chassis normally).
 #[derive(Resource, Default)]
 pub struct SpectateState {
-    /// The peer whose ghost we are slaved to, if any.
+    /// The peer whose ghost we are slaved to, if any (set by manual UI button).
     pub target_peer: Option<PeerId>,
     /// Latest camera mode byte received from that peer.
     pub target_cam_mode: u8,
+    /// Peer automatically selected for spectating by rock_crawl_trail when a
+    /// peer is mid-attempt.  Manual `target_peer` takes priority over this.
+    /// Set to None when the peer leaves the section or the attempt times out.
+    pub auto_target: Option<PeerId>,
 }
 
 // ---------------------------------------------------------------------------
@@ -115,7 +119,8 @@ fn apply_spectate_camera(
     mut cam_q: Query<&mut Transform, (With<Camera3d>, Without<Chassis>, Without<GhostMarker>)>,
     time:      Res<Time>,
 ) {
-    let Some(target_id) = spectate.target_peer else { return };
+    // Manual target_peer takes priority; fall back to auto_target.
+    let Some(target_id) = spectate.target_peer.or(spectate.auto_target) else { return };
 
     // Find the ghost entity for this peer.
     let Some((_, ghost_tf)) = ghosts.iter().find(|(g, _)| g.peer_id == target_id) else {

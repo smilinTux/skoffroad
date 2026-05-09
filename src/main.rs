@@ -33,7 +33,7 @@ use skoffroad::{
     NitroGaugePlugin, NotificationsPlugin,
     ObstaclesPlugin, PaintShopPlugin, PerfPlugin, PhotoModePlugin, PinsPlugin,
     ProgressionPlugin, PursuitPlugin, RacePlugin, RadarPickupsPlugin, RampArrowsPlugin,
-    RampsPlugin, RecoveryPlugin, RockGardenPlugin, RoofRackPlugin,
+    RampsPlugin, RecoveryPlugin, RockCrawlTrailPlugin, RockGardenPlugin, RoofRackPlugin,
     RepairPlugin, ReplayPlugin, RivalHudPlugin, RivalPlugin, RoutePlugin, SavePlugin,
     ScatterPlugin, ScreenshotPlugin, SeasonPlugin, SessionSummaryPlugin,
     SettingsPlugin, ShakePlugin, SkidmarksPlugin, SkyPlugin, SnowPlugin,
@@ -329,6 +329,8 @@ fn main() {
             TirePressurePlugin,
             WinchPlugin,
         ))
+        // Sprint 54: group rock-crawl trail mode (3 sections, timer, HUD, auto-spectate)
+        .add_plugins(RockCrawlTrailPlugin)
         .add_plugins((
             TruckBedCargoPlugin,
             WheelRimsPlugin,

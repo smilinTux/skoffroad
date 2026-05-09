@@ -525,7 +525,7 @@ mod browser {
                 match web_sys::MediaStream::new_with_tracks(&{
                     let arr = js_sys::Array::new();
                     arr.push(&track);
-                    arr
+                    JsValue::from(arr)
                 }) {
                     Ok(s) => s,
                     Err(_) => return,

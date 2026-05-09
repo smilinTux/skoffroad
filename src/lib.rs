@@ -122,6 +122,8 @@ pub mod pursuit;
 pub mod race;
 pub mod ramps;
 pub mod recovery;
+pub mod rock_crawl_trail;
+pub use rock_crawl_trail::{RockCrawlTrailPlugin, RockCrawlTrailState};
 pub mod rock_garden;
 pub mod roof_rack;
 pub mod repair;
