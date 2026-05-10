@@ -1,20 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" width="480" height="360" role="img" aria-label="skoffroad mascot — smilinTux the penguin driving a tricked-out Skrambler angled toward the viewer">
-  <!-- skoffroad — S&K OFFROAD mascot. Front-3/4 view: jeep angled so the
-       grille, winch, and driver's side are all visible, with smilinTux
-       grinning at the camera from the driver's seat. Palette matches the
-       marketing CSS:
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 360" width="480" height="360" role="img" aria-label="skoffroad mascot — smilinTux the penguin in a tricked-out Skrambler, angled toward the viewer">
+  <!-- skoffroad — S&K OFFROAD mascot.
+       Front-3/4 view (slight angle so both front face and driver side are
+       visible) with smilinTux grinning at the camera from the cab.
+       Palette matches the marketing CSS:
          dirt-900 #0c0a09, mud-500 #d97706, mud-300 #fbbf24, bone #fafaf9, steel #a8a29e. -->
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"  stop-color="#1c1411"/>
       <stop offset="100%" stop-color="#2b1d10"/>
     </linearGradient>
-    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="bodyFront" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"  stop-color="#fbbf24"/>
       <stop offset="55%" stop-color="#d97706"/>
       <stop offset="100%" stop-color="#92400e"/>
     </linearGradient>
-    <linearGradient id="bodyShade" x1="0" y1="0" x2="0" y2="1">
+    <linearGradient id="bodySide" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"  stop-color="#b45309"/>
       <stop offset="100%" stop-color="#7c2d12"/>
     </linearGradient>
@@ -27,229 +27,234 @@
       <stop offset="100%" stop-color="#0c0a09"/>
     </linearGradient>
     <linearGradient id="pengbody" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"  stop-color="#3a3530"/>
+      <stop offset="0%"  stop-color="#2a2520"/>
       <stop offset="100%" stop-color="#0c0a09"/>
     </linearGradient>
     <radialGradient id="dust" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#a8a29e" stop-opacity="0.55"/>
+      <stop offset="0%" stop-color="#a8a29e" stop-opacity="0.5"/>
       <stop offset="100%" stop-color="#a8a29e" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="headlightGlow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0%" stop-color="#fef3c7" stop-opacity="0.85"/>
+    <radialGradient id="hlGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#fef3c7" stop-opacity="0.7"/>
       <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
     </radialGradient>
   </defs>
 
-  <!-- Background — warm dirt sky -->
+  <!-- Sky -->
   <rect x="0" y="0" width="480" height="360" fill="url(#sky)"/>
 
-  <!-- Distant ridge silhouette -->
-  <path d="M0 240 L60 220 L110 235 L170 215 L240 232 L310 218 L380 234 L440 222 L480 230 L480 360 L0 360 Z"
+  <!-- Distant ridge -->
+  <path d="M0 250 L70 232 L130 245 L200 225 L270 240 L340 226 L400 240 L480 232 L480 360 L0 360 Z"
         fill="#1a1310"/>
 
-  <!-- Foreground ground shadow -->
-  <ellipse cx="240" cy="328" rx="240" ry="22" fill="#0c0a09" opacity="0.85"/>
+  <!-- Ground shadow under the jeep -->
+  <ellipse cx="240" cy="320" rx="170" ry="14" fill="#0c0a09" opacity="0.85"/>
 
-  <!-- Dust cloud behind the jeep (further/back-left) -->
-  <circle cx="100" cy="290" r="46" fill="url(#dust)"/>
-  <circle cx="60"  cy="300" r="34" fill="url(#dust)"/>
-  <circle cx="140" cy="280" r="30" fill="url(#dust)"/>
+  <!-- Dust cloud trailing back-left -->
+  <circle cx="90"  cy="290" r="38" fill="url(#dust)"/>
+  <circle cx="58"  cy="298" r="26" fill="url(#dust)"/>
+  <circle cx="130" cy="282" r="22" fill="url(#dust)"/>
 
-  <!-- =====================================================================
-       JEEP — FRONT-3/4 VIEW.
-       The jeep is angled toward the viewer so the FRONT face (grille +
-       winch + headlights) sits center-bottom, and the DRIVER SIDE recedes
-       to the upper-right. Two front wheels are big and close; two rear
-       wheels are smaller and further. The driver's seat reads as
-       slightly left-of-center.
-       ===================================================================== -->
+  <!-- =================================================================
+       JEEP — compact front-3/4 view, well-centred.
+       Front face (grille + winch + bumper + headlights) faces viewer
+       slightly to the left. Driver side panel tilts away to the right.
+       ================================================================= -->
 
-  <!-- Headlight glow (behind everything else) -->
-  <circle cx="160" cy="225" r="32" fill="url(#headlightGlow)"/>
-  <circle cx="280" cy="225" r="32" fill="url(#headlightGlow)"/>
-
-  <!-- Rear wheel (driver side, partially occluded, smaller due to perspective) -->
-  <ellipse cx="395" cy="265" rx="30" ry="30" fill="#0c0a09"/>
-  <circle  cx="395" cy="265" r="26" fill="url(#tire)"/>
-  <g fill="#0c0a09" opacity="0.85">
-    <g transform="translate(395 265)">
-      <rect x="-2.5" y="-26" width="5" height="8" transform="rotate(0)"/>
-      <rect x="-2.5" y="-26" width="5" height="8" transform="rotate(60)"/>
-      <rect x="-2.5" y="-26" width="5" height="8" transform="rotate(120)"/>
-      <rect x="-2.5" y="-26" width="5" height="8" transform="rotate(180)"/>
-      <rect x="-2.5" y="-26" width="5" height="8" transform="rotate(240)"/>
-      <rect x="-2.5" y="-26" width="5" height="8" transform="rotate(300)"/>
+  <!-- LIGHT BAR (behind the cage, glows at top) -->
+  <g>
+    <rect x="155" y="120" width="170" height="14" rx="4" fill="#1f1814" stroke="#0c0a09" stroke-width="1.5"/>
+    <g fill="#fef3c7">
+      <circle cx="172" cy="127" r="4"/>
+      <circle cx="200" cy="127" r="4"/>
+      <circle cx="228" cy="127" r="4"/>
+      <circle cx="256" cy="127" r="4"/>
+      <circle cx="284" cy="127" r="4"/>
+      <circle cx="312" cy="127" r="4"/>
+    </g>
+    <g fill="#fbbf24" opacity="0.32">
+      <circle cx="172" cy="127" r="10"/>
+      <circle cx="200" cy="127" r="10"/>
+      <circle cx="228" cy="127" r="10"/>
+      <circle cx="256" cy="127" r="10"/>
+      <circle cx="284" cy="127" r="10"/>
+      <circle cx="312" cy="127" r="10"/>
     </g>
   </g>
-  <circle cx="395" cy="265" r="10" fill="#a8a29e"/>
-  <circle cx="395" cy="265" r="6"  fill="#3a3530"/>
-  <!-- Lug bolts (5) on the visible rear wheel face -->
-  <g fill="#cbcbcb">
-    <circle cx="395" cy="257" r="1.5"/>
-    <circle cx="402" cy="262" r="1.5"/>
-    <circle cx="399" cy="270" r="1.5"/>
-    <circle cx="391" cy="270" r="1.5"/>
-    <circle cx="388" cy="262" r="1.5"/>
+
+  <!-- ROLL CAGE — front uprights + top bar + side-back bar -->
+  <g stroke="#0c0a09" stroke-width="7" stroke-linecap="round" fill="none">
+    <!-- Left A-pillar -->
+    <line x1="156" y1="135" x2="148" y2="205"/>
+    <!-- Right A-pillar (front face right) -->
+    <line x1="296" y1="135" x2="304" y2="205"/>
+    <!-- Top bar across front -->
+    <line x1="156" y1="135" x2="296" y2="135"/>
+    <!-- Side bar going to rear (driver side) -->
+    <line x1="296" y1="135" x2="365" y2="140"/>
+    <!-- Rear-driver upright -->
+    <line x1="365" y1="140" x2="370" y2="200"/>
   </g>
 
-  <!-- ============ JEEP BODY ============ -->
+  <!-- DRIVER SIDE PANEL (recedes back-right, much smaller than before) -->
+  <path d="M 296 205 L 370 200 L 370 252 L 296 268 Z"
+        fill="url(#bodySide)" stroke="#1f1814" stroke-width="2"/>
+  <!-- Side window (dark gap) -->
+  <path d="M 300 188 L 363 184 L 363 210 L 300 217 Z"
+        fill="#0c0a09" opacity="0.75"/>
 
-  <!-- Driver side panel (recedes to upper-right) -->
-  <path d="M 250 215 L 410 195 L 410 245 L 250 268 Z"
-        fill="url(#bodyShade)" stroke="#1f1814" stroke-width="2"/>
-  <!-- Side window cutout -->
-  <path d="M 268 180 L 395 165 L 395 200 L 268 215 Z"
-        fill="#0c0a09" opacity="0.8"/>
-  <!-- B-pillar -->
-  <rect x="324" y="170" width="6" height="50" fill="#1f1814"/>
-
-  <!-- Front face — the grille + bumper area, facing viewer slightly angled -->
-  <!-- Hood (top of front, lit) -->
-  <path d="M 130 195 L 290 195 L 280 215 L 140 215 Z"
+  <!-- HOOD (top of front face — flat trapezoid catching the light) -->
+  <path d="M 152 205 L 300 205 L 295 222 L 157 222 Z"
         fill="url(#hoodTop)" stroke="#1f1814" stroke-width="2"/>
-  <!-- Hood vent line -->
-  <line x1="160" y1="202" x2="260" y2="202" stroke="#92400e" stroke-width="1.5" opacity="0.7"/>
+  <!-- Hood louver lines -->
+  <line x1="180" y1="213" x2="270" y2="213" stroke="#92400e" stroke-width="1.5" opacity="0.7"/>
 
-  <!-- Front face main panel -->
-  <path d="M 130 215 L 290 215 L 295 270 L 125 270 Z"
-        fill="url(#body)" stroke="#1f1814" stroke-width="2.5"/>
+  <!-- FRONT FACE (main panel — vertical, faces viewer) -->
+  <path d="M 152 222 L 300 222 L 305 272 L 147 272 Z"
+        fill="url(#bodyFront)" stroke="#1f1814" stroke-width="2.5"/>
 
-  <!-- Grille (vertical slats in front face center) -->
-  <rect x="185" y="225" width="50" height="30" rx="2" fill="#1f1814"/>
-  <g stroke="#5a5450" stroke-width="2">
-    <line x1="192" y1="227" x2="192" y2="253"/>
-    <line x1="200" y1="227" x2="200" y2="253"/>
-    <line x1="208" y1="227" x2="208" y2="253"/>
-    <line x1="216" y1="227" x2="216" y2="253"/>
-    <line x1="224" y1="227" x2="224" y2="253"/>
+  <!-- Headlight glow (behind the chrome rings) -->
+  <circle cx="172" cy="240" r="20" fill="url(#hlGlow)"/>
+  <circle cx="280" cy="240" r="20" fill="url(#hlGlow)"/>
+
+  <!-- Round headlights (front face) -->
+  <circle cx="172" cy="240" r="10" fill="#fef3c7" stroke="#1f1814" stroke-width="2.5"/>
+  <circle cx="172" cy="240" r="4"  fill="#fff"/>
+  <circle cx="280" cy="240" r="10" fill="#fef3c7" stroke="#1f1814" stroke-width="2.5"/>
+  <circle cx="280" cy="240" r="4"  fill="#fff"/>
+
+  <!-- 7-slot GRILLE between headlights (center of front face) -->
+  <rect x="195" y="232" width="62" height="34" rx="2.5" fill="#1f1814"/>
+  <g stroke="#7a6a52" stroke-width="2.4">
+    <line x1="201" y1="234" x2="201" y2="264"/>
+    <line x1="210" y1="234" x2="210" y2="264"/>
+    <line x1="219" y1="234" x2="219" y2="264"/>
+    <line x1="228" y1="234" x2="228" y2="264"/>
+    <line x1="237" y1="234" x2="237" y2="264"/>
+    <line x1="246" y1="234" x2="246" y2="264"/>
+    <line x1="252" y1="234" x2="252" y2="264"/>
   </g>
 
-  <!-- SK badge above grille -->
-  <rect x="195" y="218" width="30" height="6" rx="1.5" fill="#fbbf24"/>
-  <text x="210" y="223" font-family="Impact, sans-serif" font-size="6" fill="#0c0a09" text-anchor="middle" font-weight="900">SK</text>
+  <!-- SK badge above the grille -->
+  <rect x="208" y="224" width="36" height="8" rx="2" fill="#fbbf24" stroke="#92400e" stroke-width="0.8"/>
+  <text x="226" y="231" font-family="Impact, Arial Black, sans-serif" font-size="8" fill="#0c0a09" text-anchor="middle" font-weight="900">SK</text>
 
-  <!-- Headlights (round, two on the front face) -->
-  <circle cx="160" cy="225" r="11" fill="#fef3c7" stroke="#1f1814" stroke-width="2.5"/>
-  <circle cx="160" cy="225" r="5"  fill="#fff"/>
-  <circle cx="280" cy="225" r="11" fill="#fef3c7" stroke="#1f1814" stroke-width="2.5"/>
-  <circle cx="280" cy="225" r="5"  fill="#fff"/>
+  <!-- FRONT BUMPER (steel, chunky, runs the full width) -->
+  <rect x="140" y="266" width="172" height="20" rx="3" fill="#3a3530" stroke="#0c0a09" stroke-width="2"/>
+  <!-- Bumper end caps (darker) -->
+  <rect x="140" y="266" width="14" height="20" rx="3" fill="#2a2520"/>
+  <rect x="298" y="266" width="14" height="20" rx="3" fill="#2a2520"/>
 
-  <!-- Front bumper -->
-  <rect x="118" y="263" width="180" height="18" rx="3" fill="#3a3530" stroke="#0c0a09" stroke-width="2"/>
-
-  <!-- Winch housing on bumper (center-front) -->
-  <rect x="195" y="258" width="40" height="14" rx="2" fill="#5a5450" stroke="#0c0a09" stroke-width="1.5"/>
-  <!-- Drum + cap circles -->
-  <circle cx="200" cy="265" r="6" fill="#1f1814" stroke="#a8a29e" stroke-width="1.5"/>
-  <circle cx="230" cy="265" r="6" fill="#1f1814" stroke="#a8a29e" stroke-width="1.5"/>
+  <!-- WINCH housing on the bumper center -->
+  <rect x="200" y="260" width="52" height="14" rx="2" fill="#5a5450" stroke="#0c0a09" stroke-width="1.5"/>
+  <circle cx="208" cy="267" r="6" fill="#1f1814" stroke="#a8a29e" stroke-width="1.5"/>
+  <circle cx="244" cy="267" r="6" fill="#1f1814" stroke="#a8a29e" stroke-width="1.5"/>
   <!-- Fairlead at the front of the winch -->
-  <rect x="208" y="270" width="14" height="5" rx="1" fill="#a8a29e" stroke="#0c0a09" stroke-width="1"/>
+  <rect x="218" y="272" width="16" height="6" rx="1" fill="#a8a29e" stroke="#0c0a09" stroke-width="1"/>
 
-  <!-- Two D-rings on the bumper (yellow shackles, mounted to the front face) -->
-  <circle cx="150" cy="272" r="4" fill="#fbbf24" stroke="#0c0a09" stroke-width="1.2"/>
-  <circle cx="263" cy="272" r="4" fill="#fbbf24" stroke="#0c0a09" stroke-width="1.2"/>
+  <!-- Two YELLOW D-rings welded to the bumper face -->
+  <circle cx="166" cy="276" r="5" fill="#fbbf24" stroke="#0c0a09" stroke-width="1.4"/>
+  <circle cx="286" cy="276" r="5" fill="#fbbf24" stroke="#0c0a09" stroke-width="1.4"/>
 
-  <!-- Winch cable — sags from fairlead exit, curves over to right D-ring -->
-  <path d="M 215 275 Q 240 285 263 272" fill="none" stroke="#7a6a52" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- WINCH CABLE — sags from fairlead exit, curves over to right D-ring -->
+  <path d="M 226 278 Q 256 290 286 276" fill="none" stroke="#7a6a52" stroke-width="2.4" stroke-linecap="round"/>
   <!-- J-hook clipped to the right D-ring -->
-  <path d="M 263 272 L 263 281 Q 263 285 258 285" fill="none" stroke="#1f1814" stroke-width="2.4" stroke-linecap="round"/>
-  <circle cx="263" cy="272" r="1.6" fill="#1f1814"/>
+  <path d="M 286 276 L 286 286 Q 286 290 281 290" fill="none" stroke="#1f1814" stroke-width="2.6" stroke-linecap="round"/>
+  <circle cx="286" cy="276" r="1.8" fill="#1f1814"/>
 
   <!-- Mud splatter on lower body -->
-  <g fill="#4a3014" opacity="0.65">
-    <circle cx="150" cy="260" r="3"/>
-    <circle cx="172" cy="252" r="2"/>
-    <circle cx="255" cy="262" r="3.5"/>
-    <circle cx="285" cy="258" r="2.5"/>
+  <g fill="#4a3014" opacity="0.6">
+    <circle cx="170" cy="258" r="3"/>
+    <circle cx="190" cy="263" r="2"/>
+    <circle cx="265" cy="260" r="3.2"/>
+    <circle cx="290" cy="256" r="2.5"/>
   </g>
 
-  <!-- ============ ROLL CAGE ============ -->
-  <!-- A-pillars (front uprights) -->
-  <line x1="140" y1="195" x2="148" y2="125" stroke="#0c0a09" stroke-width="6" stroke-linecap="round"/>
-  <line x1="280" y1="195" x2="272" y2="125" stroke="#0c0a09" stroke-width="6" stroke-linecap="round"/>
-  <!-- B-pillars (driver side mid-uprights, going back) -->
-  <line x1="280" y1="195" x2="380" y2="115" stroke="#0c0a09" stroke-width="6" stroke-linecap="round"/>
-  <!-- Top bar across front -->
-  <line x1="148" y1="125" x2="272" y2="125" stroke="#0c0a09" stroke-width="6" stroke-linecap="round"/>
-  <!-- Top bar receding to rear (driver side) -->
-  <line x1="272" y1="125" x2="380" y2="115" stroke="#0c0a09" stroke-width="6" stroke-linecap="round"/>
-
-  <!-- Light bar across top (LED spots) -->
-  <rect x="155" y="115" width="115" height="12" rx="3" fill="#1f1814" stroke="#0c0a09" stroke-width="1.5"/>
-  <g fill="#fef3c7">
-    <circle cx="168" cy="121" r="3.5"/>
-    <circle cx="190" cy="121" r="3.5"/>
-    <circle cx="212" cy="121" r="3.5"/>
-    <circle cx="234" cy="121" r="3.5"/>
-    <circle cx="256" cy="121" r="3.5"/>
-  </g>
-  <!-- Light bar glow -->
-  <g fill="#fbbf24" opacity="0.28">
-    <circle cx="168" cy="121" r="8"/>
-    <circle cx="190" cy="121" r="8"/>
-    <circle cx="212" cy="121" r="8"/>
-    <circle cx="234" cy="121" r="8"/>
-    <circle cx="256" cy="121" r="8"/>
-  </g>
-
-  <!-- ============ WINDSHIELD (showing the cab interior) ============ -->
-  <path d="M 152 130 L 270 130 L 280 195 L 142 195 Z"
+  <!-- ==================== WINDSHIELD ==================== -->
+  <path d="M 158 138 L 294 138 L 300 205 L 152 205 Z"
         fill="#0c0a09" opacity="0.55" stroke="#1f1814" stroke-width="1.5"/>
-  <!-- Windshield reflection sheen -->
-  <path d="M 160 135 L 220 135 L 230 175 L 165 175 Z"
-        fill="#fafaf9" opacity="0.06"/>
+  <!-- Subtle reflection sheen -->
+  <path d="M 168 142 L 235 142 L 230 178 L 172 178 Z"
+        fill="#fafaf9" opacity="0.05"/>
 
-  <!-- ============ SMILIN' TUX (in the driver's seat, head + shoulders out the windshield) ============ -->
-  <!-- Body (rounded, leaning slightly toward camera) -->
-  <ellipse cx="200" cy="190" rx="36" ry="32" fill="url(#pengbody)"/>
+  <!-- ==================== smilinTUX ====================
+       Sized to fit inside the cab without dominating the frame.
+       Head + shoulders + flippers visible above the dashboard. -->
+
+  <!-- Body (upper torso visible behind the wheel) -->
+  <ellipse cx="226" cy="200" rx="28" ry="22" fill="url(#pengbody)"/>
   <!-- White belly -->
-  <ellipse cx="200" cy="198" rx="24" ry="22" fill="#fafaf9"/>
+  <ellipse cx="226" cy="208" rx="20" ry="16" fill="#fafaf9"/>
 
-  <!-- Head (slightly tilted, front-facing) -->
-  <ellipse cx="200" cy="148" rx="30" ry="28" fill="url(#pengbody)"/>
-  <!-- Face mask (white front area) -->
-  <ellipse cx="200" cy="156" rx="22" ry="18" fill="#fafaf9"/>
+  <!-- Head -->
+  <ellipse cx="226" cy="168" rx="24" ry="22" fill="url(#pengbody)"/>
+  <!-- White face mask -->
+  <ellipse cx="226" cy="176" rx="18" ry="15" fill="#fafaf9"/>
 
-  <!-- Goggles strap (cartoon black band across forehead) -->
-  <rect x="171" y="138" width="58" height="8" rx="2" fill="#1f1814"/>
-  <!-- Goggle lenses (yellow tinted) -->
-  <ellipse cx="187" cy="142" rx="9" ry="7" fill="#fbbf24" stroke="#1f1814" stroke-width="2"/>
-  <ellipse cx="213" cy="142" rx="9" ry="7" fill="#fbbf24" stroke="#1f1814" stroke-width="2"/>
+  <!-- Goggles strap -->
+  <rect x="202" y="158" width="48" height="7" rx="2" fill="#1f1814"/>
+  <!-- Goggle lenses (yellow tint) -->
+  <ellipse cx="215" cy="162" rx="7.5" ry="6" fill="#fbbf24" stroke="#1f1814" stroke-width="1.8"/>
+  <ellipse cx="237" cy="162" rx="7.5" ry="6" fill="#fbbf24" stroke="#1f1814" stroke-width="1.8"/>
   <!-- Goggle highlights -->
-  <ellipse cx="185" cy="140" rx="3" ry="2" fill="#fff" opacity="0.8"/>
-  <ellipse cx="211" cy="140" rx="3" ry="2" fill="#fff" opacity="0.8"/>
+  <ellipse cx="213" cy="160" rx="2.5" ry="1.8" fill="#fff" opacity="0.85"/>
+  <ellipse cx="235" cy="160" rx="2.5" ry="1.8" fill="#fff" opacity="0.85"/>
 
-  <!-- Beak (orange triangle pointing down, slight smile) -->
-  <path d="M 192 158 L 208 158 L 200 168 Z" fill="#d97706" stroke="#92400e" stroke-width="1.5"/>
+  <!-- Orange beak -->
+  <path d="M 220 177 L 232 177 L 226 186 Z" fill="#d97706" stroke="#92400e" stroke-width="1.3"/>
 
-  <!-- BIG HAPPY SMILE (curve below the beak) -->
-  <path d="M 184 168 Q 200 184 216 168" fill="none" stroke="#1f1814" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- BIG smile (clearly visible below the beak) -->
+  <path d="M 212 186 Q 226 197 240 186" fill="none" stroke="#1f1814" stroke-width="2.2" stroke-linecap="round"/>
   <!-- Cheek blush -->
-  <ellipse cx="178" cy="167" rx="4" ry="2.5" fill="#d97706" opacity="0.5"/>
-  <ellipse cx="222" cy="167" rx="4" ry="2.5" fill="#d97706" opacity="0.5"/>
+  <ellipse cx="208" cy="184" rx="3.5" ry="2" fill="#d97706" opacity="0.55"/>
+  <ellipse cx="244" cy="184" rx="3.5" ry="2" fill="#d97706" opacity="0.55"/>
 
   <!-- Flippers gripping the steering wheel -->
-  <!-- Left flipper -->
-  <ellipse cx="170" cy="200" rx="12" ry="18" fill="url(#pengbody)" transform="rotate(-30 170 200)"/>
-  <!-- Right flipper -->
-  <ellipse cx="232" cy="200" rx="12" ry="18" fill="url(#pengbody)" transform="rotate(28 232 200)"/>
+  <ellipse cx="206" cy="204" rx="9" ry="14" fill="url(#pengbody)" transform="rotate(-28 206 204)"/>
+  <ellipse cx="246" cy="204" rx="9" ry="14" fill="url(#pengbody)" transform="rotate(26 246 204)"/>
 
-  <!-- Steering wheel (in front of penguin) -->
-  <circle cx="200" cy="220" r="14" fill="none" stroke="#0c0a09" stroke-width="4.5"/>
-  <line x1="186" y1="220" x2="214" y2="220" stroke="#0c0a09" stroke-width="3"/>
-  <line x1="200" y1="206" x2="200" y2="234" stroke="#0c0a09" stroke-width="3"/>
-  <circle cx="200" cy="220" r="3" fill="#0c0a09"/>
+  <!-- Steering wheel -->
+  <circle cx="226" cy="218" r="11" fill="none" stroke="#0c0a09" stroke-width="3.5"/>
+  <line x1="215" y1="218" x2="237" y2="218" stroke="#0c0a09" stroke-width="2.5"/>
+  <line x1="226" y1="207" x2="226" y2="229" stroke="#0c0a09" stroke-width="2.5"/>
+  <circle cx="226" cy="218" r="2.5" fill="#0c0a09"/>
 
-  <!-- Cheeky orange scarf trailing back -->
-  <path d="M 168 158 Q 130 168 110 180 Q 105 192 118 192 Q 145 184 175 170 Z"
-        fill="#d97706" stroke="#92400e" stroke-width="1.5"/>
+  <!-- Cheeky orange scarf flapping out the driver side -->
+  <path d="M 248 178 Q 290 184 320 194 Q 325 204 312 206 Q 280 198 250 188 Z"
+        fill="#d97706" stroke="#92400e" stroke-width="1.4"/>
 
-  <!-- ============ FRONT WHEELS (closest to camera, big chunky) ============ -->
-  <!-- Driver-side front wheel -->
-  <ellipse cx="290" cy="285" rx="40" ry="40" fill="#0c0a09"/>
-  <circle  cx="290" cy="285" r="36" fill="url(#tire)"/>
+  <!-- ==================== WHEELS ====================
+       Two BIG front mud tires (one each side, prominent) +
+       a partially-visible rear tire on the driver side. -->
+
+  <!-- Rear (driver-side, smaller due to perspective) -->
+  <ellipse cx="362" cy="270" rx="26" ry="26" fill="#0c0a09"/>
+  <circle  cx="362" cy="270" r="22" fill="url(#tire)"/>
   <g fill="#0c0a09" opacity="0.85">
-    <g transform="translate(290 285)">
+    <g transform="translate(362 270)">
+      <rect x="-2.5" y="-22" width="5" height="7" transform="rotate(0)"/>
+      <rect x="-2.5" y="-22" width="5" height="7" transform="rotate(60)"/>
+      <rect x="-2.5" y="-22" width="5" height="7" transform="rotate(120)"/>
+      <rect x="-2.5" y="-22" width="5" height="7" transform="rotate(180)"/>
+      <rect x="-2.5" y="-22" width="5" height="7" transform="rotate(240)"/>
+      <rect x="-2.5" y="-22" width="5" height="7" transform="rotate(300)"/>
+    </g>
+  </g>
+  <circle cx="362" cy="270" r="9" fill="#a8a29e"/>
+  <circle cx="362" cy="270" r="5" fill="#3a3530"/>
+  <g fill="#cbcbcb">
+    <circle cx="362" cy="263" r="1.4"/>
+    <circle cx="368" cy="268" r="1.4"/>
+    <circle cx="365" cy="275" r="1.4"/>
+    <circle cx="358" cy="275" r="1.4"/>
+    <circle cx="355" cy="268" r="1.4"/>
+  </g>
+
+  <!-- Front PASSENGER side (image-left) — 37" mud tire -->
+  <ellipse cx="158" cy="290" rx="40" ry="40" fill="#0c0a09"/>
+  <circle  cx="158" cy="290" r="36" fill="url(#tire)"/>
+  <g fill="#0c0a09" opacity="0.85">
+    <g transform="translate(158 290)">
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(0)"/>
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(45)"/>
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(90)"/>
@@ -260,22 +265,21 @@
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(315)"/>
     </g>
   </g>
-  <circle cx="290" cy="285" r="14" fill="#a8a29e"/>
-  <circle cx="290" cy="285" r="9"  fill="#3a3530"/>
-  <!-- Lug bolts (5) -->
+  <circle cx="158" cy="290" r="14" fill="#a8a29e"/>
+  <circle cx="158" cy="290" r="9"  fill="#3a3530"/>
   <g fill="#cbcbcb">
-    <circle cx="290" cy="275" r="2"/>
-    <circle cx="300" cy="282" r="2"/>
-    <circle cx="296" cy="293" r="2"/>
-    <circle cx="284" cy="293" r="2"/>
-    <circle cx="280" cy="282" r="2"/>
+    <circle cx="158" cy="280" r="2"/>
+    <circle cx="168" cy="287" r="2"/>
+    <circle cx="164" cy="298" r="2"/>
+    <circle cx="152" cy="298" r="2"/>
+    <circle cx="148" cy="287" r="2"/>
   </g>
 
-  <!-- Passenger-side front wheel -->
-  <ellipse cx="130" cy="285" rx="40" ry="40" fill="#0c0a09"/>
-  <circle  cx="130" cy="285" r="36" fill="url(#tire)"/>
+  <!-- Front DRIVER side (image-right) — 37" mud tire -->
+  <ellipse cx="296" cy="290" rx="40" ry="40" fill="#0c0a09"/>
+  <circle  cx="296" cy="290" r="36" fill="url(#tire)"/>
   <g fill="#0c0a09" opacity="0.85">
-    <g transform="translate(130 285)">
+    <g transform="translate(296 290)">
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(0)"/>
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(45)"/>
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(90)"/>
@@ -286,22 +290,21 @@
       <rect x="-3" y="-36" width="6" height="9" transform="rotate(315)"/>
     </g>
   </g>
-  <circle cx="130" cy="285" r="14" fill="#a8a29e"/>
-  <circle cx="130" cy="285" r="9"  fill="#3a3530"/>
-  <!-- Lug bolts (5) -->
+  <circle cx="296" cy="290" r="14" fill="#a8a29e"/>
+  <circle cx="296" cy="290" r="9"  fill="#3a3530"/>
   <g fill="#cbcbcb">
-    <circle cx="130" cy="275" r="2"/>
-    <circle cx="140" cy="282" r="2"/>
-    <circle cx="136" cy="293" r="2"/>
-    <circle cx="124" cy="293" r="2"/>
-    <circle cx="120" cy="282" r="2"/>
+    <circle cx="296" cy="280" r="2"/>
+    <circle cx="306" cy="287" r="2"/>
+    <circle cx="302" cy="298" r="2"/>
+    <circle cx="290" cy="298" r="2"/>
+    <circle cx="286" cy="287" r="2"/>
   </g>
 
-  <!-- Long-arm strut hints (lifted suspension visible going up into the body) -->
-  <line x1="130" y1="285" x2="135" y2="232" stroke="#3a3530" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
-  <line x1="290" y1="285" x2="285" y2="232" stroke="#3a3530" stroke-width="4" stroke-linecap="round" opacity="0.85"/>
+  <!-- Long-arm suspension struts hinting the lift -->
+  <line x1="158" y1="290" x2="160" y2="232" stroke="#3a3530" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
+  <line x1="296" y1="290" x2="294" y2="232" stroke="#3a3530" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
 
   <!-- Skid marks on the ground -->
-  <path d="M 30 332 Q 130 326 240 332 T 450 330" fill="none" stroke="#1f1814" stroke-width="2.5" stroke-linecap="round"/>
-  <path d="M 30 340 Q 130 334 240 340 T 450 338" fill="none" stroke="#1f1814" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 40 334 Q 140 328 240 334 T 440 332" fill="none" stroke="#1f1814" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 40 342 Q 140 336 240 342 T 440 340" fill="none" stroke="#1f1814" stroke-width="2.5" stroke-linecap="round" opacity="0.7"/>
 </svg>
