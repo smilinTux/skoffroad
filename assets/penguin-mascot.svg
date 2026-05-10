@@ -225,12 +225,14 @@
         fill="#fafaf9" opacity="0.06"/>
 
   <!-- ==================== smilinTUX ====================
-       Sits inside the cab, centred behind the windshield. -->
+       Just head + neck visible above the dashboard line — body, lap,
+       hands, and steering wheel are all hidden behind the hood, like
+       a real driver seen through a windshield from outside. -->
 
-  <!-- Body (upper torso visible behind dashboard) -->
-  <ellipse cx="240" cy="208" rx="34" ry="24" fill="url(#pengbody)"/>
-  <!-- White belly -->
-  <ellipse cx="240" cy="214" rx="24" ry="18" fill="#fafaf9"/>
+  <!-- Hint of shoulders just below the chin (kept inside the windshield
+       region so the hood/dashboard renders cleanly in front of the body) -->
+  <ellipse cx="240" cy="200" rx="26" ry="8" fill="url(#pengbody)"/>
+  <ellipse cx="240" cy="200" rx="18" ry="5" fill="#fafaf9"/>
 
   <!-- Head -->
   <ellipse cx="240" cy="170" rx="28" ry="24" fill="url(#pengbody)"/>
@@ -255,15 +257,18 @@
   <ellipse cx="221" cy="188" rx="4" ry="2.2" fill="#d97706" opacity="0.55"/>
   <ellipse cx="259" cy="188" rx="4" ry="2.2" fill="#d97706" opacity="0.55"/>
 
-  <!-- Flippers gripping the steering wheel -->
-  <ellipse cx="217" cy="212" rx="9" ry="14" fill="url(#pengbody)" transform="rotate(-28 217 212)"/>
-  <ellipse cx="263" cy="212" rx="9" ry="14" fill="url(#pengbody)" transform="rotate(28 263 212)"/>
-
-  <!-- Steering wheel (small, in front of penguin's belly) -->
-  <circle cx="240" cy="228" r="11" fill="none" stroke="#0c0a09" stroke-width="3.5"/>
-  <line x1="229" y1="228" x2="251" y2="228" stroke="#0c0a09" stroke-width="2.5"/>
-  <line x1="240" y1="217" x2="240" y2="239" stroke="#0c0a09" stroke-width="2.5"/>
-  <circle cx="240" cy="228" r="2.5" fill="#0c0a09"/>
+  <!-- ✌️ Flipper raised out the cab making a peace sign — emerges from
+       the right shoulder, reaches up alongside the head, two finger-nubs
+       at the tip form the V. -->
+  <g transform="translate(280 195) rotate(-22)">
+    <!-- Arm -->
+    <ellipse cx="0" cy="-22" rx="9" ry="34" fill="url(#pengbody)" stroke="#0c0a09" stroke-width="1.2"/>
+    <!-- Hand pad -->
+    <ellipse cx="0" cy="-58" rx="11" ry="11" fill="url(#pengbody)" stroke="#0c0a09" stroke-width="1.2"/>
+    <!-- Two cartoon "fingers" forming the V -->
+    <ellipse cx="-5" cy="-72" rx="4" ry="10" fill="url(#pengbody)" stroke="#0c0a09" stroke-width="1.2" transform="rotate(-14 -5 -72)"/>
+    <ellipse cx="5"  cy="-72" rx="4" ry="10" fill="url(#pengbody)" stroke="#0c0a09" stroke-width="1.2" transform="rotate(14 5 -72)"/>
+  </g>
 
   <!-- Skid marks behind the rig -->
   <path d="M 40 332 Q 140 326 240 332 T 440 330" fill="none" stroke="#1f1814" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
