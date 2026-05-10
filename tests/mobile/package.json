@@ -1,0 +1,14 @@
+{
+  "name": "skoffroad-mobile-smoke",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright mobile smoke tests for skoffroad WASM build",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:list": "playwright test --list"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  }
+}
