@@ -185,6 +185,9 @@ pub mod vehicle_dirt;
 pub mod vehicle_highland;
 pub mod vehicle_dune_skipper;
 pub mod vehicle_hauler;
+// Sprint 60 — procedural PBR maps for all four vehicles
+pub mod vehicle_textures;
+pub use vehicle_textures::{VehicleTexturesPlugin, VehicleTextureSet};
 pub mod water;
 pub mod water_reflective;
 pub mod weather_clouds;

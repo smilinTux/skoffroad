@@ -6,6 +6,7 @@ use skoffroad::{
     BuddyRecoveryPlugin,
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
+    VehicleTexturesPlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -164,6 +165,9 @@ fn main() {
             ObstaclesPlugin,
             RoutePlugin,
         ))
+        // Sprint 60: procedural PBR maps for all four vehicles
+        // Registered after VariantsPlugin so variant skin handles exist.
+        .add_plugins(VehicleTexturesPlugin)
         .add_plugins((
             CollectiblesPlugin,
             BoostPlugin,
