@@ -7,9 +7,16 @@
          dirt-900 #0c0a09, mud-500 #d97706, mud-300 #fbbf24, bone #fafaf9, steel #a8a29e. -->
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"  stop-color="#1c1411"/>
-      <stop offset="100%" stop-color="#2b1d10"/>
+      <stop offset="0%"  stop-color="#6b5b8c"/>
+      <stop offset="38%" stop-color="#d4775a"/>
+      <stop offset="72%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#92400e"/>
     </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%"  stop-color="#fef3c7" stop-opacity="1"/>
+      <stop offset="35%" stop-color="#fbbf24" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0"/>
+    </radialGradient>
     <linearGradient id="bodyFront" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%"  stop-color="#fbbf24"/>
       <stop offset="55%" stop-color="#d97706"/>
@@ -41,11 +48,19 @@
     </radialGradient>
   </defs>
 
-  <!-- Sky -->
+  <!-- Dusk sky -->
   <rect x="0" y="0" width="480" height="360" fill="url(#sky)"/>
 
-  <!-- Distant mountain ridge -->
+  <!-- Setting sun (large soft glow behind the upper-left ridge) -->
+  <circle cx="120" cy="220" r="120" fill="url(#sun)"/>
+  <!-- Sun core -->
+  <circle cx="120" cy="220" r="28" fill="#fef3c7" opacity="0.9"/>
+
+  <!-- Distant mountain ridge — silhouette against the bright dusk sky -->
   <path d="M0 256 L70 238 L130 250 L200 230 L270 246 L340 230 L400 246 L480 236 L480 360 L0 360 Z"
+        fill="#3a2a1c"/>
+  <!-- Closer ridge for depth -->
+  <path d="M0 282 L60 270 L140 285 L220 268 L300 286 L380 272 L460 286 L480 280 L480 360 L0 360 Z"
         fill="#1a1310"/>
 
   <!-- Ground shadow under the jeep -->
