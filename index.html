@@ -197,5 +197,57 @@ setTimeout(() => splash.classList.add('gone'), 30_000);
 <!-- Sprint 52: touch controls JS — assets/ is already copied by Trunk's copy-dir above -->
 <script src="assets/touch-controls.js" defer></script>
 
+<!-- v0.22.x mobile-dismiss: floating big-button overlay that fires synthetic Space
+     to dismiss the Bevy title screen. Independent of the touch HUD so it works
+     even before isTouchDevice detection runs and even if the touch HUD is hidden. -->
+<style>
+#mobile-start {
+  position: fixed;
+  left: 50%;
+  top: 78%;
+  transform: translate(-50%, -50%);
+  z-index: 200;
+  padding: 18px 36px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff1c2;
+  background: linear-gradient(180deg, #4a3815 0%, #2a1f0a 100%);
+  border: 2px solid #fbbf24;
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.55), 0 0 22px rgba(251,191,36,0.35);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+  animation: ms-pulse 2.2s ease-in-out infinite;
+}
+#mobile-start:active { transform: translate(-50%, -50%) scale(0.97); }
+#mobile-start.gone   { opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+@keyframes ms-pulse {
+  0%, 100% { box-shadow: 0 4px 18px rgba(0,0,0,0.55), 0 0 22px rgba(251,191,36,0.35); }
+  50%      { box-shadow: 0 4px 18px rgba(0,0,0,0.55), 0 0 38px rgba(251,191,36,0.85); }
+}
+</style>
+<button id="mobile-start" type="button">▶ TAP TO START</button>
+<script>
+(function () {
+  var btn = document.getElementById('mobile-start');
+  if (!btn) return;
+  function fireSpaceAndHide(e) {
+    if (e) e.preventDefault();
+    // Fire keydown + keyup so anything that watches just_pressed *or* just_released catches it.
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup',   { code: 'Space', key: ' ', bubbles: true, cancelable: true }));
+    btn.classList.add('gone');
+    // Remove from DOM after fade so it can't intercept later interactions.
+    setTimeout(function () { if (btn.parentNode) btn.parentNode.removeChild(btn); }, 400);
+  }
+  btn.addEventListener('pointerdown', fireSpaceAndHide);
+  btn.addEventListener('click',       fireSpaceAndHide);
+})();
+</script>
+
 </body>
 </html>
