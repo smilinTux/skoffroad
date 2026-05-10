@@ -540,8 +540,12 @@ pub mod wasm_dragdrop {
                 || mime == "model/gltf+json"
                 || name_lc.ends_with(".glb")
                 || name_lc.ends_with(".gltf");
+            let is_gpx = mime == "application/gpx+xml"
+                || mime == "text/xml"
+                || mime == "application/xml"
+                || name_lc.ends_with(".gpx");
 
-            if !is_png && !is_glb {
+            if !is_png && !is_glb && !is_gpx {
                 warn!("drag-drop: ignored unrecognised file '{name}' (mime '{mime}')");
                 return;
             }
@@ -557,6 +561,7 @@ pub mod wasm_dragdrop {
 
             let reader_clone = reader.clone();
             let route_to_glb = is_glb; // capture before move
+            let route_to_gpx = is_gpx;
             let onload = Closure::<dyn Fn(Event)>::new(move |_ev: Event| {
                 if let Ok(result) = reader_clone.result() {
                     if let Some(data_url) = result.as_string() {
@@ -564,6 +569,12 @@ pub mod wasm_dragdrop {
                             info!("drag-drop: GLB/glTF loaded ({} bytes data-URL)", data_url.len());
                             // Write to the cell declared in custom_map_loader.
                             crate::custom_map_loader::PENDING_GLB_DATA_URL.with(|cell| {
+                                *cell.borrow_mut() = Some(data_url);
+                            });
+                        } else if route_to_gpx {
+                            info!("drag-drop: GPX loaded ({} bytes data-URL)", data_url.len());
+                            // Write to the cell declared in gpx_overlay.
+                            crate::gpx_overlay::PENDING_GPX_DATA_URL.with(|cell| {
                                 *cell.borrow_mut() = Some(data_url);
                             });
                         } else {
