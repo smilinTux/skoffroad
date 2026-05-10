@@ -1,6 +1,6 @@
 /* ============================================================
    skoffroad – mobile touch controls overlay
-   Sprint 52 — v0.15.0
+   Sprint 62 — v0.25.0
    ============================================================ */
 
 :root {
@@ -105,13 +105,20 @@
 }
 
 /* ── Button grid (bottom-right) ─────────────────────────────── */
+/*
+   Grid layout (3 columns × 3 rows + 1 full-width brake row):
+   Row 1: FWD  | CAM  | MENU
+   Row 2: REV  | PTT  | HORN
+   Row 3: RST  | PHOTO| ESC
+   Row 4: [       BRAKE       ]
+*/
 #tc-buttons {
   position: fixed;
   bottom: 24px;
   right: 18px;
   display: grid;
   grid-template-columns: repeat(3, 68px);
-  grid-template-rows: repeat(2, 64px) 48px;
+  grid-template-rows: repeat(3, 64px) 48px;
   gap: 8px;
   pointer-events: auto;
   touch-action: none;
@@ -153,6 +160,45 @@
   transform: scale(0.93);
 }
 
+/* FWD / REV buttons — warm green / warm amber tint */
+#tc-btn-fwd {
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+#tc-btn-fwd.tc-pressed {
+  background: rgba(21, 128, 61, 0.75);
+  border-color: #86efac;
+}
+
+#tc-btn-rev {
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+#tc-btn-rev.tc-pressed {
+  background: rgba(180, 83, 9, 0.75);
+  border-color: #fcd34d;
+}
+
+/* Horn button */
+#tc-btn-horn {
+  border-color: rgba(168, 85, 247, 0.45);
+  color: #d8b4fe;
+}
+#tc-btn-horn.tc-pressed {
+  background: rgba(109, 40, 217, 0.75);
+  border-color: #d8b4fe;
+}
+
+/* Menu button */
+#tc-btn-menu {
+  border-color: rgba(99, 179, 237, 0.45);
+  color: #bfdbfe;
+}
+#tc-btn-menu.tc-pressed {
+  background: rgba(37, 99, 235, 0.75);
+  border-color: #bfdbfe;
+}
+
 /* Brake — full-width bottom row */
 #tc-btn-brake {
   grid-column: 1 / -1;
@@ -182,4 +228,99 @@
 #touch-controls.tc-hidden #tc-stick-zone,
 #touch-controls.tc-hidden #tc-buttons {
   display: none;
+}
+
+/* ── Mobile menu overlay ────────────────────────────────────── */
+#tc-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(12, 10, 9, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Hidden by default — shown via .tc-menu-open */
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+#tc-menu-overlay.tc-menu-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#tc-menu-header {
+  width: min(90vw, 380px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--tc-border);
+  color: var(--tc-mud-lt);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+#tc-menu-close {
+  background: none;
+  border: none;
+  color: var(--tc-mud-lt);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#tc-menu-close:active {
+  background: rgba(217,119,6,0.25);
+}
+
+#tc-menu-list {
+  list-style: none;
+  width: min(90vw, 380px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tc-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--tc-btn);
+  border: 1.5px solid var(--tc-border);
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--tc-text);
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.tc-menu-item:active {
+  background: var(--tc-btn-act);
+  border-color: var(--tc-mud-lt);
+}
+
+.tc-menu-icon {
+  font-size: 26px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.tc-menu-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--tc-text);
 }
