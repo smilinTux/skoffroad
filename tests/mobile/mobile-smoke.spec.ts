@@ -1,9 +1,16 @@
 /**
- * skoffroad — mobile smoke test (Sprint 61)
+ * skoffroad — mobile smoke test (Sprint 62)
  *
  * Boots the WASM build in headless Chromium with iPhone 14 emulation,
  * taps #mobile-start to dismiss the title screen, and verifies the canvas
  * is rendering frames (non-black pixel check).
+ *
+ * Sprint 62 additions:
+ *  - FWD / REV buttons fire keydown(KeyW) / keydown(KeyS) on the canvas
+ *  - Joystick drag produces WASD keydown events on the canvas
+ *  - Menu button (☰) opens the mobile menu overlay
+ *  - Brake button still dismisses the title screen
+ *  - Horn button fires keydown(KeyN)
  *
  * Requirements:
  *   - The dist/ directory must be served at http://localhost:8080 before running.
@@ -32,19 +39,64 @@ async function captureCanvasPixels(page: Page): Promise<Buffer> {
 /**
  * Returns true when the screenshot buffer is NOT entirely black (i.e. at
  * least one channel byte in the first 4 KB of pixel data is non-zero).
- *
- * PNG pixel data starts after an ~57-byte header; scanning just the first
- * slice is fast and sufficient for a "not black" sanity check.
  */
 function isNonBlack(pngBuffer: Buffer): boolean {
-  // PNG magic + IHDR is 8+25 bytes; IDAT data starts afterwards.
-  // Rather than parse PNG, we check that the buffer has non-zero bytes
-  // beyond the first 64 bytes (skipping the PNG header).
   const slice = pngBuffer.slice(64, 4096);
   for (const byte of slice) {
     if (byte !== 0) return true;
   }
   return false;
+}
+
+/**
+ * Helper: dismiss the title/splash screen by tapping #mobile-start, then
+ * wait for it to be hidden.
+ */
+async function dismissSplash(page: Page): Promise<void> {
+  const startBtn = page.locator('#mobile-start');
+  await expect(startBtn).toBeVisible({ timeout: 30_000 });
+  await startBtn.tap();
+  await expect(startBtn).toBeHidden({ timeout: 5_000 });
+}
+
+/**
+ * Intercept synthetic KeyboardEvents dispatched by touch-controls.js.
+ * Returns a promise that resolves with the first matching event detail, or
+ * null after `timeoutMs` if none arrives.
+ *
+ * Implementation: we inject a one-shot listener on the canvas element (which
+ * is where touch-controls.js now dispatches events — see Sprint 62 fix).
+ * We also listen on window as a fallback.
+ */
+async function waitForKeyEvent(
+  page: Page,
+  eventType: 'keydown' | 'keyup',
+  code: string,
+  timeoutMs = 4_000
+): Promise<{ code: string; type: string } | null> {
+  return page.evaluate(
+    ({ eventType, code, timeoutMs }) => {
+      return new Promise<{ code: string; type: string } | null>((resolve) => {
+        const timer = setTimeout(() => resolve(null), timeoutMs);
+        function handler(e: KeyboardEvent) {
+          if (e.code === code) {
+            clearTimeout(timer);
+            // Remove listeners from both targets.
+            const canvas = document.getElementById('bevy');
+            if (canvas) canvas.removeEventListener(eventType, handler as EventListener);
+            window.removeEventListener(eventType, handler as EventListener);
+            resolve({ code: e.code, type: e.type });
+          }
+        }
+        // Listen on canvas first (where touch-controls.js dispatches events).
+        const canvas = document.getElementById('bevy');
+        if (canvas) canvas.addEventListener(eventType, handler as EventListener);
+        // Also listen on window as fallback.
+        window.addEventListener(eventType, handler as EventListener);
+      });
+    },
+    { eventType, code, timeoutMs }
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -53,8 +105,6 @@ function isNonBlack(pngBuffer: Buffer): boolean {
 
 test.describe('skoffroad mobile smoke (iPhone 14)', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the WASM app. The baseURL is set to http://localhost:8080 in
-    // playwright.config.ts, so '/' resolves to the index.html served from dist/.
     await page.goto('/', { waitUntil: 'domcontentloaded' });
   });
 
@@ -64,22 +114,17 @@ test.describe('skoffroad mobile smoke (iPhone 14)', () => {
   test('tap #mobile-start → title screen hides → canvas renders frames', async ({
     page,
   }) => {
-    // 1. Wait for the #mobile-start button to appear (WASM can take up to 30 s
-    //    to initialise; the button is in the static HTML so it should be
-    //    visible much earlier, but we give the full budget anyway).
+    // 1. Wait for the #mobile-start button (in static HTML — appears immediately).
     const startBtn = page.locator('#mobile-start');
     await expect(startBtn).toBeVisible({ timeout: 30_000 });
 
     // 2. Tap the button (simulates a real touch event on mobile).
     await startBtn.tap();
 
-    // 3. After the tap the button's script fires synthetic Space keydown/keyup
-    //    events and adds the `.gone` class (opacity: 0; pointer-events: none).
-    //    Assert the button is now hidden — 5 s is plenty for the CSS transition.
+    // 3. Button should gain .gone class (opacity 0, pointer-events none).
     await expect(startBtn).toBeHidden({ timeout: 5_000 });
 
-    // 4. Wait 2 s for Bevy to have rendered at least one frame, then screenshot
-    //    the canvas to confirm it's not pitch black.
+    // 4. Wait 2 s for Bevy to render at least one frame, then screenshot.
     await page.waitForTimeout(2_000);
 
     const pixels = await captureCanvasPixels(page);
@@ -88,7 +133,7 @@ test.describe('skoffroad mobile smoke (iPhone 14)', () => {
       'Canvas appears to be entirely black — Bevy may not have rendered a frame.'
     ).toBe(true);
 
-    // 5. Optionally take a full-page screenshot for the CI artifact.
+    // 5. Take a full-page screenshot for the CI artifact.
     await page.screenshot({
       path: 'playwright-report/canvas-after-start.png',
       fullPage: false,
@@ -96,43 +141,288 @@ test.describe('skoffroad mobile smoke (iPhone 14)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Touch HUD smoke test
+  // Touch HUD — helper to check visibility and skip gracefully if hidden
+  // -------------------------------------------------------------------------
+  async function assertHudVisible(page: Page, selector: string): Promise<boolean> {
+    const el = page.locator(selector);
+    const isVisible = await el.isVisible();
+    if (!isVisible) {
+      test.skip(true, `${selector} not visible — HUD may require a toggle tap first`);
+      return false;
+    }
+    return true;
+  }
+
+  // -------------------------------------------------------------------------
+  // Existing smoke: reset button is tappable
   // -------------------------------------------------------------------------
   test('touch HUD reset button (#tc-btn-reset) is tappable', async ({
     page,
   }) => {
-    // Dismiss the title screen first (re-use same sequence as main test).
-    const startBtn = page.locator('#mobile-start');
-    await expect(startBtn).toBeVisible({ timeout: 30_000 });
-    await startBtn.tap();
-    await expect(startBtn).toBeHidden({ timeout: 5_000 });
-
-    // Allow Bevy + touch-controls.js time to inject the HUD overlay.
-    // touch-controls.js injects the HUD on DOMContentLoaded, so it should
-    // already be present; but we wait a moment for any async init.
+    await dismissSplash(page);
     await page.waitForTimeout(1_000);
 
-    // The touch HUD is only built when isTouchDevice is true.  iPhone 14
-    // emulation sets navigator.maxTouchPoints > 0, which triggers the build.
-    const resetBtn = page.locator('#tc-btn-reset');
+    if (!(await assertHudVisible(page, '#tc-btn-reset'))) return;
 
-    // The HUD may be hidden behind a toggle; if so, skip this assertion
-    // gracefully rather than failing CI on a UX detail.
-    const isVisible = await resetBtn.isVisible();
-    if (!isVisible) {
-      test.skip(true, '#tc-btn-reset not visible — HUD may require a toggle tap first');
-      return;
-    }
-
-    // Tap and verify no JS error is thrown (Playwright surfaces console errors).
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
 
-    await resetBtn.tap();
-
-    // Give the synthetic KeyR event time to propagate.
+    await page.locator('#tc-btn-reset').tap();
     await page.waitForTimeout(500);
 
     expect(errors).toHaveLength(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: FWD button fires keydown(KeyW) on the canvas
+  // -------------------------------------------------------------------------
+  test('FWD button (#tc-btn-fwd) fires keydown KeyW on the canvas', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-btn-fwd'))) return;
+
+    // Start listening BEFORE we tap so we don't miss the event.
+    const eventPromise = waitForKeyEvent(page, 'keydown', 'KeyW');
+    await page.locator('#tc-btn-fwd').tap();
+    const evt = await eventPromise;
+
+    expect(evt, 'FWD button should fire keydown KeyW').not.toBeNull();
+    expect(evt!.code).toBe('KeyW');
+    expect(evt!.type).toBe('keydown');
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: REV button fires keydown(KeyS) on the canvas
+  // -------------------------------------------------------------------------
+  test('REV button (#tc-btn-rev) fires keydown KeyS on the canvas', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-btn-rev'))) return;
+
+    const eventPromise = waitForKeyEvent(page, 'keydown', 'KeyS');
+    await page.locator('#tc-btn-rev').tap();
+    const evt = await eventPromise;
+
+    expect(evt, 'REV button should fire keydown KeyS').not.toBeNull();
+    expect(evt!.code).toBe('KeyS');
+    expect(evt!.type).toBe('keydown');
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: HORN button fires keydown(KeyN)
+  // -------------------------------------------------------------------------
+  test('HORN button (#tc-btn-horn) fires keydown KeyN', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-btn-horn'))) return;
+
+    const eventPromise = waitForKeyEvent(page, 'keydown', 'KeyN');
+    await page.locator('#tc-btn-horn').tap();
+    const evt = await eventPromise;
+
+    expect(evt, 'HORN button should fire keydown KeyN').not.toBeNull();
+    expect(evt!.code).toBe('KeyN');
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: Brake button fires keydown(Space) on the canvas
+  // -------------------------------------------------------------------------
+  test('BRAKE button (#tc-btn-brake) fires keydown Space on the canvas', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-btn-brake'))) return;
+
+    const eventPromise = waitForKeyEvent(page, 'keydown', 'Space');
+    await page.locator('#tc-btn-brake').tap();
+    const evt = await eventPromise;
+
+    expect(evt, 'BRAKE button should fire keydown Space').not.toBeNull();
+    expect(evt!.code).toBe('Space');
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: MENU button opens the mobile menu overlay
+  // -------------------------------------------------------------------------
+  test('MENU button (#tc-btn-menu) opens the mobile menu overlay', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-btn-menu'))) return;
+
+    // The overlay should not be visible initially.
+    const overlay = page.locator('#tc-menu-overlay');
+    await expect(overlay).not.toHaveClass(/tc-menu-open/);
+
+    // Tap the menu button.
+    await page.locator('#tc-btn-menu').tap();
+    await page.waitForTimeout(300);
+
+    // The overlay should now have the open class.
+    await expect(overlay).toHaveClass(/tc-menu-open/, { timeout: 2_000 });
+
+    // The close button should be visible and functional.
+    const closeBtn = page.locator('#tc-menu-close');
+    await expect(closeBtn).toBeVisible();
+    await closeBtn.tap();
+    await page.waitForTimeout(300);
+
+    // After closing, the open class should be removed.
+    await expect(overlay).not.toHaveClass(/tc-menu-open/);
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: Menu item dispatches the correct hotkey
+  // -------------------------------------------------------------------------
+  test('menu Multiplayer item fires keydown KeyI', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-btn-menu'))) return;
+
+    // Open the menu.
+    await page.locator('#tc-btn-menu').tap();
+    await page.waitForTimeout(300);
+
+    const overlay = page.locator('#tc-menu-overlay');
+    await expect(overlay).toHaveClass(/tc-menu-open/, { timeout: 2_000 });
+
+    // Listen for the hotkey event before tapping the menu item.
+    const eventPromise = waitForKeyEvent(page, 'keydown', 'KeyI');
+
+    // Tap the "Multiplayer (I)" row — it's the second list item.
+    const menuItems = page.locator('.tc-menu-item');
+    await menuItems.nth(1).tap();
+
+    const evt = await eventPromise;
+    expect(evt, 'Multiplayer menu item should fire keydown KeyI').not.toBeNull();
+    expect(evt!.code).toBe('KeyI');
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: Joystick drag emits WASD keydown events on the canvas
+  // -------------------------------------------------------------------------
+  test('joystick drag (up) fires keydown KeyW on the canvas', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-stick-zone'))) return;
+
+    const stickZone = page.locator('#tc-stick-zone');
+
+    // Get the bounding box so we can calculate drag coordinates.
+    const box = await stickZone.boundingBox();
+    if (!box) {
+      test.skip(true, '#tc-stick-zone has no bounding box');
+      return;
+    }
+
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+
+    // Start listening for KeyW keydown BEFORE the drag.
+    const eventPromise = waitForKeyEvent(page, 'keydown', 'KeyW', 5_000);
+
+    // Simulate a drag upward (Y decreases on screen for "up" = forward).
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    // Drag upward by 40 px (well past the dead zone).
+    await page.mouse.move(cx, cy - 40, { steps: 8 });
+
+    const evt = await eventPromise;
+
+    // Release and clean up.
+    await page.mouse.up();
+
+    expect(evt, 'Joystick drag up should fire keydown KeyW').not.toBeNull();
+    expect(evt!.code).toBe('KeyW');
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: Joystick drag down fires KeyS
+  // -------------------------------------------------------------------------
+  test('joystick drag (down) fires keydown KeyS on the canvas', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-stick-zone'))) return;
+
+    const stickZone = page.locator('#tc-stick-zone');
+    const box = await stickZone.boundingBox();
+    if (!box) {
+      test.skip(true, '#tc-stick-zone has no bounding box');
+      return;
+    }
+
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+
+    const eventPromise = waitForKeyEvent(page, 'keydown', 'KeyS', 5_000);
+
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy + 40, { steps: 8 });
+
+    const evt = await eventPromise;
+    await page.mouse.up();
+
+    expect(evt, 'Joystick drag down should fire keydown KeyS').not.toBeNull();
+    expect(evt!.code).toBe('KeyS');
+  });
+
+  // -------------------------------------------------------------------------
+  // Sprint 62: Joystick release fires keyup events
+  // -------------------------------------------------------------------------
+  test('joystick release fires keyup KeyW after dragging up', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-stick-zone'))) return;
+
+    const stickZone = page.locator('#tc-stick-zone');
+    const box = await stickZone.boundingBox();
+    if (!box) {
+      test.skip(true, '#tc-stick-zone has no bounding box');
+      return;
+    }
+
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+
+    // Drag up to engage forward.
+    await page.mouse.move(cx, cy);
+    await page.mouse.down();
+    await page.mouse.move(cx, cy - 40, { steps: 8 });
+    await page.waitForTimeout(100);
+
+    // Start listening for keyup BEFORE releasing.
+    const keyupPromise = waitForKeyEvent(page, 'keyup', 'KeyW', 3_000);
+    await page.mouse.up();
+
+    const evt = await keyupPromise;
+    expect(evt, 'Joystick release should fire keyup KeyW').not.toBeNull();
+    expect(evt!.code).toBe('KeyW');
+    expect(evt!.type).toBe('keyup');
   });
 });
