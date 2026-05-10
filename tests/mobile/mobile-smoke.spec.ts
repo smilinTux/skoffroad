@@ -74,25 +74,29 @@ async function waitForKeyEvent(
   code: string,
   timeoutMs = 4_000
 ): Promise<{ code: string; type: string } | null> {
+  // page.evaluate() serialises the function via .toString() and runs it in
+  // the browser context.  We must not use TypeScript-only syntax (type casts,
+  // generics) inside the evaluate callback because the browser receives plain
+  // JS.  Plain function syntax and no type annotations are required here.
   return page.evaluate(
-    ({ eventType, code, timeoutMs }) => {
-      return new Promise<{ code: string; type: string } | null>((resolve) => {
-        const timer = setTimeout(() => resolve(null), timeoutMs);
-        function handler(e: KeyboardEvent) {
+    function (args) {
+      var eventType = args.eventType;
+      var code      = args.code;
+      var timeoutMs = args.timeoutMs;
+      return new Promise(function (resolve) {
+        var timer = setTimeout(function () { resolve(null); }, timeoutMs);
+        function handler(e) {
           if (e.code === code) {
             clearTimeout(timer);
-            // Remove listeners from both targets.
-            const canvas = document.getElementById('bevy');
-            if (canvas) canvas.removeEventListener(eventType, handler as EventListener);
-            window.removeEventListener(eventType, handler as EventListener);
+            var canvas = document.getElementById('bevy');
+            if (canvas) canvas.removeEventListener(eventType, handler);
+            window.removeEventListener(eventType, handler);
             resolve({ code: e.code, type: e.type });
           }
         }
-        // Listen on canvas first (where touch-controls.js dispatches events).
-        const canvas = document.getElementById('bevy');
-        if (canvas) canvas.addEventListener(eventType, handler as EventListener);
-        // Also listen on window as fallback.
-        window.addEventListener(eventType, handler as EventListener);
+        var canvas = document.getElementById('bevy');
+        if (canvas) canvas.addEventListener(eventType, handler);
+        window.addEventListener(eventType, handler);
       });
     },
     { eventType, code, timeoutMs }
