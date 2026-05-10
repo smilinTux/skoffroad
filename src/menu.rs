@@ -80,20 +80,30 @@ fn spawn_title_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Large game title
+    // Large game title — lowercase wordmark with the brand subtitle just below.
     let title = commands
         .spawn((
-            Text::new("SANDK OFFROAD"),
-            TextFont { font_size: 72.0, ..default() },
+            Text::new("skoffroad"),
+            TextFont { font_size: 84.0, ..default() },
             TextColor(COLOR_TITLE),
         ))
         .id();
 
-    // Version / engine subtitle
+    // Brand subtitle — the white-label public-facing name.
+    let brand = commands
+        .spawn((
+            Text::new("S&K  OFFROAD"),
+            TextFont { font_size: 22.0, ..default() },
+            TextColor(Color::srgb(0.85, 0.78, 0.55)),
+            Node { margin: UiRect::top(Val::Px(-6.0)), ..default() },
+        ))
+        .id();
+
+    // Version / engine subtitle — auto-pulled from CARGO_PKG_VERSION at build time.
     let subtitle = commands
         .spawn((
-            Text::new("v0.4  —  A Bevy + Avian off-road sim"),
-            TextFont { font_size: 18.0, ..default() },
+            Text::new(format!("v{}  —  A Bevy + Avian off-road sim", env!("CARGO_PKG_VERSION"))),
+            TextFont { font_size: 16.0, ..default() },
             TextColor(COLOR_SUB),
         ))
         .id();
@@ -204,7 +214,7 @@ fn spawn_title_screen(mut commands: Commands) {
 
     commands
         .entity(root)
-        .add_children(&[title, subtitle, spacer1, kb_root, spacer2, start_btn, prompt]);
+        .add_children(&[title, brand, subtitle, spacer1, kb_root, spacer2, start_btn, prompt]);
 }
 
 /// Build a vertical column of (key, description) rows for the title screen.

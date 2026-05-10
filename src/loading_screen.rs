@@ -119,12 +119,21 @@ fn spawn_loading_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Large game title.
+    // Large game title — lowercase wordmark.
     let title = commands
         .spawn((
-            Text::new("SANDK OFFROAD"),
+            Text::new("skoffroad"),
             TextFont { font_size: TITLE_SIZE, ..default() },
             TextColor(TITLE_COLOR),
+        ))
+        .id();
+
+    // Brand subtitle.
+    let brand = commands
+        .spawn((
+            Text::new("S&K  OFFROAD"),
+            TextFont { font_size: 18.0, ..default() },
+            TextColor(Color::srgb(0.85, 0.78, 0.55)),
         ))
         .id();
 
@@ -139,10 +148,10 @@ fn spawn_loading_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Small tagline.
+    // Small tagline — auto-pulled from CARGO_PKG_VERSION at build time.
     let tagline = commands
         .spawn((
-            Text::new("v0.5  \u{2014}  procedural off-road sandbox"),
+            Text::new(format!("v{}  \u{2014}  procedural off-road sandbox", env!("CARGO_PKG_VERSION"))),
             TextFont { font_size: TAGLINE_SIZE, ..default() },
             TextColor(TAGLINE_COLOR),
         ))
@@ -150,7 +159,7 @@ fn spawn_loading_screen(mut commands: Commands) {
 
     commands
         .entity(root)
-        .add_children(&[title, subtitle, tagline]);
+        .add_children(&[title, brand, subtitle, tagline]);
 }
 
 // ---------------------------------------------------------------------------

@@ -51,7 +51,7 @@ const COLOR_HEADER: Color = Color::srgb(0.4, 0.95, 1.0);
 // ---- Credits content --------------------------------------------------------
 
 const CREDITS: &[&str] = &[
-    "--- SANDK OFFROAD ---",
+    "--- skoffroad — S&K OFFROAD ---",
     "",
     "Built with Claude Code + Sonnet subagents",
     "",
