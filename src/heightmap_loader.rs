@@ -521,7 +521,8 @@ pub mod wasm_dragdrop {
             .ok();
         dragover_cb.forget(); // keep alive for the page lifetime
 
-        // `drop` — read the first PNG file from the drop.
+        // `drop` — shared dispatcher: routes PNG to heightmap path, GLB/glTF to
+        // the custom_map_loader path.  Single listener — no double-fire.
         let drop_cb = Closure::<dyn Fn(DragEvent)>::new(|ev: DragEvent| {
             ev.prevent_default();
 
@@ -529,13 +530,19 @@ pub mod wasm_dragdrop {
             let Some(files) = data_transfer.files() else { return };
             let Some(file) = files.get(0) else { return };
 
-            // Check MIME type or file name extension.
+            // Classify by MIME type or file name extension.
             let name = file.name();
+            let name_lc = name.to_lowercase();
             let mime = file.type_();
-            let is_png = mime == "image/png"
-                || name.to_lowercase().ends_with(".png");
-            if !is_png {
-                warn!("heightmap drag-drop: ignored non-PNG file '{name}'");
+
+            let is_png = mime == "image/png" || name_lc.ends_with(".png");
+            let is_glb = mime == "model/gltf-binary"
+                || mime == "model/gltf+json"
+                || name_lc.ends_with(".glb")
+                || name_lc.ends_with(".gltf");
+
+            if !is_png && !is_glb {
+                warn!("drag-drop: ignored unrecognised file '{name}' (mime '{mime}')");
                 return;
             }
 
@@ -543,19 +550,28 @@ pub mod wasm_dragdrop {
             let reader = match FileReader::new() {
                 Ok(r) => r,
                 Err(_) => {
-                    warn!("heightmap drag-drop: could not create FileReader");
+                    warn!("drag-drop: could not create FileReader");
                     return;
                 }
             };
 
             let reader_clone = reader.clone();
+            let route_to_glb = is_glb; // capture before move
             let onload = Closure::<dyn Fn(Event)>::new(move |_ev: Event| {
                 if let Ok(result) = reader_clone.result() {
                     if let Some(data_url) = result.as_string() {
-                        info!("heightmap drag-drop: PNG loaded ({} bytes data-URL)", data_url.len());
-                        PENDING_DATA_URL.with(|cell| {
-                            *cell.borrow_mut() = Some(data_url);
-                        });
+                        if route_to_glb {
+                            info!("drag-drop: GLB/glTF loaded ({} bytes data-URL)", data_url.len());
+                            // Write to the cell declared in custom_map_loader.
+                            crate::custom_map_loader::PENDING_GLB_DATA_URL.with(|cell| {
+                                *cell.borrow_mut() = Some(data_url);
+                            });
+                        } else {
+                            info!("drag-drop: PNG loaded ({} bytes data-URL)", data_url.len());
+                            PENDING_DATA_URL.with(|cell| {
+                                *cell.borrow_mut() = Some(data_url);
+                            });
+                        }
                     }
                 }
             });
