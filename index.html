@@ -95,11 +95,17 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
 #splash.gone { opacity: 0; visibility: hidden; pointer-events: none; }
 #splash h1 {
   font-family: 'Bebas Neue', Impact, sans-serif;
-  font-size: clamp(64px, 14vw, 160px);
+  font-size: clamp(56px, 12vw, 140px);
   letter-spacing: 0.04em;
   color: var(--mud-300);
   line-height: 0.85;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
+  text-shadow: 0 4px 24px rgba(217, 119, 6, 0.25);
+}
+#splash .mascot {
+  width: clamp(220px, 32vw, 360px);
+  margin-bottom: 14px;
+  filter: drop-shadow(0 8px 22px rgba(217, 119, 6, 0.18));
 }
 #splash p { color: var(--steel); font-size: 16px; margin-bottom: 24px; }
 #splash .bar {
@@ -143,6 +149,7 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
 <body>
 
 <div id="splash">
+  <img class="mascot" src="assets/penguin-mascot.svg" alt="skoffroad mascot — penguin driving a tricked-out Skrambler" />
   <h1>skoffroad</h1>
   <p style="color: var(--mud-300); font-size: 18px; margin-top: -4px; margin-bottom: 14px; letter-spacing: 0.18em;">S&amp;K&nbsp;OFFROAD</p>
   <p>fetching ~30 MB of off-road sandbox...</p>

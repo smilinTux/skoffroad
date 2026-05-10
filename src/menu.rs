@@ -60,9 +60,8 @@ const COLOR_HINT:  Color = Color::srgb(0.55, 0.60, 0.65);
 // ---------------------------------------------------------------------------
 
 fn spawn_title_screen(mut commands: Commands) {
-    // Full-screen opaque layer. Sits above HUD and game world.
-    // ZIndex is not needed — Bevy renders UI nodes in tree order and this
-    // overlay is spawned last, so it naturally appears on top.
+    // Full-screen opaque layer. Explicit ZIndex(1000) so the HUD and minimap
+    // (which use their own ZIndex values 10–100) don't bleed through.
     let root = commands
         .spawn((
             TitleScreenRoot,
@@ -77,6 +76,7 @@ fn spawn_title_screen(mut commands: Commands) {
                 ..default()
             },
             BackgroundColor(TITLE_BG),
+            GlobalZIndex(1000),
         ))
         .id();
 
