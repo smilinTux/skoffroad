@@ -288,6 +288,7 @@ enum MpText {
     PeerCount,
     RoomCode,
     Help,
+    ConnectButtonLabel,
 }
 
 #[derive(Component)]
@@ -402,6 +403,7 @@ fn spawn_panel(mut commands: Commands) {
         ))
         .with_children(|p| {
             p.spawn((
+                MpText::ConnectButtonLabel,
                 Text::new("Connect"),
                 TextFont { font_size: 15.0, ..default() },
                 TextColor(COLOR_BODY),
@@ -717,7 +719,7 @@ fn update_panel_ui(
     ghosts:    Res<PeerGhosts>,
     spectate:  Res<SpectateState>,
     recovery:  Option<Res<BuddyRecoveryState>>,
-    mut texts: Query<(&MpText, &mut Text)>,
+    mut texts: Query<(&MpText, &mut Text, &mut TextColor)>,
     peer_list_q: Query<(Entity, &Children), With<PeerListContainer>>,
     mut commands: Commands,
 ) {
@@ -726,38 +728,52 @@ fn update_panel_ui(
     let texts_changed = mp.is_changed() || cfg.is_changed();
 
     if texts_changed {
-        let (status_str, peer_str) = match &*mp {
-            MultiplayerState::Disconnected => {
-                ("Status: Disconnected".into(), String::new())
-            }
-            MultiplayerState::Connecting { since_secs } => {
-                (
-                    format!("Status: Connecting… ({since_secs:.1}s)"),
-                    String::new(),
-                )
-            }
+        let (status_str, peer_str, status_color, btn_label) = match &*mp {
+            MultiplayerState::Disconnected => (
+                "● Disconnected — click Connect to join the room".to_string(),
+                String::new(),
+                Color::srgb(0.85, 0.40, 0.40),
+                "Connect",
+            ),
+            MultiplayerState::Connecting { since_secs } => (
+                format!("● Connecting… ({since_secs:.1}s)"),
+                String::new(),
+                Color::srgb(0.95, 0.80, 0.30),
+                "Cancel",
+            ),
             MultiplayerState::InRoom { peer_count } => {
+                let extra = if *peer_count == 0 {
+                    "  (alone — share the page URL to invite friends)"
+                } else {
+                    ""
+                };
                 (
-                    "Status: In room".into(),
+                    format!("● In room{extra}"),
                     format!("Peers: {peer_count}"),
+                    Color::srgb(0.45, 0.85, 0.45),
+                    "Disconnect",
                 )
             }
-            MultiplayerState::Failed { reason, since_secs } => {
-                (
-                    format!("Status: Failed ({since_secs:.0}s) — {reason}"),
-                    String::new(),
-                )
-            }
+            MultiplayerState::Failed { reason, since_secs } => (
+                format!("● Failed ({since_secs:.0}s) — {reason}"),
+                String::new(),
+                Color::srgb(0.95, 0.40, 0.40),
+                "Retry",
+            ),
         };
 
-        for (label, mut text) in &mut texts {
+        for (label, mut text, mut color) in &mut texts {
             match label {
-                MpText::Status    => text.0 = status_str.clone(),
+                MpText::Status => {
+                    text.0 = status_str.clone();
+                    color.0 = status_color;
+                }
                 MpText::PeerCount => text.0 = peer_str.clone(),
                 MpText::RoomCode  => {
                     let room = cfg.signaling_url.rsplit('/').next().unwrap_or("?");
                     text.0 = format!("Room: {room}");
                 }
+                MpText::ConnectButtonLabel => text.0 = btn_label.to_string(),
                 MpText::Help => { /* static */ }
             }
         }

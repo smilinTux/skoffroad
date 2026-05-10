@@ -53,6 +53,10 @@ saves/
 screenshots/
 replays/
 
+# Playwright (Sprint 61)
+tests/mobile/playwright-report/
+tests/mobile/test-results/
+
 # OS specific files
 Thumbs.db
 
