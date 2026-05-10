@@ -523,7 +523,8 @@ fn toggle_cabinet_with_m(
     mut visible: ResMut<CabinetVisible>,
     mut root_q: Query<&mut Visibility, With<MedalCabinetRoot>>,
 ) {
-    if keys.just_pressed(KeyCode::KeyM) {
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    if !shift && keys.just_pressed(KeyCode::KeyM) {
         visible.0 = !visible.0;
         for mut vis in &mut root_q {
             *vis = if visible.0 {

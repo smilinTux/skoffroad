@@ -471,39 +471,114 @@ fn spawn_vehicle(
         }
     }
 
-    // Winch visual: small spool cylinder on top of the front bumper face,
-    // plus a horizontal cable cylinder extending forward ~0.5 m.
-    // Only spawned when bumper != Stock and winch == true.
+    // Winch assembly: housing + motor + drum + end plates + fairlead + cable.
+    // Mounted to the front bumper face. Only spawned when bumper != Stock.
     if mods.winch && mods.bumper != BumperKind::Stock {
-        let winch_mat = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.15, 0.15, 0.15),
-            perceptual_roughness: 0.60,
-            metallic: 0.80,
+        let housing_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.20, 0.20, 0.22),
+            perceptual_roughness: 0.45,
+            metallic: 0.85,
+            ..default()
+        });
+        let drum_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.10, 0.10, 0.10),
+            perceptual_roughness: 0.55,
+            metallic: 0.90,
             ..default()
         });
         let cable_mat = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.60, 0.55, 0.45),
-            perceptual_roughness: 0.80,
+            base_color: Color::srgb(0.45, 0.40, 0.32),
+            perceptual_roughness: 0.85,
             ..default()
         });
-        // Spool: cylinder lying flat along X, mounted at bumper top-centre.
-        let spool = commands.spawn((
+        let fairlead_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.65, 0.65, 0.68),
+            perceptual_roughness: 0.30,
+            metallic: 0.95,
+            ..default()
+        });
+
+        let z_front = -2.10;
+        let y       = -0.18;
+
+        // Main housing block (motor + gearbox shell).
+        details.push(commands.spawn((
             DefaultSkin,
-            Mesh3d(meshes.add(Cylinder::new(0.08, 0.42))),
-            MeshMaterial3d(winch_mat.clone()),
-            Transform::from_translation(Vec3::new(0.0, -0.22, -2.12))
+            Mesh3d(meshes.add(Cuboid::new(0.62, 0.22, 0.28))),
+            MeshMaterial3d(housing_mat.clone()),
+            Transform::from_translation(Vec3::new(0.0, y, z_front)),
+        )).id());
+
+        // Motor cap on the right end (small protrusion).
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.10, 0.18))),
+            MeshMaterial3d(housing_mat.clone()),
+            Transform::from_translation(Vec3::new(0.40, y, z_front))
                 .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-        )).id();
-        // Cable: thin cylinder extending 0.5 m forward from the spool.
-        let cable = commands.spawn((
+        )).id());
+
+        // Drum (the spool the cable winds around) — visible between the end caps.
+        details.push(commands.spawn((
             DefaultSkin,
-            Mesh3d(meshes.add(Cylinder::new(0.018, 0.50))),
-            MeshMaterial3d(cable_mat),
-            Transform::from_translation(Vec3::new(0.0, -0.22, -2.36))
+            Mesh3d(meshes.add(Cylinder::new(0.085, 0.34))),
+            MeshMaterial3d(drum_mat),
+            Transform::from_translation(Vec3::new(0.0, y, z_front))
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        )).id());
+
+        // Two end plates (the round flanges that cap the drum).
+        for &x in &[-0.18_f32, 0.18] {
+            details.push(commands.spawn((
+                DefaultSkin,
+                Mesh3d(meshes.add(Cylinder::new(0.115, 0.04))),
+                MeshMaterial3d(housing_mat.clone()),
+                Transform::from_translation(Vec3::new(x, y, z_front))
+                    .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            )).id());
+        }
+
+        // Fairlead — the chrome four-roller frame the cable feeds through, mounted
+        // ~0.18 m forward of the drum.
+        let fl_z = z_front - 0.22;
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cuboid::new(0.34, 0.18, 0.04))),
+            MeshMaterial3d(fairlead_mat.clone()),
+            Transform::from_translation(Vec3::new(0.0, y, fl_z)),
+        )).id());
+        // Four small rollers (top, bottom, left, right) inside the fairlead frame.
+        let r_radius = 0.025_f32;
+        let r_len    = 0.20_f32;
+        for (pos, axis) in [
+            (Vec3::new( 0.0, y + 0.07, fl_z), Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            (Vec3::new( 0.0, y - 0.07, fl_z), Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            (Vec3::new( 0.14, y, fl_z),       Quat::IDENTITY),
+            (Vec3::new(-0.14, y, fl_z),       Quat::IDENTITY),
+        ] {
+            details.push(commands.spawn((
+                DefaultSkin,
+                Mesh3d(meshes.add(Cylinder::new(r_radius, r_len))),
+                MeshMaterial3d(fairlead_mat.clone()),
+                Transform::from_translation(pos).with_rotation(axis),
+            )).id());
+        }
+        // Cable: 0.45 m forward from the fairlead, hooked to a small hook tip.
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.014, 0.45))),
+            MeshMaterial3d(cable_mat.clone()),
+            Transform::from_translation(Vec3::new(0.0, y, fl_z - 0.24))
                 .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
-        )).id();
-        details.push(spool);
-        details.push(cable);
+        )).id());
+        // Hook tip (small darker cylinder at the cable end).
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.025, 0.06))),
+            MeshMaterial3d(housing_mat),
+            Transform::from_translation(Vec3::new(0.0, y, fl_z - 0.50))
+                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+        )).id());
     }
     // -------------------------------------------------------------------------
 

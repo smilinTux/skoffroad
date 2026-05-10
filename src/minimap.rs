@@ -236,7 +236,8 @@ fn toggle_minimap(
     mut visible: ResMut<MinimapVisible>,
     mut root_q: Query<&mut Node, With<MinimapRoot>>,
 ) {
-    if keys.just_pressed(KeyCode::KeyM) {
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    if !shift && keys.just_pressed(KeyCode::KeyM) {
         visible.0 = !visible.0;
         let disp = if visible.0 { Display::Flex } else { Display::None };
         for mut node in &mut root_q {

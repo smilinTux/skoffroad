@@ -371,17 +371,20 @@ pub const LONG_ARM_SPAWN_LIFT: f32 = 0.20;
 
 impl VehicleModsState {
     /// Effective suspension length for physics.
+    /// Bigger tires extend the rest length by the tire delta so the chassis
+    /// rides higher (otherwise the larger wheel mesh just clips through the fender).
     pub fn suspension_len(&self) -> f32 {
-        if self.long_arm {
-            BASE_SUSPENSION_LEN + LONG_ARM_SUSP_DELTA
-        } else {
-            BASE_SUSPENSION_LEN
-        }
+        let tire_delta = self.tire_size.radius() - TireSize::Stock.radius();
+        let long_arm   = if self.long_arm { LONG_ARM_SUSP_DELTA } else { 0.0 };
+        BASE_SUSPENSION_LEN + long_arm + tire_delta
     }
 
-    /// Additional chassis Y offset at spawn due to long-arm lift.
+    /// Additional chassis Y offset at spawn so the chassis lands at the right
+    /// rest height (long-arm + tire-size both add to this).
     pub fn spawn_y_lift(&self) -> f32 {
-        if self.long_arm { LONG_ARM_SPAWN_LIFT } else { 0.0 }
+        let tire_delta = self.tire_size.radius() - TireSize::Stock.radius();
+        let long_arm   = if self.long_arm { LONG_ARM_SPAWN_LIFT } else { 0.0 };
+        long_arm + tire_delta
     }
 
     /// Wheel mesh radius.

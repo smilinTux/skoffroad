@@ -43,6 +43,9 @@ pub struct MenuState {
 #[derive(Component)]
 struct TitleScreenRoot;
 
+#[derive(Component)]
+struct StartButton;
+
 // ---------------------------------------------------------------------------
 // Colour constants
 // ---------------------------------------------------------------------------
@@ -154,18 +157,44 @@ fn spawn_title_screen(mut commands: Commands) {
         .spawn(Node { height: Val::Px(28.0), ..default() })
         .id();
 
+    // Big tap/click target for mobile and click users; also dismissable via keys.
+    let start_btn = commands
+        .spawn((
+            Button,
+            StartButton,
+            Node {
+                width:           Val::Px(260.0),
+                height:          Val::Px(64.0),
+                align_items:     AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border:          UiRect::all(Val::Px(2.0)),
+                ..default()
+            },
+            BorderColor::all(Color::srgb(1.0, 0.85, 0.30)),
+            BackgroundColor(Color::srgba(0.20, 0.16, 0.05, 0.95)),
+        ))
+        .id();
+    let start_label = commands
+        .spawn((
+            Text::new("▶  TAP / PRESS TO START"),
+            TextFont { font_size: 22.0, ..default() },
+            TextColor(Color::srgb(1.0, 0.92, 0.55)),
+        ))
+        .id();
+    commands.entity(start_btn).add_children(&[start_label]);
+
     // Bottom prompt
     let prompt = commands
         .spawn((
-            Text::new("Press SPACE or W to start.  Press ? in-game for full keybinds."),
-            TextFont { font_size: 16.0, ..default() },
+            Text::new("Or press SPACE / W / Enter / Arrow.  Press ? in-game for full keybinds."),
+            TextFont { font_size: 14.0, ..default() },
             TextColor(COLOR_HINT),
         ))
         .id();
 
     commands
         .entity(root)
-        .add_children(&[title, subtitle, spacer1, kb_root, spacer2, prompt]);
+        .add_children(&[title, subtitle, spacer1, kb_root, spacer2, start_btn, prompt]);
 }
 
 /// Build a vertical column of (key, description) rows for the title screen.
@@ -227,6 +256,8 @@ fn build_kb_column(commands: &mut Commands, rows: &[(&str, &str)]) -> Entity {
 
 fn dismiss_title_screen(
     keys:      Res<ButtonInput<KeyCode>>,
+    mouse:     Res<ButtonInput<MouseButton>>,
+    btn_q:     Query<&Interaction, (Changed<Interaction>, With<StartButton>)>,
     mut state: ResMut<MenuState>,
     mut roots: Query<&mut Node, With<TitleScreenRoot>>,
 ) {
@@ -235,13 +266,20 @@ fn dismiss_title_screen(
         return;
     }
 
-    let pressed = keys.just_pressed(KeyCode::Space)
+    let key_pressed = keys.just_pressed(KeyCode::Space)
         || keys.just_pressed(KeyCode::KeyW)
         || keys.just_pressed(KeyCode::Enter)
         || keys.just_pressed(KeyCode::ArrowUp)
         || keys.just_pressed(KeyCode::ArrowDown)
         || keys.just_pressed(KeyCode::ArrowLeft)
         || keys.just_pressed(KeyCode::ArrowRight);
+
+    // Mobile / click: tap on the start button (Interaction goes Pressed) OR
+    // a left-mouse click anywhere on the screen.
+    let btn_pressed = btn_q.iter().any(|i| matches!(i, Interaction::Pressed));
+    let mouse_clicked = mouse.just_pressed(MouseButton::Left);
+
+    let pressed = key_pressed || btn_pressed || mouse_clicked;
 
     if pressed {
         state.dismissed = true;
