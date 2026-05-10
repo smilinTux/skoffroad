@@ -89,9 +89,63 @@
     </g>
   </g>
 
+  <!-- ==================== WHEELS — FRONT VIEW ====================
+       Drawn BEFORE the body so the bumper renders on top of the tires
+       (matches reality — the bumper sits in front of the wheels and
+       visually obscures their upper portion).
+       From dead-on front you see the TREAD pattern, not the sidewall.
+       Each tire is a tall rounded-rectangle with chunky offset mud-terrain
+       tread blocks. -->
+
+  <!-- Passenger side (image-left) — 37" mud tire, front face -->
+  <rect x="100" y="246" width="64" height="88" rx="16" fill="#1f1814" stroke="#0c0a09" stroke-width="2"/>
+  <rect x="103" y="249" width="58" height="82" rx="14" fill="url(#tire)"/>
+  <g fill="#3a3530">
+    <rect x="111" y="256" width="42" height="9" rx="2"/>
+    <rect x="106" y="270" width="22" height="9" rx="2"/>
+    <rect x="138" y="270" width="22" height="9" rx="2"/>
+    <rect x="111" y="284" width="42" height="9" rx="2"/>
+    <rect x="106" y="298" width="22" height="9" rx="2"/>
+    <rect x="138" y="298" width="22" height="9" rx="2"/>
+    <rect x="111" y="312" width="42" height="9" rx="2"/>
+  </g>
+  <g fill="#1f1814">
+    <rect x="100" y="262" width="4" height="6"/>
+    <rect x="100" y="278" width="4" height="6"/>
+    <rect x="100" y="294" width="4" height="6"/>
+    <rect x="100" y="310" width="4" height="6"/>
+    <rect x="160" y="262" width="4" height="6"/>
+    <rect x="160" y="278" width="4" height="6"/>
+    <rect x="160" y="294" width="4" height="6"/>
+    <rect x="160" y="310" width="4" height="6"/>
+  </g>
+
+  <!-- Driver side (image-right) — 37" mud tire, front face -->
+  <rect x="316" y="246" width="64" height="88" rx="16" fill="#1f1814" stroke="#0c0a09" stroke-width="2"/>
+  <rect x="319" y="249" width="58" height="82" rx="14" fill="url(#tire)"/>
+  <g fill="#3a3530">
+    <rect x="327" y="256" width="42" height="9" rx="2"/>
+    <rect x="322" y="270" width="22" height="9" rx="2"/>
+    <rect x="354" y="270" width="22" height="9" rx="2"/>
+    <rect x="327" y="284" width="42" height="9" rx="2"/>
+    <rect x="322" y="298" width="22" height="9" rx="2"/>
+    <rect x="354" y="298" width="22" height="9" rx="2"/>
+    <rect x="327" y="312" width="42" height="9" rx="2"/>
+  </g>
+  <g fill="#1f1814">
+    <rect x="316" y="262" width="4" height="6"/>
+    <rect x="316" y="278" width="4" height="6"/>
+    <rect x="316" y="294" width="4" height="6"/>
+    <rect x="316" y="310" width="4" height="6"/>
+    <rect x="376" y="262" width="4" height="6"/>
+    <rect x="376" y="278" width="4" height="6"/>
+    <rect x="376" y="294" width="4" height="6"/>
+    <rect x="376" y="310" width="4" height="6"/>
+  </g>
+
   <!-- ==================== JEEP BODY (FRONT VIEW) ====================
        Single clean silhouette. Hood at top, main front panel below,
-       bumper at the bottom. Fender flares bulge over the wheels. -->
+       bumper at the bottom. Bumper renders ON TOP of the tires above. -->
 
   <!-- Hood (top, lit, slight perspective slope) -->
   <path d="M 145 206 L 335 206 L 330 224 L 150 224 Z"
@@ -210,60 +264,6 @@
   <line x1="229" y1="228" x2="251" y2="228" stroke="#0c0a09" stroke-width="2.5"/>
   <line x1="240" y1="217" x2="240" y2="239" stroke="#0c0a09" stroke-width="2.5"/>
   <circle cx="240" cy="228" r="2.5" fill="#0c0a09"/>
-
-  <!-- ==================== WHEELS — FRONT VIEW ====================
-       From dead-on front you see the TREAD pattern of the tire, not the
-       sidewall. Each tire is a tall rounded-rectangle with chunky offset
-       mud-terrain tread blocks. No hub or lug nuts visible from this angle. -->
-
-  <!-- Passenger side (image-left) — 37" mud tire, front face -->
-  <rect x="100" y="246" width="64" height="88" rx="16" fill="#1f1814" stroke="#0c0a09" stroke-width="2"/>
-  <!-- Outer carcass shading -->
-  <rect x="103" y="249" width="58" height="82" rx="14" fill="url(#tire)"/>
-  <!-- Mud-terrain tread chunks (offset rows) -->
-  <g fill="#3a3530">
-    <rect x="111" y="256" width="42" height="9" rx="2"/>
-    <rect x="106" y="270" width="22" height="9" rx="2"/>
-    <rect x="138" y="270" width="22" height="9" rx="2"/>
-    <rect x="111" y="284" width="42" height="9" rx="2"/>
-    <rect x="106" y="298" width="22" height="9" rx="2"/>
-    <rect x="138" y="298" width="22" height="9" rx="2"/>
-    <rect x="111" y="312" width="42" height="9" rx="2"/>
-  </g>
-  <!-- Side biters (small chunks on the shoulders) -->
-  <g fill="#1f1814">
-    <rect x="100" y="262" width="4" height="6"/>
-    <rect x="100" y="278" width="4" height="6"/>
-    <rect x="100" y="294" width="4" height="6"/>
-    <rect x="100" y="310" width="4" height="6"/>
-    <rect x="160" y="262" width="4" height="6"/>
-    <rect x="160" y="278" width="4" height="6"/>
-    <rect x="160" y="294" width="4" height="6"/>
-    <rect x="160" y="310" width="4" height="6"/>
-  </g>
-
-  <!-- Driver side (image-right) — 37" mud tire, front face -->
-  <rect x="316" y="246" width="64" height="88" rx="16" fill="#1f1814" stroke="#0c0a09" stroke-width="2"/>
-  <rect x="319" y="249" width="58" height="82" rx="14" fill="url(#tire)"/>
-  <g fill="#3a3530">
-    <rect x="327" y="256" width="42" height="9" rx="2"/>
-    <rect x="322" y="270" width="22" height="9" rx="2"/>
-    <rect x="354" y="270" width="22" height="9" rx="2"/>
-    <rect x="327" y="284" width="42" height="9" rx="2"/>
-    <rect x="322" y="298" width="22" height="9" rx="2"/>
-    <rect x="354" y="298" width="22" height="9" rx="2"/>
-    <rect x="327" y="312" width="42" height="9" rx="2"/>
-  </g>
-  <g fill="#1f1814">
-    <rect x="316" y="262" width="4" height="6"/>
-    <rect x="316" y="278" width="4" height="6"/>
-    <rect x="316" y="294" width="4" height="6"/>
-    <rect x="316" y="310" width="4" height="6"/>
-    <rect x="376" y="262" width="4" height="6"/>
-    <rect x="376" y="278" width="4" height="6"/>
-    <rect x="376" y="294" width="4" height="6"/>
-    <rect x="376" y="310" width="4" height="6"/>
-  </g>
 
   <!-- Skid marks behind the rig -->
   <path d="M 40 332 Q 140 326 240 332 T 440 330" fill="none" stroke="#1f1814" stroke-width="2.5" stroke-linecap="round" opacity="0.65"/>
