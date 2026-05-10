@@ -92,32 +92,36 @@ fn attach_wheel_detail_once(
     });
 
     for wheel_entity in wheel_q.iter() {
-        let mut children: Vec<Entity> = Vec::with_capacity(LUG_COUNT + 1 + TREAD_COUNT);
+        let mut children: Vec<Entity> = Vec::with_capacity(2 * (LUG_COUNT + 1) + TREAD_COUNT);
 
-        // ---- A. Hub cap — centred on the outer face (+Y face of the cylinder) ----
-        // Cylinder in wheel local space has its axis along Y. The outer face sits
-        // at +WHEEL_HALF_WIDTH along local Y. Rotate 90° around Z so the flat
-        // hub-cap face is flush with the wheel face (aligns cylinder axis → Z).
-        let hub = commands.spawn((
-            Mesh3d(hub_mesh.clone()),
-            MeshMaterial3d(hub_mat.clone()),
-            Transform::from_translation(Vec3::new(0.0, WHEEL_HALF_WIDTH, 0.0))
-                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
-        )).id();
-        children.push(hub);
-
-        // ---- B. Lug nuts — 5 around a circle of radius LUG_RING_RADIUS on the outer face ----
-        for i in 0..LUG_COUNT {
-            let angle = i as f32 * TAU / LUG_COUNT as f32;
-            // In the wheel's local XZ plane (the face plane), distribute around a circle.
-            let ring_offset = Vec3::new(LUG_RING_RADIUS * angle.sin(), 0.0, LUG_RING_RADIUS * angle.cos());
-            let pos = Vec3::new(0.0, WHEEL_HALF_WIDTH + HUB_HEIGHT * 0.5, 0.0) + ring_offset;
-            let lug = commands.spawn((
-                Mesh3d(lug_mesh.clone()),
-                MeshMaterial3d(lug_mat.clone()),
-                Transform::from_translation(pos),
+        // ---- A. Hub caps on BOTH faces ----
+        // Cylinder in wheel local space has its axis along Y. Both end faces sit
+        // at ±WHEEL_HALF_WIDTH along local Y. Mirror the hub-cap+lug ring onto
+        // each face so the wheel looks correct regardless of which side the
+        // camera is on (previously only +Y had a hub, leaving the opposite side
+        // of the truck looking unfinished). Rotate 90° around X so the flat
+        // hub-cap face is flush with the wheel face.
+        for face_sign in [1.0_f32, -1.0_f32] {
+            let hub = commands.spawn((
+                Mesh3d(hub_mesh.clone()),
+                MeshMaterial3d(hub_mat.clone()),
+                Transform::from_translation(Vec3::new(0.0, face_sign * WHEEL_HALF_WIDTH, 0.0))
+                    .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
             )).id();
-            children.push(lug);
+            children.push(hub);
+
+            // ---- B. Lug nuts — 5 around a circle of radius LUG_RING_RADIUS, mirrored to each face ----
+            for i in 0..LUG_COUNT {
+                let angle = i as f32 * TAU / LUG_COUNT as f32;
+                let ring_offset = Vec3::new(LUG_RING_RADIUS * angle.sin(), 0.0, LUG_RING_RADIUS * angle.cos());
+                let pos = Vec3::new(0.0, face_sign * (WHEEL_HALF_WIDTH + HUB_HEIGHT * 0.5), 0.0) + ring_offset;
+                let lug = commands.spawn((
+                    Mesh3d(lug_mesh.clone()),
+                    MeshMaterial3d(lug_mat.clone()),
+                    Transform::from_translation(pos),
+                )).id();
+                children.push(lug);
+            }
         }
 
         // ---- C. Tread blocks — 8 around the tire OD ----

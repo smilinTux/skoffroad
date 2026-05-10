@@ -563,21 +563,69 @@ fn spawn_vehicle(
                 Transform::from_translation(pos).with_rotation(axis),
             )).id());
         }
-        // Cable: 0.45 m forward from the fairlead, hooked to a small hook tip.
+        // Cable: sags across the bumper from the fairlead exit to the right
+        // D-ring, where it terminates in a J-hook clipped to the ring. This
+        // matches how real off-roaders stow a winch line — the hook is
+        // attached to one of the bumper's own shackles so it doesn't dangle.
+        //
+        // The cable is modeled as 5 short cylinder segments along a quadratic
+        // bezier that dips below the chord midpoint to give the catenary sag.
+        let p_start = Vec3::new(0.0, y, fl_z);              // fairlead exit
+        let p_end   = Vec3::new(0.85, -0.32, -2.24);        // right D-ring
+        let chord_mid = (p_start + p_end) * 0.5;
+        // Pull the bezier control point ~6 cm lower (in -Y) than the chord
+        // midpoint so the cable visibly sags. The bezier passes through this
+        // displaced control point twice as strongly as a single sample, so the
+        // visual mid-sag ends up around half that depth — about 3 cm.
+        let control = chord_mid + Vec3::new(0.0, -0.12, 0.0);
+        let segs    = 5;
+        let mut prev = p_start;
+        for i in 1..=segs {
+            let t = i as f32 / segs as f32;
+            let one_t = 1.0 - t;
+            // Quadratic bezier B(t) = (1-t)²·p0 + 2·(1-t)·t·c + t²·p1
+            let pt = p_start * (one_t * one_t)
+                   + control * (2.0 * one_t * t)
+                   + p_end   * (t * t);
+            let mid = (prev + pt) * 0.5;
+            let seg = pt - prev;
+            let len = seg.length();
+            if len > 1e-4 {
+                let rot = Quat::from_rotation_arc(Vec3::Y, seg / len);
+                details.push(commands.spawn((
+                    DefaultSkin,
+                    Mesh3d(meshes.add(Cylinder::new(0.014, len))),
+                    MeshMaterial3d(cable_mat.clone()),
+                    Transform::from_translation(mid).with_rotation(rot),
+                )).id());
+            }
+            prev = pt;
+        }
+
+        // J-hook at the D-ring end: a vertical shank (cylinder going down from
+        // just above the ring) and a small horizontal curl at the bottom that
+        // wraps around the D-ring sphere.
+        let hook_shank_top = p_end + Vec3::new(0.0, 0.05, 0.0);
         details.push(commands.spawn((
             DefaultSkin,
-            Mesh3d(meshes.add(Cylinder::new(0.014, 0.45))),
-            MeshMaterial3d(cable_mat.clone()),
-            Transform::from_translation(Vec3::new(0.0, y, fl_z - 0.24))
-                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+            Mesh3d(meshes.add(Cylinder::new(0.022, 0.10))),
+            MeshMaterial3d(housing_mat.clone()),
+            Transform::from_translation(hook_shank_top + Vec3::new(0.0, -0.05, 0.0)),
         )).id());
-        // Hook tip (small darker cylinder at the cable end).
+        // Hook curl — a short horizontal cylinder cradling the D-ring.
         details.push(commands.spawn((
             DefaultSkin,
-            Mesh3d(meshes.add(Cylinder::new(0.025, 0.06))),
+            Mesh3d(meshes.add(Cylinder::new(0.022, 0.10))),
+            MeshMaterial3d(housing_mat.clone()),
+            Transform::from_translation(p_end + Vec3::new(-0.04, -0.045, 0.0))
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        )).id());
+        // Hook eye — small dark ring/cap where the cable meets the shank.
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Sphere::new(0.025))),
             MeshMaterial3d(housing_mat),
-            Transform::from_translation(Vec3::new(0.0, y, fl_z - 0.50))
-                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+            Transform::from_translation(hook_shank_top),
         )).id());
     }
     // -------------------------------------------------------------------------
@@ -853,10 +901,19 @@ fn update_wheel_visuals(
     let slip_factor = (1.0 - (speed_mps / 8.0).clamp(0.0, 1.0)) * input.drive.abs();
     let slip_omega  = slip_factor * 25.0;  // rad/s extra spin
 
+    // When the suspension is extended (long-arm kit) or the body is lifted on
+    // spacers (body lift kit), the chassis sits higher off the ground but the
+    // wheels stay on the ground. So we drop the wheel mesh in chassis-local
+    // space by the same amount the chassis floated up, so the wheels visually
+    // remain grounded while the body has noticeable fender clearance.
+    let extra_suspension = mods.suspension_len() - crate::vehicle_mods::BASE_SUSPENSION_LEN;
+    let body_lift_y      = mods.body_lift_y();
+    let visual_drop      = extra_suspension + body_lift_y;
+
     for (mut transform, mut wheel) in wheel_q.iter_mut() {
         wheel.spin += (speed * dt / wheel_r) + slip_omega * dt * input.drive.signum();
         let base_offset    = WHEEL_OFFSETS[wheel.index];
-        let compress_delta = Vec3::new(0.0, -wheel.current_compression, 0.0);
+        let compress_delta = Vec3::new(0.0, -wheel.current_compression - visual_drop, 0.0);
         // base_rot aligns Cylinder Y-axis → chassis X (lateral). spin_rot around local Y
         // then becomes rotation around chassis X: wheel rolls forward correctly.
         let base_rot = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);

@@ -94,8 +94,14 @@ impl BumperKind {
 /// so that `cargo test --test drive_test` keeps passing without modification.
 #[derive(Resource, Serialize, Deserialize, Clone, Debug)]
 pub struct VehicleModsState {
-    /// Long-arm suspension kit: increases suspension travel and chassis height.
+    /// Long-arm / suspension lift kit: replaces control arms with longer ones.
+    /// Adds ~10" rest height + ~12" total wheel travel. Realistically raises
+    /// the center of mass and increases articulation.
     pub long_arm:  bool,
+    /// Body lift kit: spacer blocks between body and frame. Visual-only ~3"
+    /// chassis lift; no suspension geometry change. Stacks with long_arm.
+    #[serde(default)]
+    pub body_lift: bool,
     /// Tire size preset (affects wheel radius and raycast length).
     pub tire_size: TireSize,
     /// Bumper kit preset.
@@ -108,6 +114,7 @@ impl Default for VehicleModsState {
     fn default() -> Self {
         Self {
             long_arm:  false,
+            body_lift: false,
             tire_size: TireSize::Stock,
             bumper:    BumperKind::Stock,
             winch:     false,
@@ -238,7 +245,7 @@ fn spawn_mods_panel(mut commands: Commands) {
 
     // Footer hint.
     let footer = commands.spawn((
-        Text::new("1 long-arm   2 tire size   3 bumper   4 winch   Esc close\nChanges apply instantly (chassis respawns)"),
+        Text::new("1 long-arm   2 tire size   3 bumper   4 winch   5 body lift   Esc close\nChanges apply instantly (chassis respawns)"),
         TextFont { font_size: 12.0, ..default() },
         TextColor(COLOR_HINT),
     )).id();
@@ -308,6 +315,12 @@ fn handle_mods_keys(
         // If bumper is Stock, silently ignore (or show a subtle hint via panel text).
     }
 
+    // 5 — toggle body lift (visual chassis lift only, no suspension change).
+    if keys.just_pressed(KeyCode::Digit5) {
+        state.body_lift = !state.body_lift;
+        changed = true;
+    }
+
     // Trigger an immediate chassis respawn so the visual changes are visible
     // without the player having to remember to press R.
     if changed {
@@ -344,11 +357,12 @@ fn update_mods_panel_view(
     };
 
     let status = format!(
-        "[1] Long-arm kit : {}\n[2] Tire size    : {}\n[3] Bumper kit   : {}\n[4] Winch        : {}",
-        if mods.long_arm { "ON" } else { "OFF" },
+        "[1] Long-arm kit : {}\n[2] Tire size    : {}\n[3] Bumper kit   : {}\n[4] Winch        : {}\n[5] Body lift    : {}",
+        if mods.long_arm  { "ON" } else { "OFF" },
         mods.tire_size.label(),
         mods.bumper.label(),
         winch_str,
+        if mods.body_lift { "ON (3\" spacers)" } else { "OFF" },
     );
 
     for mut text in &mut texts {
@@ -363,28 +377,45 @@ fn update_mods_panel_view(
 /// Base suspension length (stock). Increased when long-arm kit is active.
 pub const BASE_SUSPENSION_LEN: f32 = 0.60;
 
-/// Extra suspension length added by the long-arm kit.
-pub const LONG_ARM_SUSP_DELTA: f32 = 0.25; // 0.60 → 0.85 m
+/// Extra suspension length added by the long-arm kit. Real long-arm kits
+/// give ~6" of additional rest height and noticeably more articulation.
+/// 0.18 m ≈ 7.1" — bumped from the original 0.25 m to keep handling sane
+/// (taller spring + same rate = less authority over chassis pitch).
+pub const LONG_ARM_SUSP_DELTA: f32 = 0.18;
 
-/// Chassis spawn-Y lift added by the long-arm kit.
-pub const LONG_ARM_SPAWN_LIFT: f32 = 0.20;
+/// Chassis spawn-Y lift added by the long-arm kit. Matches LONG_ARM_SUSP_DELTA
+/// so the chassis spawns at the new rest height instead of dropping into
+/// equilibrium over the first ~second.
+pub const LONG_ARM_SPAWN_LIFT: f32 = 0.18;
+
+/// Body-lift kit: spacers between frame and body. Pure visual lift — no
+/// suspension geometry change. Real-world kits are 1-3"; we use 0.08 m ≈ 3.1"
+/// so it stacks meaningfully with a long-arm without becoming silly.
+pub const BODY_LIFT_DELTA: f32 = 0.08;
 
 impl VehicleModsState {
     /// Effective suspension length for physics.
     /// Bigger tires extend the rest length by the tire delta so the chassis
     /// rides higher (otherwise the larger wheel mesh just clips through the fender).
+    /// Body-lift does NOT change suspension geometry — only the chassis spawn Y.
     pub fn suspension_len(&self) -> f32 {
         let tire_delta = self.tire_size.radius() - TireSize::Stock.radius();
         let long_arm   = if self.long_arm { LONG_ARM_SUSP_DELTA } else { 0.0 };
         BASE_SUSPENSION_LEN + long_arm + tire_delta
     }
 
-    /// Additional chassis Y offset at spawn so the chassis lands at the right
-    /// rest height (long-arm + tire-size both add to this).
+    /// Total chassis Y offset at spawn: long-arm suspension lift + body-lift
+    /// spacers + tire-radius delta. All three stack realistically.
     pub fn spawn_y_lift(&self) -> f32 {
         let tire_delta = self.tire_size.radius() - TireSize::Stock.radius();
         let long_arm   = if self.long_arm { LONG_ARM_SPAWN_LIFT } else { 0.0 };
-        long_arm + tire_delta
+        long_arm + self.body_lift_y() + tire_delta
+    }
+
+    /// Pure body-lift contribution (no suspension change). Read by
+    /// update_wheel_visuals so wheels stay grounded while the body rises.
+    pub fn body_lift_y(&self) -> f32 {
+        if self.body_lift { BODY_LIFT_DELTA } else { 0.0 }
     }
 
     /// Wheel mesh radius.
