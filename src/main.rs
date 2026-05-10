@@ -4,6 +4,7 @@ use avian3d::prelude::*;
 use skoffroad::{
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin,
+    CustomMapLoaderPlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -343,6 +344,7 @@ fn main() {
         .add_plugins((
             GlbLoaderPlugin,
             HeightmapLoaderPlugin,
+            CustomMapLoaderPlugin,
             AssetManifestPlugin,
             AssetBrowserPlugin,
             AssetAttributionPlugin,

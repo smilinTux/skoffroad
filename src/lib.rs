@@ -67,6 +67,8 @@ pub mod fuel;
 pub mod garage;
 pub mod gas_stations;
 pub mod gauge;
+pub mod custom_map_loader;
+pub use custom_map_loader::{CustomGlbRequest, CustomGlbTerrainMarker, CustomMapLoaderPlugin};
 pub mod glb_loader;
 pub mod godrays;
 pub mod graphics_quality;
