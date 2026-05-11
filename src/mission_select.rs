@@ -33,6 +33,11 @@
 use bevy::prelude::*;
 
 use crate::hillclimb_tiers::{HillclimbTiersState, TierLayout, NUM_TIERS, TIER_NAMES};
+use crate::obstacle_course::{
+    ObstacleCourseLayout, ObstacleCourseState,
+    LEVEL_NAMES as OC_LEVEL_NAMES,
+    NUM_LEVELS as OC_NUM_LEVELS,
+};
 use crate::platform_storage;
 use crate::rock_crawl_trail::RockCrawlTrailState;
 use crate::terrain::terrain_height_at;
@@ -86,6 +91,7 @@ enum FastTravelTarget {
     HillclimbTier(usize),
     RockCrawlSection(usize),
     TrailRide(usize),
+    ObstacleCourse(usize),
 }
 
 /// Marker for a personal-best text node; carries mission id for update.
@@ -122,9 +128,10 @@ impl Plugin for MissionSelectPlugin {
 
 fn spawn_ui(
     mut commands: Commands,
-    manifest: Res<TrailManifest>,
-    hc_state: Res<HillclimbTiersState>,
-    rc_state: Res<RockCrawlTrailState>,
+    manifest:   Res<TrailManifest>,
+    hc_state:   Res<HillclimbTiersState>,
+    rc_state:   Res<RockCrawlTrailState>,
+    oc_state:   Res<ObstacleCourseState>,
 ) {
     // Background scrim — covers the whole screen.
     let root = commands.spawn((
@@ -244,20 +251,36 @@ fn spawn_ui(
         commands.entity(root).add_children(&[card]);
     }
 
-    // ── Section: Obstacle Course (placeholder) ──────────────────────────────
-    let oc_header = section_header(&mut commands, "OBSTACLE COURSE", Color::srgb(0.55, 0.55, 0.55));
+    // ── Section: Obstacle Course ────────────────────────────────────────────
+    let oc_header = section_header(&mut commands, "OBSTACLE COURSE", Color::srgb(0.85, 0.60, 0.20));
     commands.entity(root).add_children(&[oc_header]);
 
-    let oc_card = mission_card(
-        &mut commands,
-        Color::srgb(0.35, 0.35, 0.35),
-        "Obstacle Course",
-        "Coming in Sprint 64 — an arena-style obstacle gauntlet.",
-        None,
-        "obstacle_course",
-        None, // greyed out — no fast-travel button
-    );
-    commands.entity(root).add_children(&[oc_card]);
+    let oc_colors = [
+        Color::srgb(0.30, 0.80, 0.30), // Beginner: green
+        Color::srgb(0.90, 0.65, 0.15), // Intermediate: amber
+        Color::srgb(0.90, 0.30, 0.20), // Expert: red
+    ];
+    let oc_descs = [
+        "8 obstacles · ~10 m spacing · 15° ramps. North of spawn.",
+        "12 obstacles · ~7 m spacing · 25° ramps, boulders & chicane gates.",
+        "16 obstacles · ~5 m spacing · 35° ramps, boulder clusters & mud crossings.",
+    ];
+
+    for lvl in 0..OC_NUM_LEVELS {
+        let pb = oc_state.records[lvl].best_s;
+        let mission_id = format!("obstacle_course_{}", lvl);
+        let card = mission_card(
+            &mut commands,
+            oc_colors[lvl],
+            OC_LEVEL_NAMES[lvl],
+            oc_descs[lvl],
+            pb,
+            &mission_id,
+            Some(FastTravelTarget::ObstacleCourse(lvl)),
+        );
+        commands.entity(root).add_children(&[card]);
+    }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -443,6 +466,7 @@ fn toggle_mission_select(
 fn handle_fast_travel_buttons(
     interaction_q: Query<(&Interaction, &FastTravelTarget), (Changed<Interaction>, With<Button>)>,
     layout:        Res<TierLayout>,
+    oc_layout:     Res<ObstacleCourseLayout>,
     manifest:      Res<TrailManifest>,
     mut open:      ResMut<MissionSelectOpen>,
     mut vis_q:     Query<&mut Visibility, With<MissionSelectRoot>>,
@@ -480,6 +504,10 @@ fn handle_fast_travel_buttons(
                         trail.title
                     );
                 }
+            }
+            FastTravelTarget::ObstacleCourse(lvl) => {
+                let pos = oc_layout.start_pos[*lvl];
+                teleport_chassis(vehicle_opt.as_deref(), &mut chassis_q, pos);
             }
         }
 
@@ -520,12 +548,13 @@ fn refresh_pb_labels(
     open:      Res<MissionSelectOpen>,
     hc_state:  Res<HillclimbTiersState>,
     rc_state:  Res<RockCrawlTrailState>,
+    oc_state:  Res<ObstacleCourseState>,
     mut pb_q:  Query<(&PbLabel, &mut Text)>,
 ) {
     if !open.0 { return; }
 
     for (label, mut text) in pb_q.iter_mut() {
-        let pb = resolve_pb_for_mission(&label.mission_id, &hc_state, &rc_state);
+        let pb = resolve_pb_for_mission(&label.mission_id, &hc_state, &rc_state, &oc_state);
         let new_str = format!(
             "PB  {}",
             pb.map(format_time).unwrap_or_else(|| "--".to_string())
@@ -546,6 +575,7 @@ fn resolve_pb_for_mission(
     mission_id: &str,
     hc_state:   &HillclimbTiersState,
     rc_state:   &RockCrawlTrailState,
+    oc_state:   &ObstacleCourseState,
 ) -> Option<f32> {
     // Hillclimb tiers
     for tier in 0..NUM_TIERS {
@@ -557,6 +587,12 @@ fn resolve_pb_for_mission(
     for sec in 0..3_usize {
         if mission_id == format!("rock_crawl_{}", sec) {
             return rc_state.records[sec].best_s;
+        }
+    }
+    // Obstacle course levels
+    for lvl in 0..OC_NUM_LEVELS {
+        if mission_id == format!("obstacle_course_{}", lvl) {
+            return oc_state.records[lvl].best_s;
         }
     }
     // Trail rides and others: read from platform_storage missions.json

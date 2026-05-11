@@ -7,7 +7,7 @@ use skoffroad::{
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
-    MissionSelectPlugin, TrailRidesPlugin,
+    MissionSelectPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -345,6 +345,8 @@ fn main() {
         // Sprint 63: Trail Rides manifest loader + Mission Select overlay
         .add_plugins(TrailRidesPlugin)
         .add_plugins(MissionSelectPlugin)
+        // Sprint 64: Obstacle Course mode (3 levels, procedural obstacles, time-trial)
+        .add_plugins(ObstacleCoursePlugin)
         .add_plugins((
             TruckBedCargoPlugin,
             WheelRimsPlugin,
