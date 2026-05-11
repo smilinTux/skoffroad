@@ -205,6 +205,23 @@ setTimeout(() => splash.classList.add('gone'), 30_000);
 <!-- Sprint 52: touch controls JS — assets/ is already copied by Trunk's copy-dir above -->
 <script src="assets/touch-controls.js" defer></script>
 
+<!-- Ad SDK shim — routes to Playgama Bridge on portals, AppLixir on self-host, no-op otherwise. -->
+<script src="https://cdn.playgama.com/bridge/v1.js" defer></script>
+<script>
+  // AppLixir fallback only on our self-hosted domain.
+  // The zone id is injected at deploy time; leave as null in source.
+  if (typeof location !== 'undefined' && location.hostname.endsWith('skworld.io')) {
+    window.SK_APPLIXIR_ZONE = window.SK_APPLIXIR_ZONE || null;
+    if (window.SK_APPLIXIR_ZONE) {
+      var s = document.createElement('script');
+      s.src = 'https://applixir.com/applixir.js';
+      s.async = true;
+      document.head.appendChild(s);
+    }
+  }
+</script>
+<script src="assets/sk_ad_sdk.js" defer></script>
+
 <!-- v0.22.x mobile-dismiss: floating big-button overlay that fires synthetic Space
      to dismiss the Bevy title screen. Independent of the touch HUD so it works
      even before isTouchDevice detection runs and even if the touch HUD is hidden. -->

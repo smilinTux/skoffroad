@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skoffroad for Brands — Custom Off-Road Games for Marketing Campaigns</title>
+<meta name="description" content="Put your brand inside a Rust/WebGPU off-road sim that runs in any browser. Custom liveries, sponsor billboards, branded terrain, embeddable widgets. No download. Trackable.">
+<style>
+  :root {
+    --bg: #0f1310;
+    --bg-2: #181d18;
+    --fg: #e6e2d4;
+    --muted: #9a9586;
+    --accent: #c4521e;
+    --accent-2: #d8b047;
+    --rule: #2a2e26;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; }
+  a { color: var(--accent-2); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+  header.hero {
+    padding: 96px 0 64px;
+    background: radial-gradient(1200px 600px at 50% -10%, rgba(196,82,30,0.18), transparent 70%),
+                linear-gradient(180deg, #14181500 0%, #0f131000 100%);
+    border-bottom: 1px solid var(--rule);
+  }
+  .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; font-size: 12px; margin-bottom: 16px; }
+  h1 { font-size: 44px; line-height: 1.1; margin: 0 0 16px;
+    font-weight: 700; letter-spacing: -0.01em; }
+  h1 .accent { color: var(--accent-2); }
+  .lede { font-size: 19px; color: var(--muted); max-width: 720px; margin: 0 0 32px; }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 14px 22px; border-radius: 6px;
+    font-weight: 600; text-decoration: none; font-size: 15px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #d8651f; }
+  .btn-ghost { border: 1px solid var(--rule); color: var(--fg); }
+  .btn-ghost:hover { border-color: var(--accent-2); }
+
+  section { padding: 64px 0; border-bottom: 1px solid var(--rule); }
+  h2 { font-size: 28px; margin: 0 0 24px; letter-spacing: -0.01em; }
+  h3 { font-size: 18px; margin: 0 0 8px; color: var(--accent-2); }
+
+  .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .pillar { background: var(--bg-2); padding: 24px; border-radius: 8px;
+    border: 1px solid var(--rule); }
+  .pillar p { color: var(--muted); margin: 4px 0 0; font-size: 14px; }
+
+  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .tier { background: var(--bg-2); padding: 28px; border-radius: 8px;
+    border: 1px solid var(--rule); display: flex; flex-direction: column; }
+  .tier.featured { border-color: var(--accent); position: relative; }
+  .tier.featured::before { content: "POPULAR"; position: absolute; top: -10px; right: 16px;
+    background: var(--accent); color: #fff; font-size: 10px; padding: 4px 10px;
+    border-radius: 99px; letter-spacing: 0.1em; }
+  .price { font-size: 32px; font-weight: 700; margin: 8px 0 4px; }
+  .price small { font-size: 13px; font-weight: 400; color: var(--muted); }
+  .tier ul { padding: 0; margin: 16px 0 24px; list-style: none; font-size: 14px;
+    color: var(--muted); }
+  .tier ul li { padding: 6px 0; border-bottom: 1px dashed var(--rule); }
+  .tier ul li:last-child { border-bottom: none; }
+  .tier .btn { margin-top: auto; text-align: center; }
+
+  .why-list { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 32px;
+    color: var(--muted); }
+  .why-list strong { color: var(--fg); }
+
+  .specs { background: var(--bg-2); padding: 24px; border-radius: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    color: var(--muted); border: 1px solid var(--rule); }
+  .specs span { color: var(--accent-2); }
+
+  form { display: grid; gap: 12px; max-width: 560px; }
+  label { font-size: 13px; color: var(--muted); }
+  input, textarea, select { width: 100%; padding: 10px 12px; background: var(--bg-2);
+    border: 1px solid var(--rule); border-radius: 6px; color: var(--fg);
+    font-family: inherit; font-size: 14px; }
+  textarea { min-height: 110px; resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+
+  footer { padding: 32px 0 64px; color: var(--muted); font-size: 13px; }
+  footer a { color: var(--muted); }
+
+  @media (max-width: 720px) {
+    h1 { font-size: 32px; }
+    .pillars, .tiers, .why-list { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">skoffroad for Brands</div>
+    <h1>Put your brand inside an off-road sim that runs <span class="accent">in any browser</span>, with <span class="accent">zero download</span>.</h1>
+    <p class="lede">skoffroad is a physics-driven off-road driving game built in Rust on WebGPU. We license custom builds to brands who want a playable marketing surface — sponsored liveries, trail-side billboards, branded terrain, and embeddable widgets. One link. Eight-second time-to-play. Fully trackable.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#contact">Book a 20-min pitch call</a>
+      <a class="btn btn-ghost" href="https://play.skoffroad.skworld.io" target="_blank" rel="noopener">Play the live build →</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>What you can buy</h2>
+    <div class="pillars">
+      <div class="pillar">
+        <h3>Sponsored Livery</h3>
+        <p>Your truck, your colorway, your decals. Appears as a selectable vehicle in the standard game with attribution and a clickable CTA.</p>
+      </div>
+      <div class="pillar">
+        <h3>In-Trail Billboards</h3>
+        <p>Sponsor-textured roadside billboards scattered along trail edges. UTM-tagged. Click-throughs go straight to your campaign landing page.</p>
+      </div>
+      <div class="pillar">
+        <h3>Custom Branded Build</h3>
+        <p>Full white-label: your domain, your splash screen, your terrain themed to the campaign, embedded forms, gated unlocks for email capture.</p>
+      </div>
+      <div class="pillar">
+        <h3>Embeddable Widget</h3>
+        <p>Drop the game into any blog post, dealership site, or product page with a single iframe. Your branding, your analytics.</p>
+      </div>
+      <div class="pillar">
+        <h3>Live Event Skin</h3>
+        <p>Timed campaign overlay for a product launch, festival, or motorsport weekend. Goes up in days, comes down in weeks.</p>
+      </div>
+      <div class="pillar">
+        <h3>Seasonal Trail Sponsor</h3>
+        <p>Title sponsor of a monthly time-trial leaderboard. Your prize, your logo on the start gate, social posts to the winners.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Pricing</h2>
+    <div class="tiers">
+      <div class="tier">
+        <h3>Trailhead</h3>
+        <div class="price">$2,500<small> / one-time</small></div>
+        <ul>
+          <li>Sponsored livery (1 vehicle, 1 colorway)</li>
+          <li>Up to 4 sponsor billboards</li>
+          <li>UTM-tagged click-throughs</li>
+          <li>Monthly impression report</li>
+          <li>2-week production turnaround</li>
+        </ul>
+        <a class="btn btn-ghost" href="#contact">Start here</a>
+      </div>
+      <div class="tier featured">
+        <h3>Campaign</h3>
+        <div class="price">$9,500<small> / 3 months</small></div>
+        <ul>
+          <li>Everything in Trailhead</li>
+          <li>Custom terrain dressing (banners, scatter, audio cues)</li>
+          <li>Branded splash screen + outro CTA</li>
+          <li>Embeddable widget for your site</li>
+          <li>Leaderboard sponsorship for the run</li>
+          <li>Bi-weekly analytics dashboards</li>
+        </ul>
+        <a class="btn btn-primary" href="#contact">Book pitch call</a>
+      </div>
+      <div class="tier">
+        <h3>White-Label</h3>
+        <div class="price">$25k+<small> / custom</small></div>
+        <ul>
+          <li>Fully custom branded build on your domain</li>
+          <li>Custom vehicle model (or your real product)</li>
+          <li>Custom terrain themed to campaign</li>
+          <li>Email-gate / lead capture / coupon drop</li>
+          <li>Full source license option</li>
+          <li>4–8 week production</li>
+        </ul>
+        <a class="btn btn-ghost" href="#contact">Request scope</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Why off-road, why in-browser</h2>
+    <div class="why-list">
+      <div><strong>HTML5 game content gets shared ~12× more than passive web content.</strong> A playable beats a banner ad every time.</div>
+      <div><strong>Brands using gamified experiences see ~22% lifts in customer retention.</strong> Driving simulators are stickier than scroll feeds.</div>
+      <div><strong>In-game billboards bypass 100% of ad blockers</strong> — they're rendered as textures inside WebGPU, not served from an ad network.</div>
+      <div><strong>Off-road is the perfect canvas:</strong> trucks, tires, gear, beverages, tourism, fuel — every adjacent vertical has a natural product fit.</div>
+      <div><strong>WebGPU + Rust means console-quality visuals in a 12 MB browser bundle.</strong> No app store. No install friction. Mobile-friendly.</div>
+      <div><strong>Everything is trackable.</strong> Impressions, dwell, click-throughs, completion rates, livery selection — exported to your dashboard.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>How it works</h2>
+    <ol style="color: var(--muted); line-height: 1.9;">
+      <li><strong>20-min discovery call.</strong> We learn your campaign, KPIs, and creative.</li>
+      <li><strong>Scoping doc + fixed quote</strong> within 3 business days. No hourly games.</li>
+      <li><strong>Production sprint.</strong> 2 weeks for Trailhead, 4–8 weeks for White-Label.</li>
+      <li><strong>Live build review</strong> on a staging URL, two revision rounds included.</li>
+      <li><strong>Launch.</strong> We host the build, or hand off source for your stack.</li>
+      <li><strong>Reporting.</strong> Bi-weekly impression / click / dwell exports to your team.</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Tech specs (for your dev team)</h2>
+    <div class="specs">
+      <p>engine        <span>Rust · Bevy 0.18 · Avian3D 0.6 · WebGPU</span></p>
+      <p>bundle size   <span>~12 MB gzipped WASM</span></p>
+      <p>target        <span>Any Chromium / Firefox / Safari with WebGPU</span></p>
+      <p>mobile        <span>iOS 17+, Android 13+ (touch overlay included)</span></p>
+      <p>tracking      <span>UTM-aware click-through, custom event hooks, GA4 / Segment / your own pixel</span></p>
+      <p>delivery      <span>Hosted on our infra, or static export for your CDN</span></p>
+      <p>privacy       <span>No PII collected by default. Cookieless analytics on request.</span></p>
+    </div>
+  </div>
+</section>
+
+<section id="contact">
+  <div class="wrap">
+    <h2>Get a quote</h2>
+    <p style="color: var(--muted); margin-bottom: 24px;">Tell us about your campaign. We respond within one business day.</p>
+    <form action="https://formspree.io/f/REPLACE_ME" method="POST">
+      <div>
+        <label for="company">Company / brand</label>
+        <input id="company" name="company" type="text" required>
+      </div>
+      <div>
+        <label for="name">Your name</label>
+        <input id="name" name="name" type="text" required>
+      </div>
+      <div>
+        <label for="email">Work email</label>
+        <input id="email" name="_replyto" type="email" required>
+      </div>
+      <div>
+        <label for="tier">Interested in</label>
+        <select id="tier" name="tier">
+          <option value="trailhead">Trailhead ($2.5k)</option>
+          <option value="campaign">Campaign ($9.5k)</option>
+          <option value="white-label">White-Label ($25k+)</option>
+          <option value="unsure">Not sure yet</option>
+        </select>
+      </div>
+      <div>
+        <label for="brief">Campaign brief</label>
+        <textarea id="brief" name="brief" placeholder="What are you launching? Who are you targeting? When does it go live?"></textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">Send brief</button>
+    </form>
+    <p style="margin-top: 20px; color: var(--muted); font-size: 14px;">
+      Prefer email? <a href="mailto:partnerships@skworld.io">partnerships@skworld.io</a>
+    </p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    skoffroad is a product of skworld. ·
+    <a href="https://play.skoffroad.skworld.io">Play the game</a> ·
+    <a href="mailto:partnerships@skworld.io">partnerships@skworld.io</a>
+  </div>
+</footer>
+
+</body>
+</html>

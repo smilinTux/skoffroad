@@ -60,6 +60,8 @@ use skoffroad::{
     HdrSkyboxPlugin, PhotoHudPlugin, PhotorealRocksPlugin, TerrainDecalsPlugin,
     TerrainGrassBladesPlugin,
     PostFxPlugin,
+    // Monetization stack: brand-pack-driven sponsor placements, wallet, ad SDK.
+    BrandPackPlugin, WalletPlugin, AdSdkPlugin, SponsorScatterPlugin,
 };
 
 fn main() {
@@ -383,7 +385,16 @@ fn main() {
         .add_plugins(MultiplayerPlugin)
         .add_plugins(VoicePlugin)
         .add_plugins(SpectatePlugin)
-        .add_plugins(BuddyRecoveryPlugin);
+        .add_plugins(BuddyRecoveryPlugin)
+        // Monetization: BrandPackPlugin must load before SponsorScatterPlugin
+        // so the Startup spawn system sees the active pack. WalletPlugin and
+        // AdSdkPlugin are independent.
+        .add_plugins((
+            BrandPackPlugin,
+            WalletPlugin,
+            AdSdkPlugin,
+            SponsorScatterPlugin,
+        ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

@@ -160,6 +160,13 @@ jobs:
       - name: Add CNAME for play.skoffroad.skworld.io
         run: echo 'play.skoffroad.skworld.io' > dist/CNAME
 
+      # Ship the brand partners landing page alongside the WASM build so
+      # play.skoffroad.skworld.io/partners/ is live with each release.
+      - name: Bundle partners landing page
+        run: |
+          mkdir -p dist/partners
+          cp -r web/partners/* dist/partners/
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

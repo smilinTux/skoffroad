@@ -1,0 +1,53 @@
+{
+  "id": "example_brand_summer_2026",
+  "display_name": "Example Brand — Summer 2026",
+  "version": 1,
+  "_comment": "Template for an external brand pack. Copy this file, replace brand assets, drop in assets/brand_packs/<your_id>.json.",
+
+  "splash": {
+    "logo_texture": "brand_packs/example/logo.png",
+    "tagline": "Your tagline here, max 40 chars",
+    "cta_url": "https://example.com/?utm_source=skoffroad&utm_campaign=summer2026"
+  },
+
+  "livery": {
+    "id": "example_signature",
+    "name": "Example Signature",
+    "base_color": [0.18, 0.24, 0.32],
+    "decal_texture": "brand_packs/example/door_decal.png",
+    "unlock_requires_video": false,
+    "unlock_requires_premium_pass": false
+  },
+
+  "billboards": [
+    {
+      "texture": "brand_packs/example/board_1.png",
+      "fallback_color": [0.18, 0.24, 0.32],
+      "weight": 1.5,
+      "tagline": "PRIMARY CAMPAIGN MESSAGE",
+      "click_url": "https://example.com/product?utm_source=skoffroad&utm_medium=billboard&utm_content=board_1"
+    },
+    {
+      "texture": "brand_packs/example/board_2.png",
+      "fallback_color": [0.18, 0.24, 0.32],
+      "weight": 1.0,
+      "tagline": "SECONDARY MESSAGE",
+      "click_url": "https://example.com/promo?utm_source=skoffroad&utm_medium=billboard&utm_content=board_2"
+    }
+  ],
+
+  "scatter": {
+    "density": 0.10,
+    "min_distance_m": 14.0,
+    "edge_only": true,
+    "slope_band": [0.05, 0.22]
+  },
+
+  "_authoring_notes": {
+    "billboard_aspect": "16:8 (panel is 6m wide x 3m tall)",
+    "billboard_texture_dimensions": "Recommended 2048x1024 PNG, sRGB, alpha optional",
+    "livery_decal_dimensions": "Recommended 1024x1024 PNG with alpha, applied to door panels",
+    "logo_dimensions": "Recommended 1024x256 PNG with alpha",
+    "color_format": "Linear sRGB, 0.0–1.0 per channel"
+  }
+}

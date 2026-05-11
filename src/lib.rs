@@ -241,6 +241,19 @@ pub use terrain_pbr::{TerrainPbrAssets, TerrainPbrPlugin, TriplanarTerrainExt, T
 pub mod post_fx;
 pub use post_fx::PostFxPlugin;
 
+// ---- Monetization stack -----------------------------------------------------
+// Brand-pack-driven sponsor scatter, player wallet/inventory, and ad SDK bridge.
+// All four are additive plugins; none mutate the base game's behaviour unless
+// explicitly wired (e.g. fuel.rs emitting AdRequest::Rewarded { slot: "refuel" }).
+pub mod brand_pack;
+pub mod wallet;
+pub mod ad_sdk_bridge;
+pub mod sponsor_scatter;
+pub use brand_pack::{ActiveBrandPack, BrandPack, BrandPackPlugin};
+pub use wallet::{Inventory, Wallet, WalletPlugin};
+pub use ad_sdk_bridge::{AdRequest, AdResult, AdSdkPlugin};
+pub use sponsor_scatter::{SponsorAnalytics, SponsorBillboard, SponsorScatterPlugin};
+
 pub use audio::AudioPlugin;
 pub use camera::CameraPlugin;
 pub use compass::CompassPlugin;
