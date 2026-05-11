@@ -115,12 +115,13 @@
      * Tapping a row dispatches the keydown event to enter that desktop panel.
      */
     var entries = [
-      ['🔧', 'Vehicle Mods (M)',        'ShiftLeft+KeyM', null, 'ShiftM'],
-      ['🌐', 'Multiplayer (I)',          'KeyI',           'i',  null],
-      ['🏆', 'Hillclimb Leaderboard (H)','KeyH',           'h',  null],
-      ['🗺️', 'Custom Map (drag-drop)',   'KeyM',           'm',  null],
-      ['🎤', 'Voice / Webcam (Q)',       'KeyQ',           'q',  null],
-      ['❓', 'Help (Esc)',              'Escape',         'Escape', null],
+      ['🔧', 'Vehicle Mods (M)',         'ShiftLeft+KeyM', null, 'ShiftM'],
+      ['🌐', 'Multiplayer (I)',           'KeyI',           'i',  null],
+      ['🏆', 'Hillclimb Leaderboard (H)', 'KeyH',           'h',  null],
+      ['🗺️', 'Custom Map (drag-drop)',    'KeyM',           'm',  null],
+      ['🎤', 'Voice / Webcam (Q)',        'KeyQ',           'q',  null],
+      ['🎯', 'Mission Select (Shift+Tab)','Tab',            'Tab', 'ShiftTab'],
+      ['❓', 'Help (Esc)',               'Escape',         'Escape', null],
     ];
 
     entries.forEach(function (entry) {
@@ -148,8 +149,8 @@
         e.preventDefault();
         hideMenu();
 
-        // ShiftM needs a special two-event sequence (Shift down, M down, M up, Shift up).
-        if (special === 'ShiftM') {
+        // ShiftM / ShiftTab need a two-event sequence (Shift down, key down, key up, Shift up).
+        function fireShiftKey(mainCode, mainKey) {
           var canvas = getCanvas();
           function fire(type, evCode, evKey, shift) {
             var opts = { code: evCode, key: evKey, shiftKey: !!shift, bubbles: true, cancelable: true };
@@ -158,9 +159,14 @@
             window.dispatchEvent(new KeyboardEvent(type, opts));
           }
           fire('keydown', 'ShiftLeft', 'Shift', true);
-          fire('keydown', 'KeyM',      'M',     true);
-          fire('keyup',   'KeyM',      'M',     true);
+          fire('keydown', mainCode,     mainKey, true);
+          fire('keyup',   mainCode,     mainKey, true);
           fire('keyup',   'ShiftLeft', 'Shift', false);
+        }
+        if (special === 'ShiftM') {
+          fireShiftKey('KeyM', 'M');
+        } else if (special === 'ShiftTab') {
+          fireShiftKey('Tab', 'Tab');
         } else {
           keyDown(code, keyVal || code);
           setTimeout(function () { keyUp(code, keyVal || code); }, 80);

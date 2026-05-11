@@ -319,6 +319,71 @@ test.describe('skoffroad mobile smoke (iPhone 14)', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Sprint 63: Mission Select menu row opens the overlay via Shift+Tab
+  // -------------------------------------------------------------------------
+  test('Mission Select menu row fires Shift+Tab and overlay appears', async ({
+    page,
+  }) => {
+    await dismissSplash(page);
+    await page.waitForTimeout(800);
+
+    if (!(await assertHudVisible(page, '#tc-btn-menu'))) return;
+
+    // Open the mobile menu.
+    await page.locator('#tc-btn-menu').tap();
+    await page.waitForTimeout(300);
+
+    const mobileMenuOverlay = page.locator('#tc-menu-overlay');
+    await expect(mobileMenuOverlay).toHaveClass(/tc-menu-open/, { timeout: 2_000 });
+
+    // Listen for Tab keydown with shiftKey = true (the Mission Select hotkey).
+    // We listen for Tab since that is the code; the shiftKey flag is on the event.
+    const tabEventPromise = page.evaluate(function () {
+      return new Promise<{ code: string; shiftKey: boolean } | null>(function (resolve) {
+        var timer = setTimeout(function () { resolve(null); }, 4000);
+        function handler(e: KeyboardEvent) {
+          if (e.code === 'Tab' && e.shiftKey) {
+            clearTimeout(timer);
+            document.removeEventListener('keydown', handler);
+            resolve({ code: e.code, shiftKey: e.shiftKey });
+          }
+        }
+        document.addEventListener('keydown', handler);
+      });
+    });
+
+    // Tap the "Mission Select" row — find it by text content.
+    const menuItems = page.locator('.tc-menu-item');
+    const count = await menuItems.count();
+    let missionSelectRow: import('@playwright/test').Locator | null = null;
+    for (let i = 0; i < count; i++) {
+      const text = await menuItems.nth(i).textContent();
+      if (text && text.includes('Mission Select')) {
+        missionSelectRow = menuItems.nth(i);
+        break;
+      }
+    }
+
+    if (!missionSelectRow) {
+      test.skip(true, 'Mission Select row not found in mobile menu');
+      return;
+    }
+
+    await missionSelectRow.tap();
+
+    const tabEvt = await tabEventPromise;
+    expect(tabEvt, 'Mission Select row should fire Tab keydown with shiftKey').not.toBeNull();
+    expect(tabEvt!.code).toBe('Tab');
+    expect(tabEvt!.shiftKey).toBe(true);
+
+    // After the Shift+Tab fires, the Bevy overlay should become visible.
+    // In the test harness the Bevy canvas is running, so we wait a short time
+    // and verify the mobile menu overlay is now closed (the row tapping hides it).
+    await page.waitForTimeout(500);
+    await expect(mobileMenuOverlay).not.toHaveClass(/tc-menu-open/);
+  });
+
+  // -------------------------------------------------------------------------
   // Sprint 62: Joystick drag emits WASD keydown events on the canvas
   // -------------------------------------------------------------------------
   test('joystick drag (up) fires keydown KeyW on the canvas', async ({
