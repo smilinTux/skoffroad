@@ -20,9 +20,16 @@ export default defineConfig({
     {
       name: 'iPhone 14 (Chromium)',
       use: {
-        ...devices['iPhone 14'],
-        // Override to Chromium engine (WebGPU support)
-        channel: 'chromium',
+        // iPhone 14 viewport + touch settings, but run under Chromium engine.
+        // WebKit on Linux CI has frequent launch issues; Chromium is reliable.
+        // We spread only the viewport/UA/touch properties from the device
+        // descriptor and override browserName so Playwright uses Chromium.
+        viewport: devices['iPhone 14'].viewport,
+        userAgent: devices['iPhone 14'].userAgent,
+        deviceScaleFactor: devices['iPhone 14'].deviceScaleFactor,
+        isMobile: devices['iPhone 14'].isMobile,
+        hasTouch: devices['iPhone 14'].hasTouch,
+        browserName: 'chromium',
       },
     },
   ],
