@@ -31,6 +31,8 @@
 <link data-trunk rel="rust" data-bin="skoffroad" data-wasm-opt="z" />
 <!-- Bake all game assets next to the .wasm so AssetServer can find them. -->
 <link data-trunk rel="copy-dir" href="assets" />
+<!-- Maximum-permissive crawler policy at /robots.txt -->
+<link data-trunk rel="copy-file" href="robots.txt" />
 
 <!-- Sprint 52: mobile touch controls (CSS + JS live in assets/, copied by Trunk's copy-dir) -->
 <link rel="stylesheet" href="assets/touch-controls.css" />
