@@ -464,6 +464,12 @@ fn spawn_vehicle(
     let axle_tube_len = (WHEEL_OFFSETS[1].x - WHEEL_OFFSETS[0].x) * 0.92;
     let axle_tube_mesh = meshes.add(Cylinder::new(0.10, axle_tube_len));
     for &z in &[WHEEL_OFFSETS[0].z, WHEEL_OFFSETS[2].z] {
+        // Front axle (Dana 30/44/60): diff is visibly offset to the passenger
+        // side because the driveshaft enters from a passenger-side angle.
+        // Rear axle (Dana 44/35): diff is centred on the axle tube.
+        let is_front = z < 0.0;
+        let diff_x = if is_front { 0.30 } else { 0.0 };
+
         // Tube
         details.push(commands.spawn((
             DefaultSkin,
@@ -472,21 +478,29 @@ fn spawn_vehicle(
             Transform::from_translation(Vec3::new(0.0, axle_y, z))
                 .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
         )).id());
-        // Differential bulge (offset toward the passenger side, like a real Dana)
+        // Differential pumpkin — offset per real Dana geometry.
         details.push(commands.spawn((
             DefaultSkin,
             Mesh3d(meshes.add(Sphere::new(0.22))),  // bigger diff pumpkin so it's actually visible
             MeshMaterial3d(diff_mat.clone()),
-            Transform::from_translation(Vec3::new(0.20, axle_y - 0.02, z)),
+            Transform::from_translation(Vec3::new(diff_x, axle_y - 0.02, z)),
         )).id());
-        // Pinion stub poking forward/backward from the diff (toward driveshaft)
-        let pinion_z_dir = if z < 0.0 { 0.18 } else { -0.18 };
+        // Pinion stub pointing toward where the driveshaft enters.
+        // Front: driveshaft comes from the transfer-case on the passenger side,
+        //   so the pinion angles forward (+Z toward -Z nose) and slightly inboard.
+        // Rear: driveshaft comes straight from the transmission tail-shaft,
+        //   so the pinion points straight forward (centred, no X offset).
+        let pinion_z_offset = if is_front { 0.18 } else { -0.18 };
+        let pinion_x_offset = if is_front { -0.06 } else { 0.0 }; // slight inboard angle on front
         details.push(commands.spawn((
             DefaultSkin,
             Mesh3d(meshes.add(Cylinder::new(0.06, 0.22))),
             MeshMaterial3d(diff_mat.clone()),
-            Transform::from_translation(Vec3::new(0.20, axle_y - 0.02, z + pinion_z_dir))
-                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+            Transform::from_translation(Vec3::new(
+                diff_x + pinion_x_offset,
+                axle_y - 0.02,
+                z + pinion_z_offset,
+            )).with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
         )).id());
     }
 
