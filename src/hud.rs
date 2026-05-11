@@ -446,7 +446,10 @@ fn toggle_hud(
     mut visible: ResMut<HudVisible>,
     mut root_q: Query<&mut Node, With<HudRoot>>,
 ) {
-    if keys.just_pressed(KeyCode::KeyH) {
+    // Shift+H: H alone is used by the tutorial step advancer, so the HUD
+    // toggle is gated by Shift to avoid double-firing during onboarding.
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    if shift && keys.just_pressed(KeyCode::KeyH) {
         visible.0 = !visible.0;
         for mut node in &mut root_q {
             node.display = if visible.0 {

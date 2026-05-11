@@ -39,13 +39,15 @@ struct Headlight;
 
 // ---- Constants --------------------------------------------------------------
 
-// Bevy 0.18 SpotLight intensity is in lumens but the HDR pipeline needs
-// substantially more to read as bright headlights against a dark scene.
-// 30000 was barely visible; 200000 gives a clear cone that lights terrain.
-const HL_INTENSITY:   f32 = 200_000.0;
-const HL_RANGE:       f32 = 80.0;
-const HL_OUTER_ANGLE: f32 = 0.436_332; // 25°
-const HL_INNER_ANGLE: f32 = 0.261_799; // 15°
+// Bevy 0.18 SpotLight intensity is in lumens. Off-road night driving needs
+// genuinely bright cones — these are tuned to throw a clearly-lit corridor
+// 100+ m ahead of the truck so the player can actually see where they're going.
+// (Previous 200_000 lm read as soft amber on the ground; 1_500_000 lm reads
+// as proper LED-pod off-road lights.)
+const HL_INTENSITY:   f32 = 1_500_000.0;
+const HL_RANGE:       f32 = 150.0;
+const HL_OUTER_ANGLE: f32 = 0.610_865; // 35°  (was 25°) — wider cone
+const HL_INNER_ANGLE: f32 = 0.383_972; // 22°  (was 15°)
 
 // ---- Systems ----------------------------------------------------------------
 

@@ -107,13 +107,26 @@ fn spawn_sky_dome(
     ));
 }
 
-/// T = toggle pause; [ / ] scrub time.
+/// T = toggle pause; [ / ] scrub time; Shift+T = pin to day; Ctrl+T = pin to night.
 fn time_of_day_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut tod: ResMut<TimeOfDay>,
 ) {
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    let ctrl  = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+
     if keys.just_pressed(KeyCode::KeyT) {
-        tod.paused = !tod.paused;
+        if shift {
+            // Pin to high noon — sun overhead, headlights auto-off.
+            tod.t = 0.5;
+            tod.paused = true;
+        } else if ctrl {
+            // Pin to midnight — full dark, headlights auto-on.
+            tod.t = 0.0;
+            tod.paused = true;
+        } else {
+            tod.paused = !tod.paused;
+        }
     }
     if keys.just_pressed(KeyCode::BracketLeft) {
         tod.t = (tod.t - 0.05).rem_euclid(1.0);
