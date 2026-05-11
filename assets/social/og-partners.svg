@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1310"/>
+      <stop offset="55%" stop-color="#1a1815"/>
+      <stop offset="100%" stop-color="#2a1810"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.22" cy="0.85" r="0.6">
+      <stop offset="0%" stop-color="#c4521e" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#c4521e" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Faux-billboard frame on the right (decorative) -->
+  <g transform="translate(820, 130)">
+    <rect x="0" y="0" width="320" height="190" fill="#c4521e" stroke="#d8b047" stroke-width="6"/>
+    <text x="160" y="80" text-anchor="middle"
+          font-family="ui-sans-serif, system-ui, sans-serif"
+          font-size="26" font-weight="900" fill="#fafaf9">
+      YOUR BRAND
+    </text>
+    <text x="160" y="120" text-anchor="middle"
+          font-family="ui-sans-serif, system-ui, sans-serif"
+          font-size="26" font-weight="900" fill="#fafaf9">
+      HERE
+    </text>
+    <!-- Posts -->
+    <rect x="40"  y="190" width="14" height="100" fill="#3a3530"/>
+    <rect x="266" y="190" width="14" height="100" fill="#3a3530"/>
+  </g>
+
+  <!-- Eyebrow -->
+  <text x="80" y="135"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="20" font-weight="700" fill="#c4521e" letter-spacing="3">
+    SKOFFROAD FOR BRANDS
+  </text>
+
+  <!-- Headline -->
+  <text x="80" y="220"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="74" font-weight="900" fill="#fafaf9" letter-spacing="-2">
+    Put your brand
+  </text>
+  <text x="80" y="295"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="74" font-weight="900" fill="#fafaf9" letter-spacing="-2">
+    inside an off-road
+  </text>
+  <text x="80" y="370"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="74" font-weight="900" fill="#d8b047" letter-spacing="-2">
+    sim. In any browser.
+  </text>
+
+  <!-- Sub -->
+  <text x="80" y="435"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="26" fill="#9a9586">
+    Custom liveries · trail-side billboards · branded terrain
+  </text>
+
+  <!-- Price tier line -->
+  <text x="80" y="500"
+        font-family="ui-monospace, SFMono-Regular, Menlo, monospace"
+        font-size="22" fill="#e6e2d4">
+    From $2,500  ·  Live in 2 weeks  ·  100% trackable
+  </text>
+
+  <!-- URL pill -->
+  <rect x="80" y="540" width="450" height="50" rx="25" fill="#c4521e"/>
+  <text x="305" y="573" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif"
+        font-size="22" font-weight="700" fill="#0f1310">
+    play.skoffroad.skworld.io/partners
+  </text>
+</svg>
