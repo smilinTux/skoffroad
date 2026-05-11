@@ -141,8 +141,11 @@ fn update_camera(
         }
 
         CameraMode::Cockpit => {
-            // Driver's seat: slightly above chassis center, back from front bumper.
-            let seat_local = Vec3::new(0.0, 0.5, -0.6);
+            // Driver's seat: head-height (~0.6 m above the chassis roof so the
+            // eyes clear the hood when looking forward), slightly forward of
+            // chassis centre so the player feels seated in the cab, not the
+            // back row of an open-cage truck.
+            let seat_local = Vec3::new(0.0, 1.0, -0.4);
             let target_pos  = chassis.translation + chassis.rotation * seat_local;
             // Look far along chassis forward; smooth_pos skips lag in cockpit.
             let target_look = chassis.translation + chassis_fwd * 30.0;

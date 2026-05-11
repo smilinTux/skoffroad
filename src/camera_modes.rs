@@ -175,9 +175,10 @@ fn apply_camera_mode(
 
         // ---- First-person (driver POV) --------------------------------------
         CameraMode::FirstPerson => {
+            // Head-height of a seated driver — eyes clear the hood line.
             let cam_pos = chassis_pos
-                + chassis_up  * 0.6
-                + chassis_fwd * (-0.5);
+                + chassis_up  * 1.0
+                + chassis_fwd * (-0.4);
             Transform::from_translation(cam_pos)
                 .looking_at(cam_pos + chassis_fwd * 5.0, chassis_up)
         }
