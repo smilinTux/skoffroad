@@ -338,10 +338,12 @@ test.describe('skoffroad mobile smoke (iPhone 14)', () => {
 
     // Listen for Tab keydown with shiftKey = true (the Mission Select hotkey).
     // We listen for Tab since that is the code; the shiftKey flag is on the event.
+    // NOTE: the callback is serialised as plain JS by page.evaluate(), so no
+    // TypeScript-only syntax (generics, type annotations) inside.
     const tabEventPromise = page.evaluate(function () {
-      return new Promise<{ code: string; shiftKey: boolean } | null>(function (resolve) {
+      return new Promise(function (resolve) {
         var timer = setTimeout(function () { resolve(null); }, 4000);
-        function handler(e: KeyboardEvent) {
+        function handler(e) {
           if (e.code === 'Tab' && e.shiftKey) {
             clearTimeout(timer);
             document.removeEventListener('keydown', handler);
@@ -371,10 +373,12 @@ test.describe('skoffroad mobile smoke (iPhone 14)', () => {
 
     await missionSelectRow.tap();
 
-    const tabEvt = await tabEventPromise;
+    const tabEvt = await tabEventPromise as { code: string; shiftKey: boolean } | null;
     expect(tabEvt, 'Mission Select row should fire Tab keydown with shiftKey').not.toBeNull();
-    expect(tabEvt!.code).toBe('Tab');
-    expect(tabEvt!.shiftKey).toBe(true);
+    if (tabEvt) {
+      expect(tabEvt.code).toBe('Tab');
+      expect(tabEvt.shiftKey).toBe(true);
+    }
 
     // After the Shift+Tab fires, the Bevy overlay should become visible.
     // In the test harness the Bevy canvas is running, so we wait a short time
