@@ -1,0 +1,15 @@
+{
+  "trails": [
+    {
+      "id": "demo_loop",
+      "title": "Demo Loop",
+      "description": "A short hand-authored loop around the main arena. Drop your own .glb into assets/trails/ and add to manifest.json to replace the procedural terrain.",
+      "spawn_x": 0.0,
+      "spawn_z": 0.0,
+      "glb": null,
+      "gpx": "trails/demo_loop.gpx",
+      "length_km": 0.5,
+      "difficulty": "easy"
+    }
+  ]
+}
