@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="skoffroad" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Demo Loop</name>
+    <trkseg>
+      <!-- 20-point hand-authored loop, centred on (0,0) in world space.      -->
+      <!-- Equirectangular projection with origin at lat=0, lon=0 gives:       -->
+      <!--   x_world ≈ (lon − 0) × R  (metres)                                -->
+      <!--   z_world ≈ −(lat − 0) × R (metres, Bevy +Z is south)              -->
+      <!-- For a ~450 m radius loop the lon/lat excursions are ~0.004°.        -->
+      <!-- Elevation is constant at 100 m so y_world = 0.5 m above reference. -->
+      <trkpt lat=" 0.00000" lon=" 0.00000"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00045" lon=" 0.00130"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00120" lon=" 0.00230"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00200" lon=" 0.00290"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00280" lon=" 0.00300"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00350" lon=" 0.00260"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00400" lon=" 0.00180"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00400" lon=" 0.00060"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00370" lon="-0.00060"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00300" lon="-0.00170"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00200" lon="-0.00250"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00080" lon="-0.00290"><ele>100.0</ele></trkpt>
+      <trkpt lat="-0.00050" lon="-0.00290"><ele>100.0</ele></trkpt>
+      <trkpt lat="-0.00170" lon="-0.00240"><ele>100.0</ele></trkpt>
+      <trkpt lat="-0.00270" lon="-0.00160"><ele>100.0</ele></trkpt>
+      <trkpt lat="-0.00330" lon="-0.00050"><ele>100.0</ele></trkpt>
+      <trkpt lat="-0.00320" lon=" 0.00080"><ele>100.0</ele></trkpt>
+      <trkpt lat="-0.00250" lon=" 0.00200"><ele>100.0</ele></trkpt>
+      <trkpt lat="-0.00130" lon=" 0.00280"><ele>100.0</ele></trkpt>
+      <trkpt lat=" 0.00000" lon=" 0.00000"><ele>100.0</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

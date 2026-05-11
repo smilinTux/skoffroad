@@ -7,6 +7,7 @@ use skoffroad::{
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
+    MissionSelectPlugin, TrailRidesPlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -341,6 +342,9 @@ fn main() {
         .add_plugins(WinchPlugin)
         // Sprint 54: group rock-crawl trail mode (3 sections, timer, HUD, auto-spectate)
         .add_plugins(RockCrawlTrailPlugin)
+        // Sprint 63: Trail Rides manifest loader + Mission Select overlay
+        .add_plugins(TrailRidesPlugin)
+        .add_plugins(MissionSelectPlugin)
         .add_plugins((
             TruckBedCargoPlugin,
             WheelRimsPlugin,
