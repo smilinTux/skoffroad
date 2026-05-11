@@ -1,3 +1,18 @@
+//! Native registers everything; WASM cfg-gates out particle/smoke effects
+//! (bevy_hanabi isn't wasm-friendly), so on WASM the corresponding component
+//! types / setup fns are dead code. Also: web-sys keeps deprecating audio/
+//! video constraint setters, and several cfg-gated paths leave unused
+//! imports/mut/vars. Blanket-allow these only on wasm32 so CI's
+//! `-D warnings` doesn't fail the WASM deploy on items intentionally unused
+//! for that target. Native still catches everything.
+#![cfg_attr(target_arch = "wasm32", allow(
+    dead_code,
+    deprecated,
+    unused_imports,
+    unused_mut,
+    unused_variables,
+))]
+
 pub mod accessibility;
 pub mod achievements;
 pub mod ai_driver;
