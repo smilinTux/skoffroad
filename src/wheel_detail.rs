@@ -34,12 +34,22 @@ const LUG_COUNT: usize     = 5;
 const HUB_RADIUS: f32  = 0.12;
 const HUB_HEIGHT: f32  = 0.05;
 
-// Tread block dimensions and count.
-const TREAD_COUNT: usize    = 8;
-const TREAD_RADIAL: f32     = WHEEL_RADIUS + 0.01; // sit just outside tire OD
-const TREAD_W: f32          = 0.08;
-const TREAD_H: f32          = 0.05;
-const TREAD_D: f32          = 0.10;
+// Mud-terrain tread: 16 chunky blocks around the OD in a zig-zag offset
+// pattern, plus 8 sidewall biters on each side. Larger and more aggressive
+// than the original 8 smooth blocks.
+const TREAD_COUNT: usize    = 16;
+const TREAD_RADIAL: f32     = WHEEL_RADIUS + 0.015;
+const TREAD_W: f32          = 0.11;   // axial (across tire width)
+const TREAD_H: f32          = 0.07;   // radial (depth into ground)
+const TREAD_D: f32          = 0.14;   // tangential (along rolling direction)
+/// How far blocks alternate inward/outward across the tire face. Creates the
+/// zig-zag mud-terrain look (vs the original centred 8-block row).
+const TREAD_AXIAL_OFFSET: f32 = 0.06;
+/// Sidewall biters — small chunks on the shoulder of the tire.
+const BITER_COUNT: usize    = 8;
+const BITER_W: f32          = 0.04;
+const BITER_H: f32          = 0.05;
+const BITER_D: f32          = 0.09;
 
 // ---- Plugin ----
 
@@ -124,22 +134,47 @@ fn attach_wheel_detail_once(
             }
         }
 
-        // ---- C. Tread blocks — 8 around the tire OD ----
-        // Distribute around the circumference in the XZ plane of wheel local space
-        // (the XZ plane is the rolling plane since the cylinder axis is Y).
-        // Each block is positioned at TREAD_RADIAL distance and rotated so its
-        // longest dimension (Z = 0.10) is tangential to the wheel.
+        // ---- C. Mud-terrain tread — 16 chunky blocks in a zig-zag pattern ----
+        // The XZ plane is the rolling plane (cylinder axis = Y). Every block is
+        // positioned at TREAD_RADIAL distance and rotated around Y so its depth
+        // faces radially outward. Alternating blocks shift axially (along the
+        // tire width) creating the staggered MT look.
+        let biter_mesh = meshes.add(Cuboid::new(BITER_W, BITER_H, BITER_D));
         for i in 0..TREAD_COUNT {
             let angle = i as f32 * TAU / TREAD_COUNT as f32;
-            let pos = Vec3::new(TREAD_RADIAL * angle.sin(), 0.0, TREAD_RADIAL * angle.cos());
-            // Rotate block around Y so its depth (Z) faces radially outward.
+            // Zig-zag: even blocks offset to +Y face, odd to -Y face.
+            let axial = if i % 2 == 0 { TREAD_AXIAL_OFFSET } else { -TREAD_AXIAL_OFFSET };
+            let pos = Vec3::new(
+                TREAD_RADIAL * angle.sin(),
+                axial,
+                TREAD_RADIAL * angle.cos(),
+            );
             let rot = Quat::from_rotation_y(angle);
-            let tread = commands.spawn((
+            children.push(commands.spawn((
                 Mesh3d(tread_mesh.clone()),
                 MeshMaterial3d(tread_mat.clone()),
                 Transform::from_translation(pos).with_rotation(rot),
-            )).id();
-            children.push(tread);
+            )).id());
+        }
+
+        // ---- D. Sidewall biters — small chunks on both shoulders for the
+        // aggressive mud-terrain look. Positioned just outside the tread band
+        // on each face of the cylinder.
+        for face_sign in [1.0_f32, -1.0_f32] {
+            for i in 0..BITER_COUNT {
+                let angle = (i as f32 + 0.5) * TAU / BITER_COUNT as f32; // rotate half-step so they sit between main treads
+                let pos = Vec3::new(
+                    (TREAD_RADIAL - 0.04) * angle.sin(),
+                    face_sign * (WHEEL_HALF_WIDTH + 0.005),
+                    (TREAD_RADIAL - 0.04) * angle.cos(),
+                );
+                let rot = Quat::from_rotation_y(angle);
+                children.push(commands.spawn((
+                    Mesh3d(biter_mesh.clone()),
+                    MeshMaterial3d(tread_mat.clone()),
+                    Transform::from_translation(pos).with_rotation(rot),
+                )).id());
+            }
         }
 
         commands.entity(wheel_entity).add_children(&children);

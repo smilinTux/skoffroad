@@ -435,39 +435,104 @@ fn spawn_vehicle(
     )).id();
     details.push(spare);
 
-    // ----- Sprint 48: mod-driven extra meshes --------------------------------
+    // ----- Solid axles + (optional) long-arm control arms -------------------
     //
-    // Long-arm suspension kit: four visible strut cylinders, one per wheel,
-    // running from the chassis bottom-edge down to just above the wheel centre.
-    // They are tagged DefaultSkin so they get despawned on the next respawn
-    // together with all other chassis children, which is the correct behaviour
-    // since the new spawn call will re-evaluate mods.
+    // Both axles hang at the wheel-hub Y in chassis-local space. The hub Y
+    // accounts for the long-arm/body-lift visual drop so the axle visibly
+    // sits at the tires' centerline, not buried inside the body.
+    let axle_y = WHEEL_OFFSETS[0].y - mods.suspension_len() + crate::vehicle_mods::BASE_SUSPENSION_LEN - mods.body_lift_y();
+    // (Equivalently: -0.35 - visual_drop, where visual_drop matches
+    // update_wheel_visuals so the axle stays glued to the wheels.)
+    let axle_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.18, 0.18, 0.20),
+        perceptual_roughness: 0.55,
+        metallic: 0.85,
+        ..default()
+    });
+    let diff_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.22, 0.22, 0.24),
+        perceptual_roughness: 0.45,
+        metallic: 0.90,
+        ..default()
+    });
+    // Axle tube: cylinder spanning left ↔ right wheel hub, slightly inset so
+    // it tucks behind the chrome rim. Cylinder axis is Y by default; we rotate
+    // 90° around Z so it lies along world X.
+    let axle_tube_len = (WHEEL_OFFSETS[1].x - WHEEL_OFFSETS[0].x) * 0.92;
+    let axle_tube_mesh = meshes.add(Cylinder::new(0.07, axle_tube_len));
+    for &z in &[WHEEL_OFFSETS[0].z, WHEEL_OFFSETS[2].z] {
+        // Tube
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(axle_tube_mesh.clone()),
+            MeshMaterial3d(axle_mat.clone()),
+            Transform::from_translation(Vec3::new(0.0, axle_y, z))
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        )).id());
+        // Differential bulge (offset toward the passenger side, like a real Dana)
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Sphere::new(0.16))),
+            MeshMaterial3d(diff_mat.clone()),
+            Transform::from_translation(Vec3::new(0.20, axle_y - 0.02, z)),
+        )).id());
+        // Pinion stub poking forward/backward from the diff (toward driveshaft)
+        let pinion_z_dir = if z < 0.0 { 0.18 } else { -0.18 };
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.06, 0.22))),
+            MeshMaterial3d(diff_mat.clone()),
+            Transform::from_translation(Vec3::new(0.20, axle_y - 0.02, z + pinion_z_dir))
+                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+        )).id());
+    }
+
+    // Long-arm control arms — visible diagonal bars running from the chassis
+    // frame mount (mid-chassis) back/down to the axle attach point near each
+    // wheel hub. Real long-arm kits have two per wheel (lower + upper); we draw
+    // one prominent lower arm per wheel for clarity.
     if mods.long_arm {
-        let strut_mat = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.22, 0.22, 0.24),
-            perceptual_roughness: 0.50,
-            metallic: 0.65,
+        let arm_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.50, 0.28, 0.10),  // off-road bronze/copper
+            perceptual_roughness: 0.45,
+            metallic: 0.75,
             ..default()
         });
-        // Strut length: from chassis bottom (y = -CHASSIS_HALF.y) to just above
-        // the wheel centre.  We visualise half of that travel.
-        let strut_len = susp_len * 0.55; // visual, not physical
-        let strut_mesh = meshes.add(Cylinder::new(0.035, strut_len));
-        for &offset in WHEEL_OFFSETS.iter() {
-            // Position: mid-point between chassis bottom and wheel anchor,
-            // slightly inside (chassis-local X) so it doesn't clip the tire.
-            let inner_x = offset.x * 0.70;
-            let strut = commands.spawn((
+        for &wheel_offset in WHEEL_OFFSETS.iter() {
+            // Frame mount: mid-chassis, slightly inboard of the wheel.
+            // For front wheels (z < 0): mount points are BACK from the wheel (positive z).
+            // For rear  wheels (z > 0): mount points are FORWARD from the wheel (negative z).
+            let mount_z = if wheel_offset.z < 0.0 { wheel_offset.z + 0.95 } else { wheel_offset.z - 0.95 };
+            let frame_mount = Vec3::new(wheel_offset.x * 0.55, -CHASSIS_HALF.y + 0.05, mount_z);
+            // Axle attach: just inboard of the wheel hub, at the axle Y.
+            let axle_attach = Vec3::new(wheel_offset.x * 0.85, axle_y, wheel_offset.z);
+
+            let arm_vec    = axle_attach - frame_mount;
+            let arm_len    = arm_vec.length();
+            let arm_dir    = arm_vec / arm_len.max(1e-4);
+            let arm_mid    = (frame_mount + axle_attach) * 0.5;
+            // Map cylinder +Y to arm_dir.
+            let arm_rot    = Quat::from_rotation_arc(Vec3::Y, arm_dir);
+            details.push(commands.spawn((
                 DefaultSkin,
-                Mesh3d(strut_mesh.clone()),
-                MeshMaterial3d(strut_mat.clone()),
-                Transform::from_translation(Vec3::new(
-                    inner_x,
-                    -CHASSIS_HALF.y - strut_len * 0.5,
-                    offset.z,
-                )),
-            )).id();
-            details.push(strut);
+                Mesh3d(meshes.add(Cylinder::new(0.045, arm_len))),
+                MeshMaterial3d(arm_mat.clone()),
+                Transform::from_translation(arm_mid).with_rotation(arm_rot),
+            )).id());
+            // Mount bushing at the frame end (small sphere, darker)
+            details.push(commands.spawn((
+                DefaultSkin,
+                Mesh3d(meshes.add(Sphere::new(0.06))),
+                MeshMaterial3d(axle_mat.clone()),
+                Transform::from_translation(frame_mount),
+            )).id());
+            // Mount bushing at the axle end
+            details.push(commands.spawn((
+                DefaultSkin,
+                Mesh3d(meshes.add(Sphere::new(0.06))),
+                MeshMaterial3d(axle_mat.clone()),
+                Transform::from_translation(axle_attach),
+            )).id());
         }
     }
 
