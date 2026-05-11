@@ -43,9 +43,13 @@ skaid.io                            skhelp.io           staycuriouskeepsmiling.c
 
 ## What still needs the dashboard (one toggle per zone)
 
-The "Block AI Scrapers and Crawlers" toggle in the dashboard is a managed WAF
-rule, which the current API token can't edit (it has `Zone Settings:Edit`,
-not `Zone WAF:Edit`).
+The "Block AI Scrapers and Crawlers" toggle in the dashboard is **not exposed
+via Cloudflare's public API on Free plans**. Even with `Zone WAF:Edit` on the
+token, the relevant endpoints (`/zones/{id}/bot_management`,
+`/zones/{id}/rulesets/phases/http_request_dynamic_redirect/entrypoint`) all
+return `request is not authorized` or `Authentication error` — Cloudflare
+gates them behind Bot Management (Pro+) or behind scopes it doesn't grant
+to standalone tokens on Free plans.
 
 **Per zone, do this once:**
 
@@ -56,13 +60,9 @@ not `Zone WAF:Edit`).
 
 This takes ~10 seconds per zone, 26 zones ≈ 5 minutes. Or:
 
-**To do it via API**, create a new token with these scopes:
-
-- Zone WAF: Edit
-- Zone Settings: Read
-
-Then run the script in [`scripts/cf_disable_ai_bot_block.sh`](../../scripts/cf_disable_ai_bot_block.sh)
-(future — not written yet because the existing token lacks the scope).
+Verified empirically — there's no API path that works for the Free-plan AI-bot
+toggle as of 2026-05-11. If/when Cloudflare exposes it, revisit. For now,
+**the 26 dashboard toggles are the only path**.
 
 ## robots.txt
 
@@ -81,32 +81,37 @@ Add a `robots.txt` to whatever serves each domain. The file in
 `skoffroad/robots.txt` is a good template — just copy and update the
 `Sitemap:` line if there is one.
 
-### Option B — Cloudflare Worker, one script for all zones
+### Option B — Cloudflare Worker, one script for all zones (Recommended)
 
 A single Worker that intercepts `/robots.txt` on every zone and returns the
-permissive policy. Setup:
+permissive policy. **The full Worker, wrangler config, and route-attach
+script are committed under [`scripts/cf-robots-worker/`](../../scripts/cf-robots-worker/)
+and [`scripts/attach_robots_routes.sh`](../../scripts/attach_robots_routes.sh).**
 
-1. Create a Worker named `permissive-robots-txt`.
-2. Source:
-   ```javascript
-   const ROBOTS = `User-agent: *\nAllow: /\n`;
-   // (paste the full file from skoffroad/robots.txt)
-   export default {
-     fetch(req) {
-       const url = new URL(req.url);
-       if (url.pathname === '/robots.txt') {
-         return new Response(ROBOTS, {
-           headers: { 'content-type': 'text/plain; charset=utf-8' },
-         });
-       }
-       return fetch(req); // pass through everything else
-     }
-   };
-   ```
-3. Add a Worker route on each of the 26 zones: `*/robots.txt`.
+To deploy (takes ~2 min total):
 
-This is more upfront work but uniform across all 26 domains and free up to
-100k requests/day per account.
+```bash
+# 1. Install wrangler if needed
+npm install -g wrangler
+
+# 2. Authenticate (opens browser)
+wrangler login
+
+# 3. Deploy the Worker
+cd scripts/cf-robots-worker
+wrangler deploy
+
+# 4. Attach */robots.txt routes to all 26 zones via API
+export CF_TOKEN='<your_token>'
+bash ../attach_robots_routes.sh
+
+# 5. Verify on any of your domains
+curl -i https://skworld.io/robots.txt
+```
+
+The Worker pass-throughs everything except `/robots.txt`, so origins are
+unaffected. Uses Cloudflare Workers Free tier (100k req/day per account —
+plenty for `/robots.txt` traffic on 26 zones).
 
 ## Reverting
 

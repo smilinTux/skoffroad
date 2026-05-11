@@ -1,0 +1,7 @@
+name = "permissive-robots-txt"
+main = "src/worker.js"
+compatibility_date = "2026-05-01"
+
+# Routes are attached AFTER deploy via scripts/attach_routes.sh (uses the
+# Cloudflare API + Zone:Edit token to bulk-attach */robots.txt routes on
+# all 26 zones). Kept out of wrangler.toml so deploy stays idempotent.
