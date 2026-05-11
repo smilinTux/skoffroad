@@ -440,26 +440,29 @@ fn spawn_vehicle(
     // Both axles hang at the wheel-hub Y in chassis-local space. The hub Y
     // accounts for the long-arm/body-lift visual drop so the axle visibly
     // sits at the tires' centerline, not buried inside the body.
-    let axle_y = WHEEL_OFFSETS[0].y - mods.suspension_len() + crate::vehicle_mods::BASE_SUSPENSION_LEN - mods.body_lift_y();
-    // (Equivalently: -0.35 - visual_drop, where visual_drop matches
-    // update_wheel_visuals so the axle stays glued to the wheels.)
+    // Axle Y in chassis-local: wheel hub height with an extra 0.18 m drop so
+    // the tube hangs clearly BELOW the chassis bottom (which sits at y = -0.4
+    // = -CHASSIS_HALF.y). Without the drop the stock axle was buried inside
+    // the body; now it pokes out and the diff bulge is visible from any angle.
+    let axle_y = WHEEL_OFFSETS[0].y - mods.suspension_len() + crate::vehicle_mods::BASE_SUSPENSION_LEN - mods.body_lift_y() - 0.18;
     let axle_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.18, 0.18, 0.20),
-        perceptual_roughness: 0.55,
-        metallic: 0.85,
+        base_color: Color::srgb(0.32, 0.32, 0.36),       // lighter steel so it reads against the dark underbody
+        perceptual_roughness: 0.45,
+        metallic: 0.90,
         ..default()
     });
     let diff_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.22, 0.22, 0.24),
-        perceptual_roughness: 0.45,
-        metallic: 0.90,
+        base_color: Color::srgb(0.42, 0.42, 0.46),       // even lighter — diff catches the eye
+        perceptual_roughness: 0.35,
+        metallic: 0.95,
         ..default()
     });
     // Axle tube: cylinder spanning left ↔ right wheel hub, slightly inset so
     // it tucks behind the chrome rim. Cylinder axis is Y by default; we rotate
     // 90° around Z so it lies along world X.
+    // Slightly chunkier so it reads from chase-camera distance.
     let axle_tube_len = (WHEEL_OFFSETS[1].x - WHEEL_OFFSETS[0].x) * 0.92;
-    let axle_tube_mesh = meshes.add(Cylinder::new(0.07, axle_tube_len));
+    let axle_tube_mesh = meshes.add(Cylinder::new(0.10, axle_tube_len));
     for &z in &[WHEEL_OFFSETS[0].z, WHEEL_OFFSETS[2].z] {
         // Tube
         details.push(commands.spawn((
@@ -472,7 +475,7 @@ fn spawn_vehicle(
         // Differential bulge (offset toward the passenger side, like a real Dana)
         details.push(commands.spawn((
             DefaultSkin,
-            Mesh3d(meshes.add(Sphere::new(0.16))),
+            Mesh3d(meshes.add(Sphere::new(0.22))),  // bigger diff pumpkin so it's actually visible
             MeshMaterial3d(diff_mat.clone()),
             Transform::from_translation(Vec3::new(0.20, axle_y - 0.02, z)),
         )).id());
@@ -493,7 +496,7 @@ fn spawn_vehicle(
     // one prominent lower arm per wheel for clarity.
     if mods.long_arm {
         let arm_mat = materials.add(StandardMaterial {
-            base_color: Color::srgb(0.50, 0.28, 0.10),  // off-road bronze/copper
+            base_color: Color::srgb(0.78, 0.42, 0.12),  // bright off-road copper — pops against dark underbody
             perceptual_roughness: 0.45,
             metallic: 0.75,
             ..default()
@@ -515,21 +518,21 @@ fn spawn_vehicle(
             let arm_rot    = Quat::from_rotation_arc(Vec3::Y, arm_dir);
             details.push(commands.spawn((
                 DefaultSkin,
-                Mesh3d(meshes.add(Cylinder::new(0.045, arm_len))),
+                Mesh3d(meshes.add(Cylinder::new(0.070, arm_len))),  // thicker so it reads from chase view
                 MeshMaterial3d(arm_mat.clone()),
                 Transform::from_translation(arm_mid).with_rotation(arm_rot),
             )).id());
             // Mount bushing at the frame end (small sphere, darker)
             details.push(commands.spawn((
                 DefaultSkin,
-                Mesh3d(meshes.add(Sphere::new(0.06))),
+                Mesh3d(meshes.add(Sphere::new(0.09))),  // bushings — slightly bigger so the joints read
                 MeshMaterial3d(axle_mat.clone()),
                 Transform::from_translation(frame_mount),
             )).id());
             // Mount bushing at the axle end
             details.push(commands.spawn((
                 DefaultSkin,
-                Mesh3d(meshes.add(Sphere::new(0.06))),
+                Mesh3d(meshes.add(Sphere::new(0.09))),  // bushings — slightly bigger so the joints read
                 MeshMaterial3d(axle_mat.clone()),
                 Transform::from_translation(axle_attach),
             )).id());
