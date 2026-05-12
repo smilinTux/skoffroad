@@ -285,11 +285,14 @@ fn spawn_vehicle(
     let windshield = commands.spawn((DefaultSkin, Mesh3d(windshield_mesh), MeshMaterial3d(glass_mat),
         Transform::from_translation(Vec3::new(0.0, 0.32, -0.88))
             .with_rotation(Quat::from_rotation_x(-25_f32.to_radians())))).id();
+    // Headlights pushed to z=-2.12 (was -2.10): sphere back-face was at
+    // z=-2.00, exactly on the body front face — depth fighting at any angle.
+    // +0.02 m clearance eliminates the z-fight.
     let hl_l = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh.clone()),
         MeshMaterial3d(headlight_mat.clone()),
-        Transform::from_translation(Vec3::new(-0.75, -0.12, -2.10)))).id();
+        Transform::from_translation(Vec3::new(-0.75, -0.12, -2.12)))).id();
     let hl_r = commands.spawn((DefaultSkin, Mesh3d(headlight_mesh.clone()), MeshMaterial3d(headlight_mat.clone()),
-        Transform::from_translation(Vec3::new( 0.75, -0.12, -2.10)))).id();
+        Transform::from_translation(Vec3::new( 0.75, -0.12, -2.12)))).id();
 
     // Sprint 48: bumper meshes depend on active BumperKind mod.
     //   Stock         → thin plastic-look cuboid (original).
@@ -337,7 +340,11 @@ fn spawn_vehicle(
     // bar gets a Z rotation; the Z-axis side bars get an X rotation.
     let rotz_90 = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
     let rotx_90 = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
-    for &(x, z) in &[(-0.95_f32, -0.30_f32), (0.95, -0.30), (-0.95, 0.50), (0.95, 0.50)] {
+    // Cage bars moved to x=±0.90 (was ±0.95). At ±0.95 the cylinder radius
+    // 0.045 put the outer surface 0.005 m from the body side (x=±1.00),
+    // causing intermittent depth fighting on the body flanks. At ±0.90
+    // clearance is 0.055 m — well clear.
+    for &(x, z) in &[(-0.90_f32, -0.30_f32), (0.90, -0.30), (-0.90, 0.50), (0.90, 0.50)] {
         let bar = commands.spawn((
             DefaultSkin,
             Mesh3d(cage_bar_mesh.clone()),
@@ -357,8 +364,8 @@ fn spawn_vehicle(
         )).id();
         details.push(bar);
     }
-    // Top Z-axis side rails.
-    for &x in &[-0.95_f32, 0.95] {
+    // Top Z-axis side rails — inset to x=±0.90 to match vertical bars.
+    for &x in &[-0.90_f32, 0.90] {
         let bar = commands.spawn((
             DefaultSkin,
             Mesh3d(cage_topbar_z.clone()),
@@ -369,9 +376,10 @@ fn spawn_vehicle(
         details.push(bar);
     }
 
-    // Fender flares above each wheel.
+    // Fender flares pushed to ±1.12 (was ±1.10): inner face was 0.01 m from
+    // the body side (x=±1.00) — depth fighting at oblique angles. Now 0.03 m.
     for &offset in WHEEL_OFFSETS.iter() {
-        let outer = if offset.x > 0.0 { 1.10 } else { -1.10 };
+        let outer = if offset.x > 0.0 { 1.12 } else { -1.12 };
         let flare = commands.spawn((
             DefaultSkin,
             Mesh3d(fender_mesh.clone()),
@@ -381,8 +389,9 @@ fn spawn_vehicle(
         details.push(flare);
     }
 
-    // Driver / passenger door panels (back half of the cabin only — open-top).
-    for &x in &[-1.04_f32, 1.04] {
+    // Door panels pushed to ±1.06 (was ±1.04): inner face was 0.01 m from
+    // body side — depth fighting same root cause as fender flares. Now 0.03 m.
+    for &x in &[-1.06_f32, 1.06] {
         let door = commands.spawn((
             DefaultSkin,
             Mesh3d(door_mesh.clone()),
