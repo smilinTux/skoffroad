@@ -144,13 +144,18 @@ pub mod race;
 pub mod ramps;
 pub mod recovery;
 pub mod rock_crawl_trail;
-pub use rock_crawl_trail::{RockCrawlTrailPlugin, RockCrawlTrailState};
+pub use rock_crawl_trail::{RockCrawlLeaderboard, RockCrawlTrailPlugin, RockCrawlTrailState};
 pub mod trail_rides;
-pub use trail_rides::{TrailEntry, TrailManifest, TrailRideRequest, TrailRidesPlugin};
+pub use trail_rides::{
+    ActiveTrailSession, TrailEntry, TrailLeaderboard, TrailManifest,
+    TrailRideRequest, TrailRidesPlugin,
+};
 pub mod mission_select;
 pub use mission_select::{MissionSelectOpen, MissionSelectPlugin};
 pub mod obstacle_course;
-pub use obstacle_course::{ObstacleCoursePlugin, ObstacleCourseState, ObstacleCourseLayout};
+pub use obstacle_course::{
+    ObstacleCourseLeaderboard, ObstacleCoursePlugin, ObstacleCourseState, ObstacleCourseLayout,
+};
 pub mod rock_garden;
 pub mod roof_rack;
 pub mod repair;

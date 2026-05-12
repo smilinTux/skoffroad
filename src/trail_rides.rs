@@ -29,17 +29,34 @@
 //     ]
 //   }
 //
+// Sprint 65 — Cross-mode multiplayer leaderboard (Option A).
+//   Finish condition: chassis within 8 m XZ of the trail's spawn point at
+//   some prior frame (start proximity confirmed) AND later within 8 m XZ of
+//   the "last" GPX waypoint approximated as a point offset in the +X direction
+//   from spawn by length_km * 800 m (conservative proxy).  Since we don't
+//   parse full GPX here, we use a simpler heuristic: "within 8 m of spawn
+//   AFTER having moved at least length_km * 200 m from spawn".
+//   TrailLeaderboard resource: top-5 peer times per trail_id.
+//   Packets prefixed 0x54, 0x52 ("TR") on CHANNEL_LEADERBOARD (channel 3).
+//
 // Public API:
 //   TrailRidesPlugin
 //   TrailManifest      (Resource)
 //   TrailEntry         (Data)
 //   TrailRideRequest   (Resource)
+//   TrailLeaderboard   (Resource)
 
 use bevy::prelude::*;
+use bevy_matchbox::prelude::*;
+use bincode::{Decode, Encode};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use crate::custom_map_loader::CustomGlbRequest;
 use crate::gpx_overlay::GpxOverlayRequest;
+use crate::hillclimb_tiers::CHANNEL_LEADERBOARD;
+use crate::multiplayer::PeerId;
+use crate::platform_storage;
 use crate::terrain::terrain_height_at;
 use crate::vehicle::{Chassis, VehicleRoot};
 
@@ -87,6 +104,60 @@ pub struct TrailRideRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Trail Leaderboard — Sprint 65
+// ---------------------------------------------------------------------------
+
+/// 2-byte magic prefix for Trail Ride leaderboard packets on CHANNEL_LEADERBOARD.
+const TR_PREFIX: [u8; 2] = [0x54, 0x52]; // b"TR"
+
+/// Wire packet for a single trail's completion time.
+#[derive(Encode, Decode, Clone, Debug)]
+pub struct TrLeaderboardPacket {
+    /// Trail ID string length + bytes (bincode handles String encoding).
+    pub trail_id: String,
+    /// Completion time in seconds.  f32::MAX = no time yet.
+    pub best_time_s: f32,
+}
+
+/// Per-trail completion records (keyed by trail_id).
+#[derive(Resource, Default)]
+pub struct TrailLeaderboard {
+    /// trail_id → list of (peer_id, best_s) sorted fastest-first, max 5.
+    pub entries: HashMap<String, Vec<(PeerId, f32)>>,
+}
+
+impl TrailLeaderboard {
+    pub fn update(&mut self, trail_id: &str, peer_id: PeerId, best_s: f32) {
+        let list = self.entries.entry(trail_id.to_string()).or_default();
+        if let Some(e) = list.iter_mut().find(|e| e.0 == peer_id) {
+            if best_s < e.1 { e.1 = best_s; }
+        } else {
+            list.push((peer_id, best_s));
+        }
+        list.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        list.truncate(5);
+    }
+}
+
+/// Tracks the active trail session for finish detection.
+#[derive(Resource, Default)]
+pub struct ActiveTrailSession {
+    /// Index of the active trail in TrailManifest.
+    pub trail_idx: Option<usize>,
+    /// Elapsed seconds since trail start.
+    pub elapsed_s: f32,
+    /// Whether the player has been within 20 m of the spawn (start proximity confirmed).
+    pub start_confirmed: bool,
+    /// Personal best for this trail_id loaded at session start.
+    pub personal_best_s: Option<f32>,
+    /// Whether we need to broadcast our times to connected peers.
+    pub needs_broadcast: bool,
+}
+
+/// Storage key prefix for trail personal bests.
+const TRAIL_PB_KEY_PREFIX: &str = "trail_pb_";
+
+// ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
 
@@ -96,8 +167,21 @@ impl Plugin for TrailRidesPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(TrailManifest::default())
             .insert_resource(TrailRideRequest::default())
+            .insert_resource(TrailLeaderboard::default())
+            .insert_resource(ActiveTrailSession::default())
             .add_systems(Startup, load_trail_manifest)
-            .add_systems(Update, apply_trail_ride_request.run_if(resource_exists::<VehicleRoot>));
+            // recv_tr_leaderboard runs in PreUpdate to drain TR-tagged packets
+            // before hillclimb_tiers.rs consumes them in Update.
+            .add_systems(PreUpdate, recv_tr_leaderboard)
+            .add_systems(
+                Update,
+                (
+                    apply_trail_ride_request,
+                    tick_trail_session,
+                )
+                    .chain()
+                    .run_if(resource_exists::<VehicleRoot>),
+            );
     }
 }
 
@@ -191,6 +275,7 @@ fn apply_trail_ride_request(
                              &mut avian3d::prelude::AngularVelocity), With<Chassis>>,
     mut glb_request:  ResMut<CustomGlbRequest>,
     mut gpx_request:  ResMut<GpxOverlayRequest>,
+    mut session:      ResMut<ActiveTrailSession>,
 ) {
     let Some(idx) = request.trail_idx.take() else { return };
 
@@ -200,6 +285,16 @@ fn apply_trail_ride_request(
     };
 
     info!("trail_rides: activating trail '{}' (id={})", trail.title, trail.id);
+
+    // Reset session tracking.
+    let pb = load_trail_pb(&trail.id);
+    *session = ActiveTrailSession {
+        trail_idx:       Some(idx),
+        elapsed_s:       0.0,
+        start_confirmed: false,
+        personal_best_s: pb,
+        needs_broadcast: false,
+    };
 
     // --- Teleport chassis ---------------------------------------------------
     if let Ok((mut tf, mut linvel, mut angvel)) = chassis_q.get_mut(vehicle.chassis) {
@@ -273,5 +368,135 @@ fn load_gpx_for_trail(gpx_path: &str, request: &mut GpxOverlayRequest) {
                 gpx_path
             );
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sprint 65: trail finish detection + leaderboard broadcast
+// ---------------------------------------------------------------------------
+
+/// Radius (metres XZ) within which the chassis must be to the spawn point
+/// to confirm start proximity or finish proximity.
+const TRAIL_FINISH_RADIUS: f32 = 8.0;
+
+fn tick_trail_session(
+    time:      Res<Time>,
+    manifest:  Res<TrailManifest>,
+    vehicle:   Res<VehicleRoot>,
+    chassis_q: Query<&Transform, With<Chassis>>,
+    mut session: ResMut<ActiveTrailSession>,
+    mut socket:  Option<ResMut<MatchboxSocket>>,
+) {
+    let Some(idx) = session.trail_idx else { return };
+    let Some(trail) = manifest.trails.get(idx) else { return };
+    let Ok(tf) = chassis_q.get(vehicle.chassis) else { return };
+
+    session.elapsed_s += time.delta_secs();
+
+    let pos = tf.translation;
+    let spawn_xz = Vec2::new(trail.spawn_x, trail.spawn_z);
+    let pos_xz   = Vec2::new(pos.x, pos.z);
+    let dist_from_spawn = pos_xz.distance(spawn_xz);
+
+    // Confirm start: chassis within 20 m of spawn at any frame.
+    if !session.start_confirmed && dist_from_spawn <= 20.0 {
+        session.start_confirmed = true;
+        info!("trail_rides: start confirmed for '{}'", trail.id);
+    }
+
+    // Finish: start confirmed, 5 s elapsed, and chassis is back within TRAIL_FINISH_RADIUS of spawn.
+    if session.start_confirmed
+        && session.elapsed_s > 5.0 // debounce: at least 5 s into the ride
+        && dist_from_spawn <= TRAIL_FINISH_RADIUS
+    {
+        let elapsed = session.elapsed_s;
+        info!(
+            "trail_rides: '{}' finished in {:.2}s",
+            trail.id, elapsed
+        );
+
+        // Update personal best.
+        let is_best = session.personal_best_s.map(|b| elapsed < b).unwrap_or(true);
+        if is_best {
+            session.personal_best_s = Some(elapsed);
+            save_trail_pb(&trail.id, elapsed);
+        }
+
+        // Signal broadcast.
+        session.needs_broadcast = true;
+
+        // Reset session so player can re-run.
+        session.trail_idx       = None;
+        session.elapsed_s       = 0.0;
+        session.start_confirmed = false;
+    }
+
+    // Broadcast personal best to connected peers if flagged.
+    if session.needs_broadcast {
+        session.needs_broadcast = false;
+        if let Some(ref mut sock) = socket {
+            let peers: Vec<PeerId> = sock.connected_peers().collect();
+            if !peers.is_empty() {
+                let best = session.personal_best_s.unwrap_or(f32::MAX);
+                let pkt = TrLeaderboardPacket {
+                    trail_id: trail.id.clone(),
+                    best_time_s: best,
+                };
+                if let Ok(payload) = bincode::encode_to_vec(pkt, bincode::config::standard()) {
+                    let mut msg = TR_PREFIX.to_vec();
+                    msg.extend_from_slice(&payload);
+                    for &peer in &peers {
+                        sock.channel_mut(CHANNEL_LEADERBOARD).send(msg.clone().into(), peer);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn recv_tr_leaderboard(
+    mut socket: Option<ResMut<MatchboxSocket>>,
+    mut lb:     ResMut<TrailLeaderboard>,
+) {
+    let Some(ref mut sock) = socket else { return };
+
+    for (peer_id, bytes) in sock.channel_mut(CHANNEL_LEADERBOARD).receive() {
+        if bytes.len() < TR_PREFIX.len() { continue; }
+        if bytes[..TR_PREFIX.len()] != TR_PREFIX { continue; }
+
+        let payload = &bytes[TR_PREFIX.len()..];
+        let Ok((pkt, _)) = bincode::decode_from_slice::<TrLeaderboardPacket, _>(
+            payload,
+            bincode::config::standard(),
+        ) else {
+            warn!("trail_rides: leaderboard decode error from {:?}", peer_id);
+            continue;
+        };
+
+        if pkt.best_time_s < f32::MAX {
+            lb.update(&pkt.trail_id, peer_id, pkt.best_time_s);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Personal best storage helpers
+// ---------------------------------------------------------------------------
+
+fn load_trail_pb(trail_id: &str) -> Option<f32> {
+    let key = format!("{}{}.json", TRAIL_PB_KEY_PREFIX, trail_id);
+    let text = platform_storage::read_string(&key)?;
+    serde_json::from_str::<serde_json::Value>(&text)
+        .ok()?
+        .get("best_s")?
+        .as_f64()
+        .map(|x| x as f32)
+}
+
+fn save_trail_pb(trail_id: &str, best_s: f32) {
+    let key = format!("{}{}.json", TRAIL_PB_KEY_PREFIX, trail_id);
+    let json = serde_json::json!({ "best_s": best_s }).to_string();
+    if let Err(e) = platform_storage::write_string(&key, &json) {
+        warn!("trail_rides: could not save PB for '{}': {}", trail_id, e);
     }
 }

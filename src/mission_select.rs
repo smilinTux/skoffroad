@@ -33,15 +33,16 @@
 use bevy::prelude::*;
 
 use crate::hillclimb_tiers::{HillclimbTiersState, TierLayout, NUM_TIERS, TIER_NAMES};
+use crate::multiplayer::PeerId;
 use crate::obstacle_course::{
-    ObstacleCourseLayout, ObstacleCourseState,
+    ObstacleCourseLayout, ObstacleCourseLeaderboard, ObstacleCourseState,
     LEVEL_NAMES as OC_LEVEL_NAMES,
     NUM_LEVELS as OC_NUM_LEVELS,
 };
 use crate::platform_storage;
-use crate::rock_crawl_trail::RockCrawlTrailState;
+use crate::rock_crawl_trail::{RockCrawlLeaderboard, RockCrawlTrailState};
 use crate::terrain::terrain_height_at;
-use crate::trail_rides::{TrailManifest, TrailRideRequest};
+use crate::trail_rides::{TrailLeaderboard, TrailManifest, TrailRideRequest};
 use crate::vehicle::{Chassis, VehicleRoot};
 
 // ---------------------------------------------------------------------------
@@ -132,6 +133,9 @@ fn spawn_ui(
     hc_state:   Res<HillclimbTiersState>,
     rc_state:   Res<RockCrawlTrailState>,
     oc_state:   Res<ObstacleCourseState>,
+    rc_lb:      Res<RockCrawlLeaderboard>,
+    oc_lb:      Res<ObstacleCourseLeaderboard>,
+    tr_lb:      Res<TrailLeaderboard>,
 ) {
     // Background scrim — covers the whole screen.
     let root = commands.spawn((
@@ -184,6 +188,17 @@ fn spawn_ui(
     for tier in 0..NUM_TIERS {
         let pb = hc_state.records[tier].best_s;
         let mission_id = format!("hillclimb_tier_{}", tier);
+        // Peer times for hillclimb come from HillclimbTiersState.peer_entries
+        // (read-only resource). We pull the top-3 per tier from it.
+        let hc_peer_times: Vec<(PeerId, f32)> = {
+            let mut v: Vec<(PeerId, f32)> = hc_state.peer_entries
+                .iter()
+                .filter_map(|e| e.bests[tier].map(|b| (e.peer_id, b)))
+                .collect();
+            v.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+            v.truncate(3);
+            v
+        };
         let card = mission_card(
             &mut commands,
             tier_colors[tier],
@@ -192,6 +207,7 @@ fn spawn_ui(
             pb,
             &mission_id,
             Some(FastTravelTarget::HillclimbTier(tier)),
+            &hc_peer_times,
         );
         commands.entity(root).add_children(&[card]);
     }
@@ -203,6 +219,7 @@ fn spawn_ui(
     for sec in 0..3_usize {
         let pb = rc_state.records[sec].best_s;
         let mission_id = format!("rock_crawl_{}", sec);
+        let rc_peer_times: &[(PeerId, f32)] = rc_lb.entries[sec].as_slice();
         let card = mission_card(
             &mut commands,
             Color::srgb(0.45, 0.65, 0.85),
@@ -211,6 +228,7 @@ fn spawn_ui(
             pb,
             &mission_id,
             Some(FastTravelTarget::RockCrawlSection(sec)),
+            rc_peer_times,
         );
         commands.entity(root).add_children(&[card]);
     }
@@ -239,6 +257,11 @@ fn spawn_ui(
             trail.description, trail.length_km, trail.difficulty
         );
         let mission_id = trail.id.clone();
+        let empty_tr: Vec<(PeerId, f32)> = Vec::new();
+        let tr_peer_times: &[(PeerId, f32)] = tr_lb.entries
+            .get(&trail.id)
+            .map(|v| v.as_slice())
+            .unwrap_or(empty_tr.as_slice());
         let card = mission_card(
             &mut commands,
             Color::srgb(0.22, 0.60, 0.38),
@@ -247,6 +270,7 @@ fn spawn_ui(
             pb,
             &mission_id,
             Some(FastTravelTarget::TrailRide(idx)),
+            tr_peer_times,
         );
         commands.entity(root).add_children(&[card]);
     }
@@ -269,6 +293,7 @@ fn spawn_ui(
     for lvl in 0..OC_NUM_LEVELS {
         let pb = oc_state.records[lvl].best_s;
         let mission_id = format!("obstacle_course_{}", lvl);
+        let oc_peer_times: &[(PeerId, f32)] = oc_lb.entries[lvl].as_slice();
         let card = mission_card(
             &mut commands,
             oc_colors[lvl],
@@ -277,6 +302,7 @@ fn spawn_ui(
             pb,
             &mission_id,
             Some(FastTravelTarget::ObstacleCourse(lvl)),
+            oc_peer_times,
         );
         commands.entity(root).add_children(&[card]);
     }
@@ -306,6 +332,7 @@ fn section_header(commands: &mut Commands, label: &str, color: Color) -> Entity 
 
 /// Build a single mission card row.  Returns the root entity.
 /// `fast_travel` = None → card is greyed out (no button).
+/// `peer_times` = up to 3 (peer_id, best_s) entries to display below the PB line.
 fn mission_card(
     commands:    &mut Commands,
     swatch:      Color,
@@ -314,6 +341,7 @@ fn mission_card(
     pb:          Option<f32>,
     mission_id:  &str,
     fast_travel: Option<FastTravelTarget>,
+    peer_times:  &[(PeerId, f32)],
 ) -> Entity {
     let greyed = fast_travel.is_none();
     let text_color = if greyed {
@@ -391,7 +419,23 @@ fn mission_card(
         }),
     )).id();
 
-    commands.entity(text_col).add_children(&[title_ent, desc_ent, pb_ent]);
+    // Top times sub-row (peer best times).
+    let top_times_str = if peer_times.is_empty() {
+        "— no peer times yet —".to_string()
+    } else {
+        peer_times.iter().take(3).map(|(pid, t)| {
+            let id_str = format!("{pid:?}");
+            let short: String = id_str.chars().filter(|c| c.is_alphanumeric()).take(6).collect();
+            format!("{}  {}", short, format_time(*t))
+        }).collect::<Vec<_>>().join("  ·  ")
+    };
+    let top_times_ent = commands.spawn((
+        Text::new(format!("Top times  {}", top_times_str)),
+        TextFont { font_size: 10.0, ..default() },
+        TextColor(Color::srgb(0.50, 0.60, 0.80)),
+    )).id();
+
+    commands.entity(text_col).add_children(&[title_ent, desc_ent, pb_ent, top_times_ent]);
 
     // Fast-Travel button (omitted for greyed-out cards)
     if let Some(target) = fast_travel {

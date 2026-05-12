@@ -18,18 +18,75 @@
 //
 // HUD: small top-left overlay shown during an active attempt.
 //
+// Sprint 65 — Cross-mode multiplayer leaderboard (Option A).
+//   RockCrawlLeaderboard resource stores top-5 peer times per section.
+//   On finish and on peer-connect, we broadcast a tagged packet on
+//   CHANNEL_LEADERBOARD (channel 3).  Prefix: 0x52, 0x43 ("RC") so
+//   hillclimb_tiers.rs doesn't mis-decode our payload.
+//
 // Public API:
 //   RockCrawlTrailPlugin
-//   RockCrawlTrailState (Resource)
+//   RockCrawlTrailState  (Resource)
+//   RockCrawlLeaderboard (Resource)
 
 use bevy::prelude::*;
 use avian3d::prelude::*;
+use bevy_matchbox::prelude::*;
+use bincode::{Decode, Encode};
 
+use crate::hillclimb_tiers::CHANNEL_LEADERBOARD;
 use crate::multiplayer::{GhostMarker, PeerId};
 use crate::platform_storage;
 use crate::spectate::SpectateState;
 use crate::terrain::terrain_height_at;
 use crate::vehicle::{Chassis, VehicleRoot};
+
+// ---------------------------------------------------------------------------
+// Leaderboard wire protocol (Option A — RC-prefixed packet)
+// ---------------------------------------------------------------------------
+
+/// 2-byte magic prefix for Rock Crawl leaderboard packets on CHANNEL_LEADERBOARD.
+/// Chosen to be distinct from hillclimb's raw bincode (tier byte is 0–2, not 'R').
+const RC_PREFIX: [u8; 2] = [0x52, 0x43]; // b"RC"
+
+/// Wire packet for one section's personal best broadcast.
+#[derive(Encode, Decode, Clone, Copy, Debug)]
+pub struct RcLeaderboardPacket {
+    /// Section index (0–2).
+    pub section: u8,
+    /// Best time in seconds. f32::MAX = no time yet.
+    pub best_time_s: f32,
+}
+
+// ---------------------------------------------------------------------------
+// Per-section leaderboard resource
+// ---------------------------------------------------------------------------
+
+/// Holds up to 5 peer times per section, sorted fastest-first.
+/// Keyed by PeerId so we update rather than append when a peer improves.
+#[derive(Resource, Default)]
+pub struct RockCrawlLeaderboard {
+    /// For each section: list of (peer_id, best_s) sorted by best_s ascending.
+    pub entries: [Vec<(PeerId, f32)>; NUM_SECTIONS],
+}
+
+impl RockCrawlLeaderboard {
+    /// Insert or update a peer's best time for `section`.
+    /// Keeps only the 5 best unique peer times.
+    pub fn update(&mut self, section: usize, peer_id: PeerId, best_s: f32) {
+        if section >= NUM_SECTIONS { return; }
+        let list = &mut self.entries[section];
+        // Update existing or push.
+        if let Some(e) = list.iter_mut().find(|e| e.0 == peer_id) {
+            if best_s < e.1 { e.1 = best_s; }
+        } else {
+            list.push((peer_id, best_s));
+        }
+        // Sort and keep top 5.
+        list.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        list.truncate(5);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -40,7 +97,12 @@ pub struct RockCrawlTrailPlugin;
 impl Plugin for RockCrawlTrailPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RockCrawlTrailState::load())
+            .insert_resource(RockCrawlLeaderboard::default())
             .add_systems(Startup, (spawn_sections, spawn_hud).chain())
+            // recv_rc_leaderboard runs in PreUpdate so it drains RC-tagged
+            // packets from CHANNEL_LEADERBOARD BEFORE hillclimb_tiers.rs
+            // consumes all messages in its Update recv system.
+            .add_systems(PreUpdate, recv_rc_leaderboard)
             .add_systems(
                 Update,
                 (
@@ -159,15 +221,18 @@ pub struct RockCrawlTrailState {
     peer_attempts:     Vec<PeerAttempt>,
     /// Dirty flag: write to storage on the next frame where this is true.
     needs_save:        bool,
+    /// Dirty flag: broadcast leaderboard to all connected peers.
+    needs_broadcast:   bool,
 }
 
 impl Default for RockCrawlTrailState {
     fn default() -> Self {
         Self {
-            records:       Default::default(),
-            active:        None,
-            peer_attempts: Vec::new(),
-            needs_save:    false,
+            records:        Default::default(),
+            active:         None,
+            peer_attempts:  Vec::new(),
+            needs_save:     false,
+            needs_broadcast: false,
         }
     }
 }
@@ -644,8 +709,9 @@ fn spawn_hud(mut commands: Commands) {
 // ---------------------------------------------------------------------------
 
 fn tick_section_timers(
-    time:      Res<Time>,
-    mut state: ResMut<RockCrawlTrailState>,
+    time:       Res<Time>,
+    mut state:  ResMut<RockCrawlTrailState>,
+    mut socket: Option<ResMut<MatchboxSocket>>,
 ) {
     let dt = time.delta_secs();
 
@@ -661,6 +727,30 @@ fn tick_section_timers(
     if state.needs_save {
         state.save();
         state.needs_save = false;
+    }
+
+    // Broadcast leaderboard to all connected peers.
+    if state.needs_broadcast {
+        state.needs_broadcast = false;
+        if let Some(ref mut sock) = socket {
+            let peers: Vec<PeerId> = sock.connected_peers().collect();
+            if !peers.is_empty() {
+                for section in 0..NUM_SECTIONS {
+                    let best = state.records[section].best_s.unwrap_or(f32::MAX);
+                    let pkt = RcLeaderboardPacket {
+                        section: section as u8,
+                        best_time_s: best,
+                    };
+                    if let Ok(payload) = bincode::encode_to_vec(pkt, bincode::config::standard()) {
+                        let mut msg = RC_PREFIX.to_vec();
+                        msg.extend_from_slice(&payload);
+                        for &peer in &peers {
+                            sock.channel_mut(CHANNEL_LEADERBOARD).send(msg.clone().into(), peer);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -765,6 +855,7 @@ fn check_gate_crossings(
                     state.records[idx].best_s = Some(elapsed);
                 }
                 state.needs_save = true;
+                state.needs_broadcast = true;
                 state.active = None;
                 return;
             }
@@ -779,6 +870,47 @@ fn check_gate_crossings(
             }
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// System: recv_rc_leaderboard — receive tagged RC packets on channel 3
+// ---------------------------------------------------------------------------
+
+fn recv_rc_leaderboard(
+    mut socket: Option<ResMut<MatchboxSocket>>,
+    mut lb:     ResMut<RockCrawlLeaderboard>,
+) {
+    let Some(ref mut sock) = socket else { return };
+
+    for (peer_id, bytes) in sock.channel_mut(CHANNEL_LEADERBOARD).receive() {
+        // Check RC prefix.
+        if bytes.len() < RC_PREFIX.len() { continue; }
+        if bytes[..RC_PREFIX.len()] != RC_PREFIX { continue; }
+
+        let payload = &bytes[RC_PREFIX.len()..];
+        let Ok((pkt, _)) = bincode::decode_from_slice::<RcLeaderboardPacket, _>(
+            payload,
+            bincode::config::standard(),
+        ) else {
+            bevy::log::warn!("rock_crawl_trail: leaderboard decode error from {:?}", peer_id);
+            continue;
+        };
+
+        let section = pkt.section as usize;
+        if section >= NUM_SECTIONS { continue; }
+        if pkt.best_time_s < f32::MAX {
+            lb.update(section, peer_id, pkt.best_time_s);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Public helper: trigger a broadcast (called by multiplayer peer-connect hook
+// in a future sprint; wired internally for now via needs_broadcast flag).
+// ---------------------------------------------------------------------------
+#[allow(dead_code)]
+pub fn request_rc_broadcast(state: &mut RockCrawlTrailState) {
+    state.needs_broadcast = true;
 }
 
 // ---------------------------------------------------------------------------

@@ -26,17 +26,68 @@
 //   "OBSTACLE EXPERT  |  12.4s  |  6/16"
 //   On finish: "FINISH  03:12.7  (best 02:58.3)" for ~5 s
 //
+// Sprint 65 — Cross-mode multiplayer leaderboard (Option A).
+//   ObstacleCourseLeaderboard resource stores top-5 peer times per level.
+//   Packets prefixed 0x4F, 0x43 ("OC") on CHANNEL_LEADERBOARD (channel 3).
+//
 // Public API:
 //   ObstacleCoursePlugin
-//   ObstacleCourseState  (Resource)
+//   ObstacleCourseState      (Resource)
+//   ObstacleCourseLeaderboard (Resource)
 
 use bevy::prelude::*;
 use avian3d::prelude::*;
+use bevy_matchbox::prelude::*;
+use bincode::{Decode, Encode};
 
+use crate::hillclimb_tiers::CHANNEL_LEADERBOARD;
+use crate::multiplayer::PeerId;
 use crate::platform_storage;
 use crate::terrain::terrain_height_at;
 use crate::vehicle::{Chassis, VehicleRoot};
 use crate::notifications::NotificationQueue;
+
+// ---------------------------------------------------------------------------
+// Leaderboard wire protocol (Option A — OC-prefixed packet)
+// ---------------------------------------------------------------------------
+
+/// 2-byte magic prefix for Obstacle Course leaderboard packets on CHANNEL_LEADERBOARD.
+const OC_PREFIX: [u8; 2] = [0x4F, 0x43]; // b"OC"
+
+/// Wire packet for one level's personal best.
+#[derive(Encode, Decode, Clone, Copy, Debug)]
+pub struct OcLeaderboardPacket {
+    /// Level index (0–2).
+    pub level: u8,
+    /// Best time in seconds. f32::MAX = no time yet.
+    pub best_time_s: f32,
+}
+
+// ---------------------------------------------------------------------------
+// Per-level leaderboard resource
+// ---------------------------------------------------------------------------
+
+/// Holds up to 5 peer times per level, sorted fastest-first.
+#[derive(Resource, Default)]
+pub struct ObstacleCourseLeaderboard {
+    /// For each level: list of (peer_id, best_s) sorted by best_s ascending.
+    pub entries: [Vec<(PeerId, f32)>; NUM_LEVELS],
+}
+
+impl ObstacleCourseLeaderboard {
+    /// Insert or update a peer's best time for `level`. Keeps top 5.
+    pub fn update(&mut self, level: usize, peer_id: PeerId, best_s: f32) {
+        if level >= NUM_LEVELS { return; }
+        let list = &mut self.entries[level];
+        if let Some(e) = list.iter_mut().find(|e| e.0 == peer_id) {
+            if best_s < e.1 { e.1 = best_s; }
+        } else {
+            list.push((peer_id, best_s));
+        }
+        list.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        list.truncate(5);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Level constants
@@ -165,15 +216,17 @@ pub struct ObstacleCourseState {
     pub active:        Option<ActiveAttempt>,
     pub finish_banner: Option<FinishBanner>,
     needs_save:        bool,
+    needs_broadcast:   bool,
 }
 
 impl Default for ObstacleCourseState {
     fn default() -> Self {
         Self {
-            records:       Default::default(),
-            active:        None,
-            finish_banner: None,
-            needs_save:    false,
+            records:        Default::default(),
+            active:         None,
+            finish_banner:  None,
+            needs_save:     false,
+            needs_broadcast: false,
         }
     }
 }
@@ -259,10 +312,14 @@ impl Plugin for ObstacleCoursePlugin {
         app
             .insert_resource(ObstacleCourseState::load())
             .insert_resource(ObstacleCourseLayout::default())
+            .insert_resource(ObstacleCourseLeaderboard::default())
             .add_systems(
                 Startup,
                 (init_layout, spawn_courses, spawn_hud).chain(),
             )
+            // recv_oc_leaderboard runs in PreUpdate so it drains OC-tagged
+            // packets before hillclimb_tiers.rs consumes them in Update.
+            .add_systems(PreUpdate, recv_oc_leaderboard)
             .add_systems(
                 Update,
                 (
@@ -718,8 +775,9 @@ fn spawn_hud(mut commands: Commands) {
 // ---------------------------------------------------------------------------
 
 fn tick_timer(
-    time:      Res<Time>,
-    mut state: ResMut<ObstacleCourseState>,
+    time:       Res<Time>,
+    mut state:  ResMut<ObstacleCourseState>,
+    mut socket: Option<ResMut<MatchboxSocket>>,
 ) {
     let dt = time.delta_secs();
 
@@ -741,6 +799,30 @@ fn tick_timer(
     if state.needs_save {
         state.save();
         state.needs_save = false;
+    }
+
+    // Broadcast leaderboard to all connected peers.
+    if state.needs_broadcast {
+        state.needs_broadcast = false;
+        if let Some(ref mut sock) = socket {
+            let peers: Vec<PeerId> = sock.connected_peers().collect();
+            if !peers.is_empty() {
+                for level in 0..NUM_LEVELS {
+                    let best = state.records[level].best_s.unwrap_or(f32::MAX);
+                    let pkt = OcLeaderboardPacket {
+                        level: level as u8,
+                        best_time_s: best,
+                    };
+                    if let Ok(payload) = bincode::encode_to_vec(pkt, bincode::config::standard()) {
+                        let mut msg = OC_PREFIX.to_vec();
+                        msg.extend_from_slice(&payload);
+                        for &peer in &peers {
+                            sock.channel_mut(CHANNEL_LEADERBOARD).send(msg.clone().into(), peer);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -836,6 +918,7 @@ fn check_finish(
             state.records[level].best_s = Some(elapsed);
         }
         state.needs_save = true;
+        state.needs_broadcast = true;
 
         let best_s = state.records[level].best_s;
 
@@ -892,6 +975,37 @@ fn update_gate_clears(
         if chassis_x > obs_x + 2.0 {
             attempt.obs_cleared[i] = true;
             attempt.cleared += 1;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// System: recv_oc_leaderboard — receive OC-tagged packets on channel 3
+// ---------------------------------------------------------------------------
+
+fn recv_oc_leaderboard(
+    mut socket: Option<ResMut<MatchboxSocket>>,
+    mut lb:     ResMut<ObstacleCourseLeaderboard>,
+) {
+    let Some(ref mut sock) = socket else { return };
+
+    for (peer_id, bytes) in sock.channel_mut(CHANNEL_LEADERBOARD).receive() {
+        if bytes.len() < OC_PREFIX.len() { continue; }
+        if bytes[..OC_PREFIX.len()] != OC_PREFIX { continue; }
+
+        let payload = &bytes[OC_PREFIX.len()..];
+        let Ok((pkt, _)) = bincode::decode_from_slice::<OcLeaderboardPacket, _>(
+            payload,
+            bincode::config::standard(),
+        ) else {
+            warn!("obstacle_course: leaderboard decode error from {:?}", peer_id);
+            continue;
+        };
+
+        let level = pkt.level as usize;
+        if level >= NUM_LEVELS { continue; }
+        if pkt.best_time_s < f32::MAX {
+            lb.update(level, peer_id, pkt.best_time_s);
         }
     }
 }
