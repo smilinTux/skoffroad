@@ -463,12 +463,15 @@ fn spawn_vehicle(
     // Slightly chunkier so it reads from chase-camera distance.
     let axle_tube_len = (WHEEL_OFFSETS[1].x - WHEEL_OFFSETS[0].x) * 0.92;
     let axle_tube_mesh = meshes.add(Cylinder::new(0.10, axle_tube_len));
+    // Transfer-case output height — used by driveshaft spawn below.
+    let tc_y = axle_y + 0.10;  // just under chassis floor
     for &z in &[WHEEL_OFFSETS[0].z, WHEEL_OFFSETS[2].z] {
-        // Front axle (Dana 30/44/60): diff is visibly offset to the passenger
-        // side because the driveshaft enters from a passenger-side angle.
-        // Rear axle (Dana 44/35): diff is centred on the axle tube.
+        // Front axle (Dana 60): diff offset to the DRIVER side (x = -0.30).
+        // Real Jeep Dana 60 front: diff is on the driver (left) side so the
+        // driveshaft has a straighter run from the driver-side transfer-case output.
+        // Rear axle (Dana 44): diff is centred on the axle tube.
         let is_front = z < 0.0;
-        let diff_x = if is_front { 0.30 } else { 0.0 };
+        let diff_x = if is_front { -0.30 } else { 0.0 };
 
         // Tube
         details.push(commands.spawn((
@@ -485,13 +488,12 @@ fn spawn_vehicle(
             MeshMaterial3d(diff_mat.clone()),
             Transform::from_translation(Vec3::new(diff_x, axle_y - 0.02, z)),
         )).id());
-        // Pinion stub pointing toward where the driveshaft enters.
-        // Front: driveshaft comes from the transfer-case on the passenger side,
-        //   so the pinion angles forward (+Z toward -Z nose) and slightly inboard.
-        // Rear: driveshaft comes straight from the transmission tail-shaft,
-        //   so the pinion points straight forward (centred, no X offset).
+        // Pinion stub pointing toward the transfer case.
+        // Front (diff at x=-0.30): pinion shifts toward x=-0.24 (inboard toward
+        //   chassis center) and angles forward (toward -Z nose).
+        // Rear (diff centred): pinion points straight rearward toward TC.
         let pinion_z_offset = if is_front { 0.18 } else { -0.18 };
-        let pinion_x_offset = if is_front { -0.06 } else { 0.0 }; // slight inboard angle on front
+        let pinion_x_offset = if is_front { 0.06 } else { 0.0 }; // inboard toward center when diff is at -0.30
         details.push(commands.spawn((
             DefaultSkin,
             Mesh3d(meshes.add(Cylinder::new(0.06, 0.22))),
