@@ -1,6 +1,6 @@
 /**
  * skoffroad – mobile touch controls
- * Sprint 62 — v0.25.0
+ * Sprint 62 — v0.25.0  (bugfix: Sprint 66 — Chromium touch emulation fixes)
  *
  * Strategy: synthesise KeyboardEvent dispatches so that Bevy's winit input
  * layer (which reads DOM keyboard events in WASM builds) sees exactly the
@@ -18,6 +18,20 @@
  *   active focus target, which is required for the browser to route real
  *   keyboard events to the element that winit is listening on.
  *
+ * SPRINT 66 FIXES (Chromium iPhone 14 emulation regressions):
+ *   1. setPointerCapture() is wrapped in try/catch — in Chromium touch
+ *      emulation mode Playwright's synthesised pointer events can have a
+ *      pointerId that Chromium considers "inactive" by the time the
+ *      pointerdown handler runs, causing InvalidStateError that silently
+ *      aborted keyDown() before it was called.
+ *   2. KeyboardEvent constructor now includes keyCode / which (legacy fields)
+ *      required by some Chromium / winit code paths that reject events without
+ *      numeric key codes.
+ *   3. Mobile menu overlay (#tc-menu-overlay) is built eagerly at init time
+ *      instead of lazily on first showMenu() call.  Playwright's
+ *      expect(overlay).not.toHaveClass() assertion on a non-existent element
+ *      was hanging waiting for the element to appear in DOM.
+ *
  * This keeps the Rust codebase completely unchanged — drive_input_keyboard
  * continues to work as-is.
  */
@@ -28,6 +42,30 @@
   /* ── Helpers ──────────────────────────────────────────────── */
 
   /**
+   * Legacy keyCode / which values for each KeyboardEvent.code.
+   * Required by winit and some Chromium code paths that reject synthetic events
+   * that lack numeric key codes (Sprint 66 fix).
+   */
+  var KEY_CODE_MAP = {
+    'KeyA': 65, 'KeyB': 66, 'KeyC': 67, 'KeyD': 68,
+    'KeyE': 69, 'KeyF': 70, 'KeyG': 71, 'KeyH': 72,
+    'KeyI': 73, 'KeyJ': 74, 'KeyK': 75, 'KeyL': 76,
+    'KeyM': 77, 'KeyN': 78, 'KeyO': 79, 'KeyP': 80,
+    'KeyQ': 81, 'KeyR': 82, 'KeyS': 83, 'KeyT': 84,
+    'KeyU': 85, 'KeyV': 86, 'KeyW': 87, 'KeyX': 88,
+    'KeyY': 89, 'KeyZ': 90,
+    'Space': 32, 'Tab': 9, 'Escape': 27, 'Enter': 13,
+    'Backspace': 8, 'Delete': 46,
+    'ArrowLeft': 37, 'ArrowUp': 38, 'ArrowRight': 39, 'ArrowDown': 40,
+    'ShiftLeft': 16, 'ShiftRight': 16,
+    'ControlLeft': 17, 'ControlRight': 17,
+    'AltLeft': 18, 'AltRight': 18,
+    'Digit0': 48, 'Digit1': 49, 'Digit2': 50, 'Digit3': 51,
+    'Digit4': 52, 'Digit5': 53, 'Digit6': 54, 'Digit7': 55,
+    'Digit8': 56, 'Digit9': 57,
+  };
+
+  /**
    * Dispatch a synthetic KeyboardEvent on the canvas (#bevy), document, and
    * window.  Dispatching on the canvas is required for Bevy/winit 0.30 because
    * it attaches its keydown/keyup listeners directly to the canvas element.
@@ -36,18 +74,31 @@
    *
    * We call canvas.focus() first so that the browser routes subsequent REAL
    * keyboard events from physical hardware to the correct element too.
+   *
+   * opts may include extra KeyboardEventInit fields (e.g. shiftKey).
    */
   function getCanvas() {
     return document.getElementById('bevy');
   }
 
-  function fireKey(type, code, key) {
+  function fireKey(type, code, key, extraOpts) {
+    var kc = KEY_CODE_MAP[code] || 0;
     var opts = {
       code: code,
       key: key || code,
+      keyCode: kc,
+      which: kc,
       bubbles: true,
       cancelable: true,
     };
+    // Merge any extra options (e.g. shiftKey: true for Shift+Tab).
+    if (extraOpts) {
+      for (var k in extraOpts) {
+        if (Object.prototype.hasOwnProperty.call(extraOpts, k)) {
+          opts[k] = extraOpts[k];
+        }
+      }
+    }
 
     var canvas = getCanvas();
     if (canvas) {
@@ -150,18 +201,12 @@
         hideMenu();
 
         // ShiftM / ShiftTab need a two-event sequence (Shift down, key down, key up, Shift up).
+        // Uses the top-level fireKey() helper so keyCode/which are populated correctly.
         function fireShiftKey(mainCode, mainKey) {
-          var canvas = getCanvas();
-          function fire(type, evCode, evKey, shift) {
-            var opts = { code: evCode, key: evKey, shiftKey: !!shift, bubbles: true, cancelable: true };
-            if (canvas) { try { canvas.focus({ preventScroll: true }); } catch (e) {} canvas.dispatchEvent(new KeyboardEvent(type, opts)); }
-            document.dispatchEvent(new KeyboardEvent(type, opts));
-            window.dispatchEvent(new KeyboardEvent(type, opts));
-          }
-          fire('keydown', 'ShiftLeft', 'Shift', true);
-          fire('keydown', mainCode,     mainKey, true);
-          fire('keyup',   mainCode,     mainKey, true);
-          fire('keyup',   'ShiftLeft', 'Shift', false);
+          fireKey('keydown', 'ShiftLeft', 'Shift', { shiftKey: true });
+          fireKey('keydown', mainCode,    mainKey,  { shiftKey: true });
+          fireKey('keyup',   mainCode,    mainKey,  { shiftKey: true });
+          fireKey('keyup',   'ShiftLeft', 'Shift',  { shiftKey: false });
         }
         if (special === 'ShiftM') {
           fireShiftKey('KeyM', 'M');
@@ -190,23 +235,23 @@
     return overlay;
   }
 
+  // _menuOverlay is set to the DOM element during init() — see initMenu().
+  // It is NOT lazily built because the Playwright test asserts
+  // `expect('#tc-menu-overlay').not.toHaveClass(/tc-menu-open/)` BEFORE
+  // tapping the MENU button; a lazy build would leave the element absent from
+  // DOM and cause the assertion to hang (Sprint 66 fix).
   var _menuOverlay = null;
 
-  function getMenu() {
-    if (!_menuOverlay) {
-      _menuOverlay = buildMobileMenu();
-    }
-    return _menuOverlay;
+  function initMenu() {
+    _menuOverlay = buildMobileMenu();
   }
 
   function showMenu() {
-    var m = getMenu();
-    m.classList.add('tc-menu-open');
+    if (_menuOverlay) _menuOverlay.classList.add('tc-menu-open');
   }
 
   function hideMenu() {
-    var m = getMenu();
-    m.classList.remove('tc-menu-open');
+    if (_menuOverlay) _menuOverlay.classList.remove('tc-menu-open');
   }
 
   /* ── Build DOM ────────────────────────────────────────────── */
@@ -265,7 +310,11 @@
       // All buttons: keydown on pointerdown, keyup on release/cancel/leave.
       btn.addEventListener('pointerdown', function (e) {
         e.preventDefault();
-        btn.setPointerCapture(e.pointerId);
+        // setPointerCapture can throw InvalidStateError in Chromium touch
+        // emulation when the synthesised pointerId is not "active" at the time
+        // the handler runs (Sprint 66 fix: guard with try/catch so keyDown()
+        // is always called even if capture fails).
+        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
         btn.classList.add('tc-pressed');
         keyDown(code, key || code);
       });
@@ -422,7 +471,9 @@
     zone.addEventListener('pointerdown', function (e) {
       if (activeTouchId !== null) return; // single-touch only
       e.preventDefault();
-      zone.setPointerCapture(e.pointerId);
+      // Guard with try/catch for the same reason as button setPointerCapture
+      // (Sprint 66 fix: Chromium touch emulation may throw InvalidStateError).
+      try { zone.setPointerCapture(e.pointerId); } catch (_) {}
       activeTouchId = e.pointerId;
       var center = getZoneCenter();
       originX = center.cx;
@@ -473,6 +524,10 @@
     var overlayRoot = buildOverlay();
     buildToggle(overlayRoot);
     initJoystick(overlayRoot);
+
+    // Build the mobile menu overlay eagerly so #tc-menu-overlay is present in
+    // the DOM from the start (Sprint 66: fixes Playwright assertion on absent element).
+    initMenu();
 
     if (isTouchDevice) {
       // Prevent the browser's default scroll/zoom on the canvas so touch
