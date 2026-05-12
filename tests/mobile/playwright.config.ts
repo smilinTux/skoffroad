@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
 
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: process.env['PLAYWRIGHT_BASE_URL'] || 'http://localhost:8080',
     // iPhone 14 profile: viewport 390x844, touch events, mobile UA
     ...devices['iPhone 14'],
     // Allow slow WASM load
