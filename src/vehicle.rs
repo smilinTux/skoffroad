@@ -506,6 +506,76 @@ fn spawn_vehicle(
         )).id());
     }
 
+    // ----- Driveshafts (front + rear) ------------------------------------------
+    //
+    // Each shaft is a narrow cylinder running from the transfer-case output
+    // (slightly above the axle line at chassis center) to the pinion stub end
+    // on each axle.  Purely cosmetic — no collider.  Both get DefaultSkin so
+    // they're despawned on respawn like every other detail.
+    let ds_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.30, 0.30, 0.30),
+        perceptual_roughness: 0.50,
+        metallic: 0.85,
+        ..default()
+    });
+    let ujoint_mat = ds_mat.clone();
+
+    // Front driveshaft: TC (at chassis center, tc_y) → front pinion stub.
+    // Front pinion is at (-0.24, axle_y-0.02, front_z+0.18).
+    {
+        let front_z    = WHEEL_OFFSETS[0].z;   // -1.4
+        let pinion_end = Vec3::new(-0.24, axle_y - 0.02, front_z + 0.18);
+        let tc_end     = Vec3::new( 0.0,  tc_y,           front_z + 0.18);
+        let shaft_vec  = pinion_end - tc_end;
+        let shaft_len  = shaft_vec.length();
+        let shaft_dir  = shaft_vec / shaft_len.max(1e-4);
+        let shaft_mid  = (tc_end + pinion_end) * 0.5;
+        let shaft_rot  = Quat::from_rotation_arc(Vec3::Y, shaft_dir);
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.04, shaft_len))),
+            MeshMaterial3d(ds_mat.clone()),
+            Transform::from_translation(shaft_mid).with_rotation(shaft_rot),
+        )).id());
+        // U-joint spheres at each end.
+        for &end in &[tc_end, pinion_end] {
+            details.push(commands.spawn((
+                DefaultSkin,
+                Mesh3d(meshes.add(Sphere::new(0.05))),
+                MeshMaterial3d(ujoint_mat.clone()),
+                Transform::from_translation(end),
+            )).id());
+        }
+    }
+
+    // Rear driveshaft: TC → rear pinion stub.
+    // Rear diff is centred (diff_x=0, pinion_x_offset=0, pinion_z_offset=-0.18).
+    {
+        let rear_z     = WHEEL_OFFSETS[2].z;  // +1.4
+        let pinion_end = Vec3::new(0.0, axle_y - 0.02, rear_z - 0.18);
+        let tc_end     = Vec3::new(0.0, tc_y,           rear_z - 0.18);
+        let shaft_vec  = pinion_end - tc_end;
+        let shaft_len  = shaft_vec.length();
+        let shaft_dir  = shaft_vec / shaft_len.max(1e-4);
+        let shaft_mid  = (tc_end + pinion_end) * 0.5;
+        let shaft_rot  = Quat::from_rotation_arc(Vec3::Y, shaft_dir);
+        details.push(commands.spawn((
+            DefaultSkin,
+            Mesh3d(meshes.add(Cylinder::new(0.04, shaft_len))),
+            MeshMaterial3d(ds_mat.clone()),
+            Transform::from_translation(shaft_mid).with_rotation(shaft_rot),
+        )).id());
+        for &end in &[tc_end, pinion_end] {
+            details.push(commands.spawn((
+                DefaultSkin,
+                Mesh3d(meshes.add(Sphere::new(0.05))),
+                MeshMaterial3d(ujoint_mat.clone()),
+                Transform::from_translation(end),
+            )).id());
+        }
+    }
+    // -------------------------------------------------------------------------
+
     // Long-arm control arms — visible diagonal bars running from the chassis
     // frame mount (mid-chassis) back/down to the axle attach point near each
     // wheel hub. Real long-arm kits have two per wheel (lower + upper); we draw
