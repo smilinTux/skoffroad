@@ -4,6 +4,7 @@ use avian3d::prelude::*;
 use skoffroad::{
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin,
+    TireRoostPlugin,
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
@@ -392,6 +393,8 @@ fn main() {
         .add_plugins(VoicePlugin)
         .add_plugins(SpectatePlugin)
         .add_plugins(BuddyRecoveryPlugin)
+        // Sprint 67 Effect 1: tire roost debris chunks
+        .add_plugins(TireRoostPlugin)
         // Monetization: BrandPackPlugin must load before SponsorScatterPlugin
         // so the Startup spawn system sees the active pack. WalletPlugin and
         // AdSdkPlugin are independent.

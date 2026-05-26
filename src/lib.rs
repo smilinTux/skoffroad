@@ -190,6 +190,8 @@ pub mod terrain_splatmap;
 pub mod theme;
 pub mod time_trial;
 pub mod tire_pressure;
+pub mod tire_roost;
+pub use tire_roost::{TireRoostPlugin, RoostState};
 pub mod tire_smoke;
 pub mod tire_squash;
 pub mod traffic;
