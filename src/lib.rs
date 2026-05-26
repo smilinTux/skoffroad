@@ -40,6 +40,8 @@ pub use brake_glow::{BrakeGlowPlugin, BrakeRotorState};
 pub mod breadcrumbs;
 pub mod camera;
 pub mod camera_modes;
+pub mod chassis_mud;
+pub use chassis_mud::{ChassisMudPlugin, ChassisMudState};
 pub mod campfires;
 pub mod career;
 pub mod challenges;

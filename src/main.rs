@@ -8,6 +8,7 @@ use skoffroad::{
     HeadlightBeamsPlugin,
     BrakeGlowPlugin,
     UnderbodySparksPlugin,
+    ChassisMudPlugin,
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
@@ -404,6 +405,8 @@ fn main() {
         .add_plugins(BrakeGlowPlugin)
         // Sprint 67 Effect 4: underbody contact sparks
         .add_plugins(UnderbodySparksPlugin)
+        // Sprint 67 Effect 5: persistent chassis mud streaks
+        .add_plugins(ChassisMudPlugin)
         // Monetization: BrandPackPlugin must load before SponsorScatterPlugin
         // so the Startup spawn system sees the active pack. WalletPlugin and
         // AdSdkPlugin are independent.
