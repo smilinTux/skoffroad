@@ -5,6 +5,7 @@ use skoffroad::{
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin,
     TireRoostPlugin,
+    HeadlightBeamsPlugin,
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
@@ -395,6 +396,8 @@ fn main() {
         .add_plugins(BuddyRecoveryPlugin)
         // Sprint 67 Effect 1: tire roost debris chunks
         .add_plugins(TireRoostPlugin)
+        // Sprint 67 Effect 2: volumetric headlight beam cones
+        .add_plugins(HeadlightBeamsPlugin)
         // Monetization: BrandPackPlugin must load before SponsorScatterPlugin
         // so the Startup spawn system sees the active pack. WalletPlugin and
         // AdSdkPlugin are independent.

@@ -94,6 +94,8 @@ pub mod grass_tufts;
 pub mod ground_ruts;
 pub mod headless;
 pub mod heat_haze;
+pub mod headlight_beams;
+pub use headlight_beams::HeadlightBeamsPlugin;
 pub mod headlights;
 pub mod heightmap_loader;
 pub mod help;
