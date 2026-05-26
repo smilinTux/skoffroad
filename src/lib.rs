@@ -35,6 +35,8 @@ pub mod biome_desert;
 pub mod bloom_pp;
 pub mod boats;
 pub mod boost;
+pub mod brake_glow;
+pub use brake_glow::{BrakeGlowPlugin, BrakeRotorState};
 pub mod breadcrumbs;
 pub mod camera;
 pub mod camera_modes;

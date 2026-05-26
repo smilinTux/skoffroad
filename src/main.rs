@@ -6,6 +6,7 @@ use skoffroad::{
     BuddyRecoveryPlugin,
     TireRoostPlugin,
     HeadlightBeamsPlugin,
+    BrakeGlowPlugin,
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
@@ -398,6 +399,8 @@ fn main() {
         .add_plugins(TireRoostPlugin)
         // Sprint 67 Effect 2: volumetric headlight beam cones
         .add_plugins(HeadlightBeamsPlugin)
+        // Sprint 67 Effect 3: brake rotor glow
+        .add_plugins(BrakeGlowPlugin)
         // Monetization: BrandPackPlugin must load before SponsorScatterPlugin
         // so the Startup spawn system sees the active pack. WalletPlugin and
         // AdSdkPlugin are independent.
