@@ -207,6 +207,8 @@ pub mod tree_variants;
 pub mod trial;
 pub mod truck_bed_cargo;
 pub mod tutorial;
+pub mod underbody_sparks;
+pub use underbody_sparks::UnderbodySparksPlugin;
 pub mod ufo;
 pub mod unlocks;
 pub mod variants;
