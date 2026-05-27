@@ -632,14 +632,70 @@ fn spawn_obstacle_course_dressing(
 }
 
 // ---------------------------------------------------------------------------
-// Area 4 — Trail Rides  (stub — filled in next commit)
+// Area 4 — Trail Rides
 // ---------------------------------------------------------------------------
+//
+// 5 trail markers in a line from spawn (origin) toward +X, spaced 30 m apart.
+// Each marker: tall thin cylinder (pole) + small cuboid flag on top.
+//
+// Total: 5 × 2 = 10 entities, all with colliders.
 
 fn spawn_trail_ride_dressing(
-    _commands:  Commands,
-    _meshes:    ResMut<Assets<Mesh>>,
-    _materials: ResMut<Assets<StandardMaterial>>,
+    mut commands:  Commands,
+    mut meshes:    ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let pole_mat = materials.add(StandardMaterial {
+        base_color: METAL_COLOR,
+        perceptual_roughness: 0.6,
+        ..default()
+    });
+    let flag_mat = materials.add(StandardMaterial {
+        base_color: TRAIL_MARKER_COLOR,
+        perceptual_roughness: 0.45,
+        emissive: LinearRgba::rgb(0.05, 0.18, 0.40),
+        ..default()
+    });
+
+    let pole_mesh = meshes.add(Cylinder::new(0.07, 3.0));
+    let flag_mesh = meshes.add(Cuboid::new(0.55, 0.30, 0.06));
+
+    const SPAWN_X: f32 = 15.0; // offset from origin so it's not inside the hut
+    const SPAWN_Z: f32 = 8.0;
+    const SPACING: f32 = 30.0;
+    const NUM_MARKERS: usize = 5;
+
+    let mut prop_count = 0usize;
+
+    for i in 0..NUM_MARKERS {
+        let mx = SPAWN_X + (i as f32) * SPACING;
+        let mz = SPAWN_Z;
+
+        // Pole
+        commands.spawn((
+            MapProp,
+            Mesh3d(pole_mesh.clone()),
+            MeshMaterial3d(pole_mat.clone()),
+            Transform::from_xyz(mx, 1.5, mz),
+            RigidBody::Static,
+            Collider::cylinder(0.07, 1.5),
+        ));
+        // Flag
+        commands.spawn((
+            MapProp,
+            Mesh3d(flag_mesh.clone()),
+            MeshMaterial3d(flag_mat.clone()),
+            Transform::from_xyz(mx + 0.32, 3.15, mz),
+            RigidBody::Static,
+            Collider::cuboid(0.275, 0.15, 0.03),
+        ));
+        prop_count += 2;
+    }
+
+    info!(
+        "map_dressing: Area 4 (Trail Rides) — {} props, all with colliders",
+        prop_count
+    );
 }
 
 // ---------------------------------------------------------------------------
