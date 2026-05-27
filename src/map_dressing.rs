@@ -266,14 +266,191 @@ fn spawn_hillclimb_dressing(
 }
 
 // ---------------------------------------------------------------------------
-// Area 2 — Rock Crawl Trail  (stub — filled in next commit)
+// Area 2 — Rock Crawl Trail
 // ---------------------------------------------------------------------------
+//
+// Sections: (120,0)=Boulder Stairs, (-80,80)=Two-Log Bridge, (60,-120)=Off-Camber
+//
+// Props:
+//   • Cairn at each section start  (4 spheres × 3)          = 12 spheres
+//   • Approach bridge at Two-Log Bridge (4 planks + 4 legs) =  8 entities
+//   • Trail sign at each section (body + 2 posts × 3)       =  9 entities
+//   • Loose boulders between sections (7 spheres)           =  7 spheres
+//
+// Total: 36 entities, all with colliders.
+
+const RC_CX: [f32; 3] = [120.0, -80.0,  60.0];
+const RC_CZ: [f32; 3] = [  0.0,  80.0, -120.0];
+const RC_NAMES: [&str; 3] = ["BOULDER STAIRS", "TWO-LOG BRIDGE", "OFF-CAMBER"];
+// Corridor half-lengths from rock_crawl_trail.rs.
+const RC_HALF: [f32; 3] = [18.0, 10.0, 22.0];
 
 fn spawn_rock_crawl_dressing(
-    _commands:  Commands,
-    _meshes:    ResMut<Assets<Mesh>>,
-    _materials: ResMut<Assets<StandardMaterial>>,
+    mut commands:  Commands,
+    mut meshes:    ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let rock_mat = materials.add(StandardMaterial {
+        base_color: GRANITE_COLOR,
+        perceptual_roughness: 0.97,
+        ..default()
+    });
+    let wood_mat = materials.add(StandardMaterial {
+        base_color: WOOD_COLOR,
+        perceptual_roughness: 0.90,
+        ..default()
+    });
+    let sign_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.82, 0.72, 0.52),
+        perceptual_roughness: 0.80,
+        emissive: LinearRgba::rgb(0.15, 0.10, 0.04),
+        ..default()
+    });
+    let sign_post_mat = materials.add(StandardMaterial {
+        base_color: WOOD_COLOR,
+        perceptual_roughness: 0.92,
+        ..default()
+    });
+
+    let cairn_sphere_mesh  = meshes.add(Sphere::new(0.22));
+    let sign_body_mesh     = meshes.add(Cuboid::new(2.2, 0.7, 0.10));
+    let sign_post_mesh     = meshes.add(Cylinder::new(0.055, 1.4));
+    let plank_mesh         = meshes.add(Cuboid::new(3.6, 0.12, 0.55));
+    let leg_mesh           = meshes.add(Cylinder::new(0.07, 0.6));
+
+    let mut prop_count = 0usize;
+
+    // ---- CAIRN + TRAIL SIGN at each section start ----
+    for (sec, (&cx, &cz)) in RC_CX.iter().zip(RC_CZ.iter()).enumerate() {
+        let start_x = cx - RC_HALF[sec] - 2.0; // just before the start gate
+        let scy = 0.0_f32; // we ignore terrain_height_at to keep the plugin simple
+
+        // Cairn: 3 spheres bottom row + 1 on top.
+        let cairn_offsets: [(f32, f32, f32); 4] = [
+            (-0.28, 0.22, -0.18),
+            ( 0.28, 0.22,  0.15),
+            ( 0.0,  0.22,  0.28),
+            ( 0.0,  0.60,  0.05),
+        ];
+        for (dx, dy, dz) in cairn_offsets {
+            commands.spawn((
+                MapProp,
+                Mesh3d(cairn_sphere_mesh.clone()),
+                MeshMaterial3d(rock_mat.clone()),
+                Transform::from_xyz(start_x + dx, scy + dy, cz + dz + 4.0),
+                RigidBody::Static,
+                Collider::sphere(0.22),
+            ));
+            prop_count += 1;
+        }
+
+        // Trail sign.
+        let sign_x = start_x - 1.5;
+        let sign_y = 2.0_f32;
+        // Body
+        commands.spawn((
+            MapProp,
+            Mesh3d(sign_body_mesh.clone()),
+            MeshMaterial3d(sign_mat.clone()),
+            Transform::from_xyz(sign_x, scy + sign_y, cz),
+            RigidBody::Static,
+            Collider::cuboid(1.1, 0.35, 0.05),
+        ));
+        // Left post
+        commands.spawn((
+            MapProp,
+            Mesh3d(sign_post_mesh.clone()),
+            MeshMaterial3d(sign_post_mat.clone()),
+            Transform::from_xyz(sign_x - 0.85, scy + sign_y - 0.8, cz),
+            RigidBody::Static,
+            Collider::cylinder(0.055, 0.7),
+        ));
+        // Right post
+        commands.spawn((
+            MapProp,
+            Mesh3d(sign_post_mesh.clone()),
+            MeshMaterial3d(sign_post_mat.clone()),
+            Transform::from_xyz(sign_x + 0.85, scy + sign_y - 0.8, cz),
+            RigidBody::Static,
+            Collider::cylinder(0.055, 0.7),
+        ));
+        prop_count += 3;
+
+        let _ = RC_NAMES[sec]; // used for reference / future text overlay
+    }
+
+    // ---- APPROACH BRIDGE at Two-Log Bridge section ----
+    // Section 1: (-80, _, 80). Approach bridge on the entry side (X < -90).
+    {
+        let bridge_base_x = RC_CX[1] - RC_HALF[1] - 8.0; // ~-98 m
+        let bz             = RC_CZ[1]; // 80
+        let by             = 0.10_f32;
+
+        // 4 planks spanning the approach.
+        for i in 0..4usize {
+            let px = bridge_base_x + (i as f32) * 3.8;
+            commands.spawn((
+                MapProp,
+                Mesh3d(plank_mesh.clone()),
+                MeshMaterial3d(wood_mat.clone()),
+                Transform::from_xyz(px, by + 0.55, bz),
+                RigidBody::Static,
+                Collider::cuboid(1.8, 0.06, 0.275),
+            ));
+            prop_count += 1;
+        }
+
+        // 4 short post legs under the planks.
+        let leg_positions: [(f32, f32); 4] = [
+            (bridge_base_x,          bz - 1.2),
+            (bridge_base_x,          bz + 1.2),
+            (bridge_base_x + 11.4,   bz - 1.2),
+            (bridge_base_x + 11.4,   bz + 1.2),
+        ];
+        for (lx, lz) in leg_positions {
+            commands.spawn((
+                MapProp,
+                Mesh3d(leg_mesh.clone()),
+                MeshMaterial3d(wood_mat.clone()),
+                Transform::from_xyz(lx, by + 0.28, lz),
+                RigidBody::Static,
+                Collider::cylinder(0.07, 0.28),
+            ));
+            prop_count += 1;
+        }
+    }
+
+    // ---- LOOSE BOULDERS between sections for visual continuity ----
+    // Deterministic positions (no rand — constant array).
+    let boulder_data: [(f32, f32, f32); 7] = [
+        ( 50.0, 0.35,  35.0),
+        (-20.0, 0.42,  50.0),
+        ( 80.0, 0.28, -30.0),
+        (-50.0, 0.50,  -5.0),
+        ( 30.0, 0.38,  65.0),
+        (-10.0, 0.30, -80.0),
+        ( 10.0, 0.45,  20.0),
+    ];
+    let boulder_radii: [f32; 7] = [0.55, 0.70, 0.42, 0.65, 0.50, 0.60, 0.38];
+
+    for (i, &(bx, by, bz)) in boulder_data.iter().enumerate() {
+        let r = boulder_radii[i];
+        let sphere_mesh = meshes.add(Sphere::new(r));
+        commands.spawn((
+            MapProp,
+            Mesh3d(sphere_mesh),
+            MeshMaterial3d(rock_mat.clone()),
+            Transform::from_xyz(bx, by, bz),
+            RigidBody::Static,
+            Collider::sphere(r),
+        ));
+        prop_count += 1;
+    }
+
+    info!(
+        "map_dressing: Area 2 (Rock Crawl Trail) — {} props, all with colliders",
+        prop_count
+    );
 }
 
 // ---------------------------------------------------------------------------
