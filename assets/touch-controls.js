@@ -171,6 +171,7 @@
       ['🏆', 'Hillclimb Leaderboard (H)', 'KeyH',           'h',  null],
       ['🗺️', 'Custom Map (drag-drop)',    'KeyM',           'm',  null],
       ['🎤', 'Voice / Webcam (Q)',        'KeyQ',           'q',  null],
+      ['🏗️', 'Garage / Build Rig (Shift+G)', 'KeyG',          'g',  'ShiftG'],
       ['🎯', 'Mission Select (Shift+Tab)','Tab',            'Tab', 'ShiftTab'],
       ['❓', 'Help (Esc)',               'Escape',         'Escape', null],
     ];
