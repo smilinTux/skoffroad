@@ -307,6 +307,15 @@ pub use parody_brands::{
 };
 pub use ad_signage::AdSignagePlugin;
 
+// ---- Sprint 72 — Truck sponsor liveries ------------------------------------
+// Five curated livery presets apply parody-brand decal plates to named body
+// panels.  Shift+L cycles presets; selection persists to platform_storage.
+pub mod sponsor_livery;
+pub use sponsor_livery::{
+    BodyPanel, LiveryAttached, Placement, SponsorLiveryPlugin, SponsorLiveryState,
+    LIVERY_PRESETS,
+};
+
 pub use audio::AudioPlugin;
 pub use camera::CameraPlugin;
 pub use compass::CompassPlugin;
