@@ -69,6 +69,8 @@ use skoffroad::{
     PostFxPlugin,
     // Monetization stack: brand-pack-driven sponsor placements, wallet, ad SDK.
     BrandPackPlugin, WalletPlugin, AdSdkPlugin, SponsorScatterPlugin,
+    // Sprint 71: parody brand catalog + in-game ad signage.
+    ParodyBrandsPlugin, AdSignagePlugin,
     // Sprint 70: environmental realism effects
     RainSplashPlugin, SnowAccumPlugin, FogVolumetricPlugin, WetGroundPlugin, CrittersPlugin,
 };
@@ -423,6 +425,11 @@ fn main() {
             AdSdkPlugin,
             SponsorScatterPlugin,
         ))
+        // Sprint 71: Parody brand catalog + in-game ad signage.
+        // ParodyBrandsPlugin must register before AdSignagePlugin so the
+        // ParodyBrands resource exists when Startup sign systems run.
+        .add_plugins(ParodyBrandsPlugin)
+        .add_plugins(AdSignagePlugin)
         // Sprint 70: five environmental realism effects.
         .add_plugins((
             RainSplashPlugin,

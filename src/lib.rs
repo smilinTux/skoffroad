@@ -294,6 +294,19 @@ pub use wallet::{Inventory, Wallet, WalletPlugin};
 pub use ad_sdk_bridge::{AdRequest, AdResult, AdSdkPlugin};
 pub use sponsor_scatter::{SponsorAnalytics, SponsorBillboard, SponsorScatterPlugin};
 
+// ---- Sprint 71 — Parody brand catalog + in-game ad signage -----------------
+// ParodyBrands resource is the canonical 12-brand catalog consumed by Sprint
+// 72 truck liveries and Sprint 73 garage display.  AdSignagePlugin places
+// ~50 signs (billboards, gate banners, trailside signs, fence banners,
+// stadium boards) using brands from that catalog.
+pub mod parody_brands;
+pub mod ad_signage;
+pub use parody_brands::{
+    AdSign, BrandCategory, ParodyBrand, ParodyBrands, ParodyBrandsPlugin,
+    brand_primary_color, brand_secondary_color, pick_brand, brand_hash,
+};
+pub use ad_signage::AdSignagePlugin;
+
 pub use audio::AudioPlugin;
 pub use camera::CameraPlugin;
 pub use compass::CompassPlugin;
