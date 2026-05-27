@@ -699,14 +699,234 @@ fn spawn_trail_ride_dressing(
 }
 
 // ---------------------------------------------------------------------------
-// Area 5 — Default Spawn Area  (stub — filled in next commit)
+// Area 5 — Default Spawn Area (origin)
 // ---------------------------------------------------------------------------
+//
+// Props:
+//   • Ranger hut: base + roof + door + window               = 4 entities
+//   • Weather station: pole + 2 arms + wind vane            = 4 entities
+//   • 3 parked Jeep silhouettes: body each                  = 3 entities
+//   • 4 campfire spots: 3 logs + emissive cone              = 4 × 4 = 16 entities
+//
+// Total: 4 + 4 + 3 + 16 = 27 entities, all with colliders.
 
 fn spawn_spawn_area_dressing(
-    _commands:  Commands,
-    _meshes:    ResMut<Assets<Mesh>>,
-    _materials: ResMut<Assets<StandardMaterial>>,
+    mut commands:  Commands,
+    mut meshes:    ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let log_mat = materials.add(StandardMaterial {
+        base_color: LOG_BROWN,
+        perceptual_roughness: 0.95,
+        ..default()
+    });
+    let metal_mat_res = materials.add(StandardMaterial {
+        base_color: METAL_COLOR,
+        perceptual_roughness: 0.62,
+        metallic: 0.6,
+        ..default()
+    });
+    let rig_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.22, 0.18, 0.14),
+        perceptual_roughness: 0.88,
+        ..default()
+    });
+    let fire_log_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.30, 0.18, 0.08),
+        perceptual_roughness: 0.96,
+        ..default()
+    });
+    let flame_mat = materials.add(StandardMaterial {
+        base_color: FLAME_COLOR,
+        emissive: LinearRgba::rgb(1.5, 0.5, 0.05),
+        perceptual_roughness: 0.4,
+        ..default()
+    });
+    let window_mat = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.50, 0.70, 0.90, 0.65),
+        alpha_mode: AlphaMode::Blend,
+        perceptual_roughness: 0.05,
+        metallic: 0.8,
+        ..default()
+    });
+
+    // Meshes.
+    let hut_base_mesh  = meshes.add(Cuboid::new(5.0, 3.0, 4.0));
+    let hut_roof_mesh  = meshes.add(Cuboid::new(5.6, 0.5, 4.6));
+    let hut_door_mesh  = meshes.add(Cuboid::new(0.9, 1.8, 0.15));
+    let hut_win_mesh   = meshes.add(Cuboid::new(0.8, 0.7, 0.12));
+    let w_pole_mesh    = meshes.add(Cylinder::new(0.06, 4.0));
+    let w_arm_mesh     = meshes.add(Cuboid::new(1.2, 0.08, 0.08));
+    let w_vane_mesh    = meshes.add(Cuboid::new(0.55, 0.25, 0.04));
+    let rig_body_mesh  = meshes.add(Cuboid::new(2.8, 1.1, 1.6));
+    let fire_log_mesh  = meshes.add(Cuboid::new(1.2, 0.14, 0.14));
+    let flame_mesh     = meshes.add(Cone { radius: 0.22, height: 0.55 });
+
+    let mut prop_count = 0usize;
+
+    // ====== RANGER HUT (centre at (-20, 0, -15)) ======
+    let hut_x = -20.0_f32;
+    let hut_z = -15.0_f32;
+
+    // Base / walls
+    commands.spawn((
+        MapProp,
+        Mesh3d(hut_base_mesh.clone()),
+        MeshMaterial3d(log_mat.clone()),
+        Transform::from_xyz(hut_x, 1.5, hut_z),
+        RigidBody::Static,
+        Collider::cuboid(2.5, 1.5, 2.0),
+    ));
+    // Roof (slightly overhanging)
+    commands.spawn((
+        MapProp,
+        Mesh3d(hut_roof_mesh.clone()),
+        MeshMaterial3d(log_mat.clone()),
+        Transform {
+            translation: Vec3::new(hut_x, 3.25, hut_z),
+            rotation: Quat::from_rotation_z(0.35), // sloped
+            scale: Vec3::ONE,
+        },
+        RigidBody::Static,
+        Collider::cuboid(2.8, 0.25, 2.3),
+    ));
+    // Door
+    commands.spawn((
+        MapProp,
+        Mesh3d(hut_door_mesh.clone()),
+        MeshMaterial3d(log_mat.clone()),
+        Transform::from_xyz(hut_x + 1.5, 0.9, hut_z + 2.075),
+        RigidBody::Static,
+        Collider::cuboid(0.45, 0.9, 0.075),
+    ));
+    // Window
+    commands.spawn((
+        MapProp,
+        Mesh3d(hut_win_mesh.clone()),
+        MeshMaterial3d(window_mat.clone()),
+        Transform::from_xyz(hut_x - 1.0, 1.8, hut_z + 2.075),
+        RigidBody::Static,
+        Collider::cuboid(0.40, 0.35, 0.06),
+    ));
+    prop_count += 4;
+
+    // ====== WEATHER STATION (centre at (-10, 0, -12)) ======
+    let wx = -10.0_f32;
+    let wz = -12.0_f32;
+
+    // Vertical pole
+    commands.spawn((
+        MapProp,
+        Mesh3d(w_pole_mesh.clone()),
+        MeshMaterial3d(metal_mat_res.clone()),
+        Transform::from_xyz(wx, 2.0, wz),
+        RigidBody::Static,
+        Collider::cylinder(0.06, 2.0),
+    ));
+    // Horizontal arm 1 (along X)
+    commands.spawn((
+        MapProp,
+        Mesh3d(w_arm_mesh.clone()),
+        MeshMaterial3d(metal_mat_res.clone()),
+        Transform::from_xyz(wx, 3.9, wz),
+        RigidBody::Static,
+        Collider::cuboid(0.6, 0.04, 0.04),
+    ));
+    // Horizontal arm 2 (along Z)
+    commands.spawn((
+        MapProp,
+        Mesh3d(w_arm_mesh.clone()),
+        MeshMaterial3d(metal_mat_res.clone()),
+        Transform {
+            translation: Vec3::new(wx, 3.6, wz),
+            rotation: Quat::from_rotation_y(std::f32::consts::FRAC_PI_2),
+            scale: Vec3::ONE,
+        },
+        RigidBody::Static,
+        Collider::cuboid(0.6, 0.04, 0.04),
+    ));
+    // Wind vane (small triangle flag — static for v1)
+    commands.spawn((
+        MapProp,
+        Mesh3d(w_vane_mesh.clone()),
+        MeshMaterial3d(metal_mat_res.clone()),
+        Transform::from_xyz(wx + 0.6, 4.1, wz),
+        RigidBody::Static,
+        Collider::cuboid(0.275, 0.125, 0.02),
+    ));
+    prop_count += 4;
+
+    // ====== PARKED RIGS (3 Jeep silhouettes) ======
+    let rig_spawns: [(f32, f32, f32); 3] = [
+        (-12.0, 0.55, -6.0),
+        (-16.0, 0.55,  2.0),
+        ( -6.0, 0.55, -3.0),
+    ];
+    let rig_yaws: [f32; 3] = [0.45, -0.80, 1.20];
+
+    for (i, &(rx, ry, rz)) in rig_spawns.iter().enumerate() {
+        commands.spawn((
+            MapProp,
+            Mesh3d(rig_body_mesh.clone()),
+            MeshMaterial3d(rig_mat.clone()),
+            Transform {
+                translation: Vec3::new(rx, ry, rz),
+                rotation: Quat::from_rotation_y(rig_yaws[i]),
+                scale: Vec3::ONE,
+            },
+            RigidBody::Static,
+            Collider::cuboid(1.4, 0.55, 0.8),
+        ));
+        prop_count += 1;
+    }
+
+    // ====== CAMPFIRES (4 spots) ======
+    let campfire_spawns: [(f32, f32); 4] = [
+        (-8.0,   5.0),
+        (-24.0, -8.0),
+        (-14.0, 10.0),
+        ( -4.0, -8.0),
+    ];
+
+    // Log orientations (3 logs per fire = 3 different yaw angles).
+    let log_yaws: [f32; 3] = [0.0, 1.05, -1.05];
+
+    for &(cfx, cfz) in &campfire_spawns {
+        // 3 logs arranged in a star pattern.
+        for (j, &yaw) in log_yaws.iter().enumerate() {
+            let offset_x = yaw.cos() * 0.3;
+            let offset_z = yaw.sin() * 0.3;
+            commands.spawn((
+                MapProp,
+                Mesh3d(fire_log_mesh.clone()),
+                MeshMaterial3d(fire_log_mat.clone()),
+                Transform {
+                    translation: Vec3::new(cfx + offset_x, 0.07 + j as f32 * 0.06, cfz + offset_z),
+                    rotation: Quat::from_rotation_y(yaw),
+                    scale: Vec3::ONE,
+                },
+                RigidBody::Static,
+                Collider::cuboid(0.6, 0.07, 0.07),
+            ));
+            prop_count += 1;
+        }
+
+        // Emissive flame cone on top of logs.
+        commands.spawn((
+            MapProp,
+            Mesh3d(flame_mesh.clone()),
+            MeshMaterial3d(flame_mat.clone()),
+            Transform::from_xyz(cfx, 0.28, cfz),
+            RigidBody::Static,
+            Collider::sphere(0.22),
+        ));
+        prop_count += 1;
+    }
+
+    info!(
+        "map_dressing: Area 5 (Spawn Area) — {} props, all with colliders",
+        prop_count
+    );
 }
 
 // ---------------------------------------------------------------------------
