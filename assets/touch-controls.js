@@ -374,6 +374,77 @@
     return root;
   }
 
+  /* ── Mission-select ≡ top-right button ───────────────────── */
+
+  /**
+   * Build the floating ≡ mission-select button fixed to the top-right corner
+   * of the viewport (Sprint 68).
+   *
+   * Behaviour:
+   *   - On touch devices: always visible.
+   *   - On desktop: fades in only when Shift is held OR when the cursor
+   *     enters the top-right hover zone (within 80 px of the right edge and
+   *     60 px of the top edge).  Fades out when both conditions are released.
+   *   - Tap/click fires Shift+Tab (opens/closes Mission Select overlay).
+   */
+  function buildMsBtn() {
+    var btn = document.createElement('button');
+    btn.id = 'tc-ms-btn';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Mission Select (Shift+Tab)');
+    btn.textContent = '≡';
+
+    btn.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      // fireShiftKey is defined locally inside the menu item handler,
+      // so we replicate the logic here using the module-level fireKey().
+      fireKey('keydown', 'ShiftLeft', 'Shift', { shiftKey: true });
+      fireKey('keydown', 'Tab',       'Tab',   { shiftKey: true });
+      fireKey('keyup',   'Tab',       'Tab',   { shiftKey: true });
+      fireKey('keyup',   'ShiftLeft', 'Shift', { shiftKey: false });
+    });
+
+    document.body.appendChild(btn);
+
+    if (!isTouchDevice) {
+      // Desktop: start hidden, reveal on Shift or top-right hover.
+      btn.classList.add('tc-ms-hidden');
+
+      var shiftHeld = false;
+      var inZone    = false;
+
+      function updateVisibility() {
+        if (shiftHeld || inZone) {
+          btn.classList.remove('tc-ms-hidden');
+        } else {
+          btn.classList.add('tc-ms-hidden');
+        }
+      }
+
+      document.addEventListener('keydown', function (e) {
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+          shiftHeld = true;
+          updateVisibility();
+        }
+      });
+      document.addEventListener('keyup', function (e) {
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+          shiftHeld = false;
+          updateVisibility();
+        }
+      });
+      document.addEventListener('mousemove', function (e) {
+        var nearRight = (window.innerWidth  - e.clientX) <= 80;
+        var nearTop   = e.clientY <= 60;
+        var was = inZone;
+        inZone = nearRight && nearTop;
+        if (was !== inZone) updateVisibility();
+      });
+    }
+
+    return btn;
+  }
+
   /* ── Desktop toggle pill ──────────────────────────────────── */
 
   function buildToggle(overlayRoot) {
@@ -528,6 +599,9 @@
     // Build the mobile menu overlay eagerly so #tc-menu-overlay is present in
     // the DOM from the start (Sprint 66: fixes Playwright assertion on absent element).
     initMenu();
+
+    // Sprint 68: floating ≡ mission-select button (top-right corner).
+    buildMsBtn();
 
     if (isTouchDevice) {
       // Prevent the browser's default scroll/zoom on the canvas so touch

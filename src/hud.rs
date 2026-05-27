@@ -16,6 +16,13 @@ use avian3d::prelude::LinearVelocity;
 use crate::sky::TimeOfDay;
 use crate::vehicle::{Chassis, DriveInput, VehicleRoot};
 
+// ---- Mission-select button constants ----------------------------------------
+
+/// Amber colour for the mission-select ≡ button.
+const MS_BTN_BG:      Color = Color::srgba(0.70, 0.44, 0.04, 0.90);
+const MS_BTN_HOVER:   Color = Color::srgba(1.00, 0.65, 0.10, 0.95);
+const MS_BTN_PRESSED: Color = Color::srgba(0.55, 0.34, 0.02, 0.95);
+
 // ---- Public plugin ----------------------------------------------------------
 
 pub struct HudPlugin;
@@ -34,6 +41,10 @@ impl Plugin for HudPlugin {
                 Update,
                 (update_session_stats, update_hud, toggle_hud)
                     .run_if(resource_exists::<VehicleRoot>),
+            )
+            .add_systems(
+                Update,
+                (mission_select_btn_hover, mission_select_btn_click),
             );
     }
 }
@@ -63,6 +74,10 @@ pub struct SessionStats {
 /// Marker on the root UI node — used for toggle.
 #[derive(Component)]
 struct HudRoot;
+
+/// Marker on the top-right mission-select ≡ button.
+#[derive(Component)]
+struct MissionSelectBtn;
 
 /// Marker on each text leaf so update systems can find exactly the right node.
 #[derive(Component)]
@@ -296,10 +311,41 @@ fn spawn_hud(mut commands: Commands) {
 
     commands.entity(br_panel).add_children(&[fps_text]);
 
+    // ---- Top-right mission-select ≡ button (Sprint 68) ----------------------
+    // 36×36 button placed in the absolute top-right corner (above stats panel).
+    // On desktop it fades in on Shift key hold; on touch it is always visible.
+    // Clicking it fires a synthetic Shift+Tab to open the Mission Select overlay.
+    let ms_btn = commands
+        .spawn((
+            MissionSelectBtn,
+            Button,
+            Node {
+                position_type:   PositionType::Absolute,
+                right:           Val::Px(12.0),
+                top:             Val::Px(160.0), // below the stats panel
+                width:           Val::Px(36.0),
+                height:          Val::Px(36.0),
+                align_items:     AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(MS_BTN_BG),
+            ZIndex(55),
+        ))
+        .id();
+    let ms_label = commands
+        .spawn((
+            Text::new("≡"),
+            TextFont { font_size: 20.0, ..default() },
+            TextColor(Color::srgb(1.0, 0.92, 0.55)),
+        ))
+        .id();
+    commands.entity(ms_btn).add_children(&[ms_label]);
+
     // Attach panels to root — all three are children so H-toggle hides them all.
     commands
         .entity(root)
-        .add_children(&[tl_panel, tr_panel, br_panel]);
+        .add_children(&[tl_panel, tr_panel, br_panel, ms_btn]);
 }
 
 // ---- Session-stats update system --------------------------------------------
@@ -493,4 +539,41 @@ fn centered_bar10(val: f32) -> String {
     }
 
     chars.iter().collect()
+}
+
+// ---- Mission-select ≡ button systems ----------------------------------------
+
+/// Colour the ≡ button based on hover / press state.
+fn mission_select_btn_hover(
+    mut btn_q: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<MissionSelectBtn>),
+    >,
+) {
+    for (interaction, mut bg) in btn_q.iter_mut() {
+        bg.0 = match interaction {
+            Interaction::Hovered  => MS_BTN_HOVER,
+            Interaction::Pressed  => MS_BTN_PRESSED,
+            Interaction::None     => MS_BTN_BG,
+        };
+    }
+}
+
+/// When the ≡ button is clicked, toggle the Mission Select overlay by
+/// mutating MissionSelectOpen directly (avoids synthesising keyboard events
+/// from Rust, which is not supported by Bevy's ButtonInput).
+fn mission_select_btn_click(
+    btn_q:    Query<&Interaction, (Changed<Interaction>, With<MissionSelectBtn>)>,
+    mut open: Option<ResMut<crate::mission_select::MissionSelectOpen>>,
+    mut vis_q: Query<&mut Visibility, With<crate::mission_select::MissionSelectRoot>>,
+) {
+    let Some(ref mut ms_open) = open else { return };
+    for interaction in btn_q.iter() {
+        if *interaction == Interaction::Pressed {
+            ms_open.0 = !ms_open.0;
+            for mut vis in vis_q.iter_mut() {
+                *vis = if ms_open.0 { Visibility::Visible } else { Visibility::Hidden };
+            }
+        }
+    }
 }
