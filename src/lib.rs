@@ -80,6 +80,8 @@ pub mod fireworks;
 pub mod fog_horn;
 pub mod fuel;
 pub mod garage;
+pub mod garage_build;
+pub use garage_build::{GarageBuildPlugin, GarageBuildUiState};
 pub mod gas_stations;
 pub mod gauge;
 pub mod custom_map_loader;

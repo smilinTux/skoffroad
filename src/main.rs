@@ -26,6 +26,7 @@ use skoffroad::{
     ExhaustPlugin, ExhaustSmokePlugin,
     ExplorePlugin, FastTravelMenuPlugin, FencePostsPlugin, FireworksPlugin, FishPlugin,
     FogHornPlugin, FontAssetsPlugin, FuelPlugin, GaragePlugin, GasStationsPlugin,
+    GarageBuildPlugin,
     GaugePlugin, GlbLoaderPlugin, GodraysPlugin, GrassTuftsPlugin, GraphicsQualityPlugin, HeadlightsPlugin,
     HeatHazePlugin, HeightmapLoaderPlugin,
     HelpPlugin, HillclimbPlugin, HillclimbTiersPlugin, HillclimbTrackPlugin, HornPlugin, HudPlugin,
@@ -259,6 +260,7 @@ fn main() {
             AssistsPlugin,
             ClimbAssistPlugin,
             GaragePlugin,
+            GarageBuildPlugin,
             FireworksPlugin,
             SpawnPointsPlugin,
         ))
