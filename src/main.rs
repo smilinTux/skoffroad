@@ -12,6 +12,7 @@ use skoffroad::{
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
+    MapDressingPlugin,
     MissionSelectPlugin, ModeHotkeysPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
@@ -356,6 +357,8 @@ fn main() {
         .add_plugins(ModeHotkeysPlugin)
         // Sprint 64: Obstacle Course mode (3 levels, procedural obstacles, time-trial)
         .add_plugins(ObstacleCoursePlugin)
+        // Sprint 69: Map dressing — themed props and set-dressing for all areas
+        .add_plugins(MapDressingPlugin)
         .add_plugins((
             TruckBedCargoPlugin,
             WheelRimsPlugin,
