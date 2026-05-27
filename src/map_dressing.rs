@@ -454,14 +454,181 @@ fn spawn_rock_crawl_dressing(
 }
 
 // ---------------------------------------------------------------------------
-// Area 3 — Obstacle Course  (stub — filled in next commit)
+// Area 3 — Obstacle Course
 // ---------------------------------------------------------------------------
+//
+// START_X = -60, COURSE_Z = [200, 230, 260]
+//
+// Per level (×3):
+//   • Tire wall (8 spheres per side × 2 sides = 16 spheres/level)
+//   • Finish-line tower (thin post + platform + checkered flag = 3 entities)
+//   • Countdown post at the start (1 cylinder)
+//   • Course-name sign at the start (body + 2 posts = 3 entities)
+//
+// Total: 3 × (16 + 3 + 1 + 3) = 3 × 23 = 69 entities, all with colliders.
+
+const OC_START_X: f32 = -60.0;
+const OC_COURSE_Z: [f32; 3] = [200.0, 230.0, 260.0];
+// Finish X (level 0: -60 + 10*8 + 12 = 32; approx used here)
+const OC_FINISH_X: [f32; 3] = [32.0, 50.0, 60.0];
+const OC_NAMES: [&str; 3] = ["OBSTACLE BEGINNER", "OBSTACLE INTERMEDIATE", "OBSTACLE EXPERT"];
 
 fn spawn_obstacle_course_dressing(
-    _commands:  Commands,
-    _meshes:    ResMut<Assets<Mesh>>,
-    _materials: ResMut<Assets<StandardMaterial>>,
+    mut commands:  Commands,
+    mut meshes:    ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let rubber_mat = materials.add(StandardMaterial {
+        base_color: RUBBER_COLOR,
+        perceptual_roughness: 0.98,
+        ..default()
+    });
+    let countdown_mat = materials.add(StandardMaterial {
+        base_color: COUNTDOWN_RED,
+        perceptual_roughness: 0.55,
+        emissive: LinearRgba::rgb(0.30, 0.02, 0.02),
+        ..default()
+    });
+    let sign_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.80, 0.70, 0.50),
+        perceptual_roughness: 0.78,
+        emissive: LinearRgba::rgb(0.12, 0.08, 0.02),
+        ..default()
+    });
+    let sign_post_mat = materials.add(StandardMaterial {
+        base_color: WOOD_COLOR,
+        perceptual_roughness: 0.92,
+        ..default()
+    });
+    let tower_mat = materials.add(StandardMaterial {
+        base_color: METAL_COLOR,
+        perceptual_roughness: 0.65,
+        ..default()
+    });
+    let check_white_mat = materials.add(StandardMaterial {
+        base_color: CHECK_WHITE,
+        perceptual_roughness: 0.5,
+        ..default()
+    });
+    let check_dark_mat = materials.add(StandardMaterial {
+        base_color: CHECK_DARK,
+        perceptual_roughness: 0.5,
+        ..default()
+    });
+
+    let tire_mesh          = meshes.add(Sphere::new(0.40));
+    let countdown_mesh     = meshes.add(Cylinder::new(0.12, 2.0));
+    let sign_body_mesh     = meshes.add(Cuboid::new(2.6, 0.75, 0.10));
+    let sign_post_mesh_oc  = meshes.add(Cylinder::new(0.06, 1.5));
+    let tower_post_mesh    = meshes.add(Cuboid::new(0.18, 5.0, 0.18));
+    let platform_mesh      = meshes.add(Cuboid::new(2.4, 0.15, 2.4));
+    let flag_check_mesh    = meshes.add(Cuboid::new(1.2, 0.60, 0.06));
+
+    let mut prop_count = 0usize;
+
+    for (level, &cz) in OC_COURSE_Z.iter().enumerate() {
+        let finish_x = OC_FINISH_X[level];
+
+        // ---- TIRE WALL — left and right boundary ----
+        // 8 spheres per side, spaced every 12 m from start to roughly mid-course.
+        for &side in &[-1.0_f32, 1.0_f32] {
+            let wall_z = cz + side * 9.5; // ±9.5 m from course centre
+            for i in 0..8usize {
+                let tx = OC_START_X + (i as f32) * 11.0 + 6.0;
+                commands.spawn((
+                    MapProp,
+                    Mesh3d(tire_mesh.clone()),
+                    MeshMaterial3d(rubber_mat.clone()),
+                    // Half-buried: y = 0.2 (radius 0.4, half below ground level).
+                    Transform::from_xyz(tx, 0.20, wall_z),
+                    RigidBody::Static,
+                    Collider::sphere(0.40),
+                ));
+                prop_count += 1;
+            }
+        }
+
+        // ---- FINISH-LINE TOWER ----
+        let tower_x = finish_x + 2.0;
+        // Tall post
+        commands.spawn((
+            MapProp,
+            Mesh3d(tower_post_mesh.clone()),
+            MeshMaterial3d(tower_mat.clone()),
+            Transform::from_xyz(tower_x, 2.5, cz),
+            RigidBody::Static,
+            Collider::cuboid(0.09, 2.5, 0.09),
+        ));
+        // Platform on top
+        commands.spawn((
+            MapProp,
+            Mesh3d(platform_mesh.clone()),
+            MeshMaterial3d(tower_mat.clone()),
+            Transform::from_xyz(tower_x, 5.075, cz),
+            RigidBody::Static,
+            Collider::cuboid(1.2, 0.075, 1.2),
+        ));
+        // Checkered flag (white tile on top of platform)
+        commands.spawn((
+            MapProp,
+            Mesh3d(flag_check_mesh.clone()),
+            MeshMaterial3d(if level % 2 == 0 { check_white_mat.clone() } else { check_dark_mat.clone() }),
+            Transform::from_xyz(tower_x, 5.45, cz),
+            RigidBody::Static,
+            Collider::cuboid(0.60, 0.30, 0.03),
+        ));
+        prop_count += 3;
+
+        // ---- COUNTDOWN POST at start ----
+        commands.spawn((
+            MapProp,
+            Mesh3d(countdown_mesh.clone()),
+            MeshMaterial3d(countdown_mat.clone()),
+            Transform::from_xyz(OC_START_X - 4.0, 1.0, cz),
+            RigidBody::Static,
+            Collider::cylinder(0.12, 1.0),
+        ));
+        prop_count += 1;
+
+        // ---- COURSE-NAME SIGN at start ----
+        let sign_x = OC_START_X - 6.0;
+        let sign_y = 2.2_f32;
+        // Body
+        commands.spawn((
+            MapProp,
+            Mesh3d(sign_body_mesh.clone()),
+            MeshMaterial3d(sign_mat.clone()),
+            Transform::from_xyz(sign_x, sign_y, cz + 7.0),
+            RigidBody::Static,
+            Collider::cuboid(1.3, 0.375, 0.05),
+        ));
+        // Left post
+        commands.spawn((
+            MapProp,
+            Mesh3d(sign_post_mesh_oc.clone()),
+            MeshMaterial3d(sign_post_mat.clone()),
+            Transform::from_xyz(sign_x - 0.95, sign_y - 0.85, cz + 7.0),
+            RigidBody::Static,
+            Collider::cylinder(0.06, 0.75),
+        ));
+        // Right post
+        commands.spawn((
+            MapProp,
+            Mesh3d(sign_post_mesh_oc.clone()),
+            MeshMaterial3d(sign_post_mat.clone()),
+            Transform::from_xyz(sign_x + 0.95, sign_y - 0.85, cz + 7.0),
+            RigidBody::Static,
+            Collider::cylinder(0.06, 0.75),
+        ));
+        prop_count += 3;
+
+        let _ = OC_NAMES[level]; // used for reference
+    }
+
+    info!(
+        "map_dressing: Area 3 (Obstacle Course) — {} props, all with colliders",
+        prop_count
+    );
 }
 
 // ---------------------------------------------------------------------------
