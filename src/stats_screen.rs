@@ -335,6 +335,7 @@ fn event_desc(ev: &GameEvent) -> String {
         GameEvent::SpeedMilestone { mph }   => format!("{} mph milestone", mph),
         GameEvent::BrakeStop { from_mph }   => format!("Stopped from {:.0} mph", from_mph),
         GameEvent::Airtime { duration_s }   => format!("Airtime {:.1} s", duration_s),
+        GameEvent::FastTravel { label }     => format!("→ {}", label),
     }
 }
 
@@ -348,5 +349,7 @@ fn event_color(ev: &GameEvent) -> Color {
             => Color::srgb(0.85, 0.85, 0.85),
         GameEvent::Airtime { .. }
             => Color::srgb(0.95, 0.85, 0.2),
+        GameEvent::FastTravel { .. }
+            => Color::srgb(0.55, 0.85, 1.0),
     }
 }

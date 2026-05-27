@@ -151,7 +151,9 @@ pub use trail_rides::{
     TrailRideRequest, TrailRidesPlugin,
 };
 pub mod mission_select;
-pub use mission_select::{MissionSelectOpen, MissionSelectPlugin};
+pub use mission_select::{MissionSelectOpen, MissionSelectPlugin, MissionSelectRoot};
+pub mod mode_hotkeys;
+pub use mode_hotkeys::ModeHotkeysPlugin;
 pub mod obstacle_course;
 pub use obstacle_course::{
     ObstacleCourseLeaderboard, ObstacleCoursePlugin, ObstacleCourseState, ObstacleCourseLayout,
@@ -469,3 +471,15 @@ pub use water_reflective::WaterReflectivePlugin;
 pub use night_glow::NightGlowPlugin;
 pub use truck_bed_cargo::TruckBedCargoPlugin;
 pub use wheel_rims::WheelRimsPlugin;
+
+// Sprint 70 — five new environmental realism effects
+pub mod rain_splash;
+pub use rain_splash::{RainSplashPlugin, RainIntensity};
+pub mod snow_accum;
+pub use snow_accum::{SnowAccumPlugin, VehicleSnowDepth};
+pub mod fog_volumetric;
+pub use fog_volumetric::{FogVolumetricPlugin, FogDensity};
+pub mod wet_ground;
+pub use wet_ground::WetGroundPlugin;
+pub mod critters;
+pub use critters::CrittersPlugin;

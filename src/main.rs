@@ -7,7 +7,7 @@ use skoffroad::{
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
-    MissionSelectPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
+    MissionSelectPlugin, ModeHotkeysPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
     AssetBrowserPlugin, AssetManifestPlugin, AssistsPlugin, AudioPlugin,
@@ -63,6 +63,8 @@ use skoffroad::{
     PostFxPlugin,
     // Monetization stack: brand-pack-driven sponsor placements, wallet, ad SDK.
     BrandPackPlugin, WalletPlugin, AdSdkPlugin, SponsorScatterPlugin,
+    // Sprint 70: environmental realism effects
+    RainSplashPlugin, SnowAccumPlugin, FogVolumetricPlugin, WetGroundPlugin, CrittersPlugin,
 };
 
 fn main() {
@@ -345,6 +347,8 @@ fn main() {
         // Sprint 63: Trail Rides manifest loader + Mission Select overlay
         .add_plugins(TrailRidesPlugin)
         .add_plugins(MissionSelectPlugin)
+        // Sprint 68: Mode hotkeys (Alt+H/R/O/T/S fast-travel without opening the menu)
+        .add_plugins(ModeHotkeysPlugin)
         // Sprint 64: Obstacle Course mode (3 levels, procedural obstacles, time-trial)
         .add_plugins(ObstacleCoursePlugin)
         .add_plugins((
@@ -400,6 +404,14 @@ fn main() {
             WalletPlugin,
             AdSdkPlugin,
             SponsorScatterPlugin,
+        ))
+        // Sprint 70: five environmental realism effects.
+        .add_plugins((
+            RainSplashPlugin,
+            SnowAccumPlugin,
+            FogVolumetricPlugin,
+            WetGroundPlugin,
+            CrittersPlugin,
         ));
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,

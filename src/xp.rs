@@ -149,6 +149,7 @@ fn award_xp(
                     GameEvent::BigTilt           { .. } => XP_BIG_TILT,
                     GameEvent::BrakeStop         { .. } => XP_BRAKE_STOP,
                     GameEvent::Airtime           { .. } => XP_AIRTIME,
+                    GameEvent::FastTravel        { .. } => 0, // informational only — no XP
                 };
                 apply_delta(&mut state, delta, now);
             }

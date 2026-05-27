@@ -20,6 +20,8 @@ pub enum GameEvent {
     SpeedMilestone { mph: u32 },
     BrakeStop { from_mph: f32 },
     Airtime { duration_s: f32 },
+    /// Fast-travel hotkey feedback (mode_hotkeys.rs).
+    FastTravel { label: String },
 }
 
 #[derive(Resource, Default)]
@@ -35,6 +37,12 @@ impl EventLog {
             self.events.pop_front();
         }
         self.events.push_back((t, ev));
+    }
+
+    /// Public entry-point for non-detection systems (e.g. mode_hotkeys.rs).
+    /// Pushes a `FastTravel` event at timestamp `t`.
+    pub fn push_fast_travel(&mut self, t: f32, label: impl Into<String>) {
+        self.push(t, GameEvent::FastTravel { label: label.into() });
     }
 }
 
@@ -240,6 +248,7 @@ fn event_color(ev: &GameEvent) -> Color {
         GameEvent::DistanceMilestone { .. } | GameEvent::SpeedMilestone { .. } => COLOR_MILESTONE,
         GameEvent::BrakeStop { .. } => Color::WHITE,
         GameEvent::Airtime { .. } => COLOR_AIRTIME,
+        GameEvent::FastTravel { .. } => Color::srgb(0.55, 0.85, 1.0),
     }
 }
 
@@ -255,6 +264,7 @@ fn event_text(ev: &GameEvent) -> String {
         GameEvent::SpeedMilestone { mph } => format!("{} mph reached!", mph),
         GameEvent::BrakeStop { from_mph } => format!("Stopped from {:.0} mph", from_mph),
         GameEvent::Airtime { duration_s } => format!("Airtime: {:.1} s", duration_s),
+        GameEvent::FastTravel { label } => format!("→ {}", label),
     }
 }
 
