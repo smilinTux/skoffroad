@@ -114,6 +114,8 @@ pub mod livery;
 pub mod loading_screen;
 pub mod low_fuel_warning;
 pub mod low_range;
+pub mod map_dressing;
+pub use map_dressing::MapDressingPlugin;
 pub mod map_select;
 pub mod notifications;
 pub mod paint_shop;
