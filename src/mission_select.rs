@@ -84,7 +84,7 @@ pub struct MissionSelectOpen(pub bool);
 // ---------------------------------------------------------------------------
 
 #[derive(Component)]
-struct MissionSelectRoot;
+pub struct MissionSelectRoot;
 
 /// Spawned per fast-travel button with the target encoded as a variant.
 #[derive(Component, Clone, Debug)]
@@ -116,6 +116,7 @@ impl Plugin for MissionSelectPlugin {
                 (
                     toggle_mission_select,
                     handle_fast_travel_buttons,
+                    hover_fast_travel_buttons,
                     refresh_pb_labels,
                 )
                     .chain(),
@@ -316,18 +317,28 @@ fn spawn_ui(
 fn section_header(commands: &mut Commands, label: &str, color: Color) -> Entity {
     commands.spawn((
         Text::new(label),
-        TextFont { font_size: 14.0, ..default() },
+        TextFont { font_size: 28.0, ..default() },
         TextColor(color),
         Node {
             margin: UiRect {
-                top:    Val::Px(18.0),
-                bottom: Val::Px(4.0),
+                top:    Val::Px(22.0),
+                bottom: Val::Px(6.0),
                 left:   Val::Px(24.0),
                 right:  Val::Px(24.0),
             },
             ..default()
         },
     )).id()
+}
+
+/// Keyboard hotkey label per FastTravelTarget variant (shown next to the card title).
+fn hotkey_label(target: &FastTravelTarget) -> &'static str {
+    match target {
+        FastTravelTarget::HillclimbTier(_)    => "Alt+H",
+        FastTravelTarget::RockCrawlSection(_) => "Alt+R",
+        FastTravelTarget::ObstacleCourse(_)   => "Alt+O",
+        FastTravelTarget::TrailRide(_)        => "Alt+T",
+    }
 }
 
 /// Build a single mission card row.  Returns the root entity.
@@ -369,12 +380,12 @@ fn mission_card(
         BackgroundColor(card_bg),
     )).id();
 
-    // Colour swatch
+    // Colour swatch — 16 px square icon at the start of the row (Sprint 68: was 10px thin bar)
     let swatch_ent = commands.spawn((
         Node {
-            width:  Val::Px(10.0),
-            height: Val::Percent(100.0),
-            min_height: Val::Px(50.0),
+            width:      Val::Px(16.0),
+            height:     Val::Px(16.0),
+            flex_shrink: 0.0,
             ..default()
         },
         BackgroundColor(if greyed { Color::srgb(0.25, 0.25, 0.25) } else { swatch }),
@@ -390,8 +401,15 @@ fn mission_card(
         },
     )).id();
 
+    // Title + hotkey hint on the same line.
+    let title_str = if let Some(ref ft) = fast_travel {
+        format!("{}  ·  {}", title, hotkey_label(ft))
+    } else {
+        title.to_string()
+    };
+
     let title_ent = commands.spawn((
-        Text::new(title.to_string()),
+        Text::new(title_str),
         TextFont { font_size: 15.0, ..default() },
         TextColor(text_color),
     )).id();
@@ -411,7 +429,7 @@ fn mission_card(
     let pb_ent = commands.spawn((
         PbLabel { mission_id: mission_id.to_string() },
         Text::new(format!("PB  {}", pb_str)),
-        TextFont { font_size: 11.0, ..default() },
+        TextFont { font_size: 20.0, ..default() },
         TextColor(if greyed {
             Color::srgb(0.30, 0.30, 0.30)
         } else {
@@ -420,42 +438,49 @@ fn mission_card(
     )).id();
 
     // Top times sub-row (peer best times).
-    let top_times_str = if peer_times.is_empty() {
-        "— no peer times yet —".to_string()
+    // Empty placeholder gets a subtle dim-italic hint colour.
+    let (top_times_str, top_times_color) = if peer_times.is_empty() {
+        (
+            "— no peer times yet —".to_string(),
+            Color::srgb(0.40, 0.40, 0.40), // #666 equivalent
+        )
     } else {
-        peer_times.iter().take(3).map(|(pid, t)| {
+        let s = peer_times.iter().take(3).map(|(pid, t)| {
             let id_str = format!("{pid:?}");
             let short: String = id_str.chars().filter(|c| c.is_alphanumeric()).take(6).collect();
             format!("{}  {}", short, format_time(*t))
-        }).collect::<Vec<_>>().join("  ·  ")
+        }).collect::<Vec<_>>().join("  ·  ");
+        (s, Color::srgb(0.50, 0.60, 0.80))
     };
     let top_times_ent = commands.spawn((
         Text::new(format!("Top times  {}", top_times_str)),
         TextFont { font_size: 10.0, ..default() },
-        TextColor(Color::srgb(0.50, 0.60, 0.80)),
+        TextColor(top_times_color),
     )).id();
 
     commands.entity(text_col).add_children(&[title_ent, desc_ent, pb_ent, top_times_ent]);
 
     // Fast-Travel button (omitted for greyed-out cards)
     if let Some(target) = fast_travel {
+        // Amber background, real touch target height (44 px).
         let btn = commands.spawn((
             target,
             Button,
             Node {
-                padding:         UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
+                padding:         UiRect::axes(Val::Px(14.0), Val::Px(0.0)),
                 justify_content: JustifyContent::Center,
                 align_items:     AlignItems::Center,
-                min_width:       Val::Px(110.0),
+                min_width:       Val::Px(120.0),
+                height:          Val::Px(44.0),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.12, 0.35, 0.18)),
+            BackgroundColor(Color::srgb(0.75, 0.46, 0.05)), // amber
         )).id();
 
         let btn_label = commands.spawn((
             Text::new("FAST TRAVEL"),
-            TextFont { font_size: 11.0, ..default() },
-            TextColor(Color::srgb(0.70, 1.00, 0.75)),
+            TextFont { font_size: 12.0, ..default() },
+            TextColor(Color::srgb(0.05, 0.03, 0.00)),
         )).id();
 
         commands.entity(btn).add_children(&[btn_label]);
@@ -560,6 +585,27 @@ fn handle_fast_travel_buttons(
         for mut vis in vis_q.iter_mut() {
             *vis = Visibility::Hidden;
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// System: fast-travel button hover colour
+// ---------------------------------------------------------------------------
+
+/// Shifts the FAST TRAVEL button background colour between normal amber and
+/// a brighter amber when the cursor hovers over it.
+fn hover_fast_travel_buttons(
+    mut btn_q: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<FastTravelTarget>),
+    >,
+) {
+    for (interaction, mut bg) in btn_q.iter_mut() {
+        bg.0 = match interaction {
+            Interaction::Hovered  => Color::srgb(1.00, 0.65, 0.10), // bright amber
+            Interaction::Pressed  => Color::srgb(0.95, 0.55, 0.05), // slightly darker on press
+            Interaction::None     => Color::srgb(0.75, 0.46, 0.05), // normal amber
+        };
     }
 }
 
