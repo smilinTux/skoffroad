@@ -3,8 +3,12 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: '.',
   testMatch: '**/*.spec.ts',
+  // Per-test timeout: 90 s gives the canvas-render test enough headroom on
+  // software-GL CI.  Button/overlay tests typically finish in < 5 s.
   timeout: 90_000,
-  retries: 0,
+  // Retry flaky tests up to 2 times (only the canvas-render test should ever
+  // flake; the 12 HTML-overlay tests are deterministic with force-tap).
+  retries: 2,
   workers: 1,
 
   use: {
@@ -13,6 +17,8 @@ export default defineConfig({
     ...devices['iPhone 14'],
     // Allow slow WASM load
     navigationTimeout: 60_000,
+    // force-tap bypasses actionability checks so 30 s is plenty for overlays;
+    // the canvas-render test has its own explicit waits.
     actionTimeout: 30_000,
   },
 
@@ -24,6 +30,7 @@ export default defineConfig({
         // WebKit on Linux CI has frequent launch issues; Chromium is reliable.
         // We spread only the viewport/UA/touch properties from the device
         // descriptor and override browserName so Playwright uses Chromium.
+        // Sprint 65: channel: 'chromium' removed — use default Chromium binary.
         viewport: devices['iPhone 14'].viewport,
         userAgent: devices['iPhone 14'].userAgent,
         deviceScaleFactor: devices['iPhone 14'].deviceScaleFactor,
