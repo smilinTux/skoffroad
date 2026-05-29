@@ -12,7 +12,7 @@ use skoffroad::{
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
-    MapDressingPlugin,
+    MapDressingPlugin, PropLodPlugin,
     MissionSelectPlugin, ModeHotkeysPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
@@ -365,6 +365,8 @@ fn main() {
         .add_plugins(ObstacleCoursePlugin)
         // Sprint 69: Map dressing — themed props and set-dressing for all areas
         .add_plugins(MapDressingPlugin)
+        // Sprint 76: Prop LOD — distance-based visibility culling for all MapProps.
+        .add_plugins(PropLodPlugin)
         .add_plugins((
             TruckBedCargoPlugin,
             WheelRimsPlugin,
