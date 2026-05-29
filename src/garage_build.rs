@@ -4,7 +4,7 @@
 // Opens automatically on first run (no saved build) or via Shift+G in-game.
 //
 // Left column: category rows (Truck / Paint / Tire / Bumper / Winch /
-//              Body-lift / Long-arm / Livery) with ‹ › cycle arrows.
+//              Body-lift / Long-arm / Livery) with < > cycle arrows.
 // Right column: spec sheet + BUILD & DRIVE button.
 //
 // Each category change writes directly to the relevant resource
@@ -248,7 +248,7 @@ fn load_or_detect_first_run(mut ui: ResMut<GarageBuildUiState>) {
 #[derive(Component)] struct GarageBuildDriveBtn;
 
 /// Tag on each cycle-left / cycle-right button.
-/// `category` is a small integer (0 = Truck … 7 = Livery) and `forward` = true for ›.
+/// `category` is a small integer (0 = Truck … 7 = Livery) and `forward` = true for >.
 #[derive(Component)]
 struct GarageCycleBtn {
     category: u8,
@@ -429,7 +429,7 @@ fn spawn_garage_ui(mut commands: Commands) {
     commands.entity(root).add_children(&[left, right]);
 }
 
-/// Build one category row: [label | ‹ | value | ›]
+/// Build one category row: [label | < | value | >]
 fn spawn_category_row(commands: &mut Commands, cat: u8) -> Entity {
     let row = commands
         .spawn((
@@ -470,7 +470,7 @@ fn spawn_category_row(commands: &mut Commands, cat: u8) -> Entity {
         ))
         .with_children(|p| {
             p.spawn((
-                Text::new("‹"),
+                Text::new("<"),
                 TextFont { font_size: 16.0, ..default() },
                 TextColor(TEXT_MAIN),
             ));
@@ -501,7 +501,7 @@ fn spawn_category_row(commands: &mut Commands, cat: u8) -> Entity {
         ))
         .with_children(|p| {
             p.spawn((
-                Text::new("›"),
+                Text::new(">"),
                 TextFont { font_size: 16.0, ..default() },
                 TextColor(TEXT_MAIN),
             ));
