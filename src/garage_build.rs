@@ -43,7 +43,6 @@ impl Plugin for GarageBuildPlugin {
                 Update,
                 (
                     open_close_garage,
-                    garage_turntable,
                     handle_category_buttons,
                     handle_random_rig,
                     apply_selections_to_resources,
@@ -52,6 +51,17 @@ impl Plugin for GarageBuildPlugin {
                     handle_build_and_drive,
                     animate_backdrop,
                 ),
+            )
+            // The chase cam (camera.rs `CameraSet`) and camera_modes.rs both
+            // write the Camera3d transform every Update frame. If the garage
+            // turntable also wrote in Update it would lose the ordering race
+            // and the truck would never get framed (the reported "can't see the
+            // vehicle in garage" bug). Run it in PostUpdate, before transform
+            // propagation, so the garage is the unambiguous last writer of the
+            // camera transform while open.
+            .add_systems(
+                PostUpdate,
+                garage_turntable.before(bevy::transform::TransformSystems::Propagate),
             );
     }
 }
