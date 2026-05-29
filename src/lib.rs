@@ -124,6 +124,8 @@ pub mod low_fuel_warning;
 pub mod low_range;
 pub mod map_dressing;
 pub use map_dressing::MapDressingPlugin;
+pub mod prop_lod;
+pub use prop_lod::{PropLod, PropLodPlugin, LOD_DISTANCE};
 pub mod map_select;
 pub mod notifications;
 pub mod paint_shop;
