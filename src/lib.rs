@@ -29,6 +29,8 @@ pub mod banners;
 pub mod benchmark;
 pub mod billboards;
 pub mod biome_canyon;
+pub mod biome_dressing;
+pub use biome_dressing::BiomeDressingPlugin;
 pub mod birds_flock;
 pub mod buildings;
 pub mod biome_desert;
