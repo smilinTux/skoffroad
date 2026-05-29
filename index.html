@@ -275,6 +275,15 @@ setTimeout(() => splash.classList.add('gone'), 30_000);
   0%, 100% { box-shadow: 0 4px 18px rgba(0,0,0,0.55), 0 0 22px rgba(251,191,36,0.35); }
   50%      { box-shadow: 0 4px 18px rgba(0,0,0,0.55), 0 0 38px rgba(251,191,36,0.85); }
 }
+/* Sprint 74: disable pulse animation when prefers-reduced-motion is set.
+   CI/test environments set this via --force-prefers-reduced-motion in
+   Chromium launch flags, or Playwright respects the media query automatically
+   when running tests.  Disabling the animation removes the CSS "stability"
+   jitter that blocked Playwright's actionability check on #mobile-start. */
+@media (prefers-reduced-motion: reduce) {
+  #mobile-start { animation: none; }
+  #splash .bar::after { animation: none; }
+}
 </style>
 <button id="mobile-start" type="button">▶ TAP TO START</button>
 <script>
