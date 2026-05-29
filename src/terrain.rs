@@ -24,8 +24,16 @@ impl Plugin for TerrainPlugin {
 #[derive(Component)]
 pub struct ProceduralTerrainMarker;
 
-const GRID: usize = 128; // vertices per side (128x128 = ~16k tris)
-const SIZE: f32 = 200.0; // world-space width/depth in metres
+// Enlarged from 200 m to 720 m so the real terrain mesh + collider actually
+// contain every gameplay area. The hillclimb (Z -180..-240), rock crawl
+// (X 120, Z -120), obstacle course (Z +200..+260), trail rides, and the
+// landmark props were all placed OUTSIDE the old 200 m terrain — so
+// fast-travelling to them dropped the truck onto coordinates with no collider
+// underneath (it floated over the void and couldn't get traction). 720 m
+// (±360) covers all of them with margin. GRID bumped to keep ~3.75 m quads so
+// the stretched terrain still drives well; the trimesh collider scales with it.
+const GRID: usize = 192; // vertices per side (192x192 = ~74k tris)
+const SIZE: f32 = 720.0; // world-space width/depth in metres (spans [-360, +360])
 const HEIGHT_SCALE: f32 = 12.0;
 pub const TERRAIN_SEED: u32 = 42;
 

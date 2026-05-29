@@ -60,7 +60,7 @@ struct HeadingIndicator;
 // ---- Constants --------------------------------------------------------------
 
 const MAP_PX: f32 = 200.0;      // rendered size in screen pixels
-const WORLD_EXTENT: f32 = 200.0; // terrain spans [-100, +100] on X and Z
+const WORLD_EXTENT: f32 = 720.0; // matches terrain SIZE (was 200) // terrain spans [-100, +100] on X and Z
 const TEX_N: usize = 128;        // texture resolution (each axis)
 const DOT_PX: f32 = 8.0;        // chassis dot size in pixels
 const HDG_W: f32 = 3.0;         // heading line width in pixels

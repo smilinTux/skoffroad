@@ -52,13 +52,13 @@ pub struct TerrainSkirt;
 const ANGULAR_STEPS: usize = 64;
 
 /// Inner skirt: 100 m → 200 m, 16 radial bands.
-const INNER_R_MIN:  f32   = 100.0;
-const INNER_R_MAX:  f32   = 200.0;
+const INNER_R_MIN:  f32   = 510.0;
+const INNER_R_MAX:  f32   = 700.0;
 const INNER_BANDS:  usize = 16;
 
 /// Outer skirt: 200 m → 600 m, 8 radial bands.
-const OUTER_R_MIN:  f32   = 200.0;
-const OUTER_R_MAX:  f32   = 600.0;
+const OUTER_R_MIN:  f32   = 700.0;
+const OUTER_R_MAX:  f32   = 1200.0;
 const OUTER_BANDS:  usize = 8;
 
 /// Grass-green tint for the inner skirt (matches terrain.rs GRASS colour).

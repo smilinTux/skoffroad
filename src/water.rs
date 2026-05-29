@@ -33,7 +33,7 @@ pub const WATER_LEVEL: f32 = -3.0;
 // Grid resolution for the water plane. 30x30 quads = 31x31 = 961 verts.
 const WATER_GRID: usize = 30;
 // World-space extent of the water plane in metres.
-const WATER_SIZE: f32 = 200.0;
+const WATER_SIZE: f32 = 720.0; // matches terrain SIZE (was 200)
 
 // Chassis half-height used to normalise submersion depth.
 // Mirrors CHASSIS_HALF.y from vehicle.rs without importing it.
