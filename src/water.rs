@@ -49,7 +49,7 @@ const GRAVITY: f32 = 9.81;
 
 /// Marks the water mesh entity so the wave-animation system can find it.
 #[derive(Component)]
-struct WaterMesh;
+pub struct WaterMesh;
 
 // ---------------------------------------------------------------------------
 // Startup: spawn the water plane
@@ -85,7 +85,7 @@ fn spawn_water(
 // Animated wave displacement
 // ---------------------------------------------------------------------------
 
-fn animate_water(
+pub fn animate_water(
     time: Res<Time>,
     water_q: Query<&Mesh3d, With<WaterMesh>>,
     mut meshes: ResMut<Assets<Mesh>>,

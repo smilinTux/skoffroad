@@ -62,7 +62,7 @@ use skoffroad::{
     WheelieCounterPlugin, WildlifePlugin,
     WindPlugin, WinchPlugin, WorldAudioPlugin, XpPlugin,
     MudDepthPlugin, TerrainLodPlugin, TerrainNormalMapPlugin, TerrainSplatmapPlugin,
-    WaterReflectivePlugin,
+    WaterReflectivePlugin, WaterTexturesPlugin,
     EngineAudioLayeredPlugin, FuelConsumptionRealPlugin, TransferCasePlugin,
     TransmissionPlugin, WinchCablePhysicsPlugin,
     HdrSkyboxPlugin, PhotoHudPlugin, PhotorealRocksPlugin, TerrainDecalsPlugin,
@@ -108,6 +108,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(PhysicsPlugins::default())
+        .add_plugins(WaterTexturesPlugin)
         // GraphicsQualityPlugin must register first so other plugins' Startup
         // systems can read the GraphicsQuality resource. PostFxPlugin
         // attaches camera post-FX in PostStartup after camera.rs spawns
