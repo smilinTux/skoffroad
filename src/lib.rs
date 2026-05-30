@@ -245,6 +245,8 @@ pub mod wheelie;
 pub mod wildlife;
 pub mod wind;
 pub mod world_audio;
+pub mod world_scatter;
+pub use world_scatter::WorldScatterPlugin;
 pub mod xp;
 
 pub mod engine_audio_layered;

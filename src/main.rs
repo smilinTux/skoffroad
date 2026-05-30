@@ -12,7 +12,7 @@ use skoffroad::{
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
-    MapDressingPlugin, PropLodPlugin, BiomeDressingPlugin,
+    MapDressingPlugin, PropLodPlugin, BiomeDressingPlugin, WorldScatterPlugin,
     MissionSelectPlugin, ModeHotkeysPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
@@ -369,6 +369,8 @@ fn main() {
         .add_plugins(PropLodPlugin)
         // Sprint 77: Biome Dressing — dense biome scatter + hero landmarks + connecting trails.
         .add_plugins(BiomeDressingPlugin)
+        // Sprint 78: World Scatter — natural ground cover across the full 720 m terrain.
+        .add_plugins(WorldScatterPlugin)
         .add_plugins((
             TruckBedCargoPlugin,
             WheelRimsPlugin,
