@@ -25,6 +25,8 @@ pub mod asset_browser;
 pub mod asset_manifest;
 pub mod assists;
 pub mod audio;
+pub mod audio_quality;
+pub use audio_quality::AudioQualityPlugin;
 pub mod banners;
 pub mod benchmark;
 pub mod billboards;
