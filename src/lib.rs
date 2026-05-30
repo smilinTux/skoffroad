@@ -241,6 +241,8 @@ pub mod water_reflective;
 pub mod water_textures;
 pub use water_textures::{WaterTexturesPlugin, WaterTextures};
 pub mod weather_clouds;
+pub mod sunset_gradient;
+pub use sunset_gradient::SunsetGradientPlugin;
 pub mod wheel_detail;
 pub mod wheel_rims;
 pub mod wheel_well;
