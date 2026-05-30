@@ -4,11 +4,13 @@
 //
 // Strategy: scan ALL StandardMaterials each Update (debounced to ~1 Hz) for
 // materials whose base_color falls in the chrome sRGB band:
-//   R, G, B all > 0.80
-//   abs(R-G) < 0.08, abs(R-B) < 0.10, abs(G-B) < 0.10
+//   R, G, B all > 0.78
+//   abs(R-G) < 0.10, abs(R-B) < 0.12, abs(G-B) < 0.12
 // Matching materials that have no emissive contribution are upgraded to
-//   metallic = 0.95, perceptual_roughness = 0.05.
-// Already-polished asset IDs are stored in a Local<HashSet<…>> and skipped on
+//   metallic = 0.95, perceptual_roughness = 0.05, reflectance = 0.95.
+// (Sprint 81: reflectance added so bumpers / trim match the new chrome rims.
+//  Detection band slightly relaxed to catch the darker chrome-barrel ring.)
+// Already-polished asset IDs are stored in a Local<HashSet<...>> and skipped on
 // subsequent runs so no frame-by-frame churn occurs.
 //
 // Public API:
@@ -33,7 +35,8 @@ impl Plugin for ChromePolishPlugin {
 // ── System ────────────────────────────────────────────────────────────────────
 
 /// Iterates all `StandardMaterial` assets once per second and upgrades any
-/// chrome-colored, non-emissive material to metallic=0.95 / roughness=0.05.
+/// chrome-colored, non-emissive material to metallic=0.95 / roughness=0.05 /
+/// reflectance=0.95 (Sprint 81).
 /// Already-polished IDs are tracked in a `Local<HashSet>` so each material is
 /// touched at most once over the lifetime of the app.
 fn polish_chrome_materials(
@@ -71,20 +74,31 @@ fn polish_chrome_materials(
         let b = c.blue;
 
         // Chrome color band: all channels bright, tightly balanced, no strong hue.
-        let is_chrome = r > 0.80
-            && g > 0.80
-            && b > 0.80
-            && (r - g).abs() < 0.08
-            && (r - b).abs() < 0.10
-            && (g - b).abs() < 0.10;
+        // Sprint 81: lower bound 0.78 (was 0.80) and relaxed channel deltas
+        // to catch the new rim-barrel accent ring without false positives on
+        // mid-gray steel parts (which have R,G,B around 0.28–0.50).
+        let is_chrome = r > 0.78
+            && g > 0.78
+            && b > 0.78
+            && (r - g).abs() < 0.10
+            && (r - b).abs() < 0.12
+            && (g - b).abs() < 0.12;
 
         if !is_chrome {
             continue;
         }
 
+        // Skip materials already at chrome quality (set directly by vehicle_detail
+        // or wheel_rims on Medium+) — mark polished, avoid redundant mutation.
+        if mat.metallic >= 0.94 && mat.perceptual_roughness <= 0.06 {
+            polished.insert(id);
+            continue;
+        }
+
         // Upgrade to true chrome.
-        mat.metallic = 0.95;
+        mat.metallic             = 0.95;
         mat.perceptual_roughness = 0.05;
+        mat.reflectance          = 0.95;
 
         polished.insert(id);
         n += 1;

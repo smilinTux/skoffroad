@@ -3,7 +3,12 @@
 // with twin gauge arcs, and 2 bucket seats. All elements are spawned as
 // chassis-local children so they move/rotate with the vehicle.
 //
-// Sprint 34
+// Sprint 34 / Sprint 81 visual polish:
+//   - Deeper, richer seat upholstery (charcoal leather tone, slight sheen).
+//   - Improved dashboard tone (near-black with a touch of metallic).
+//   - Steering wheel grip ring: slightly warm dark leather with low metallic.
+//   - Chrome hub: higher metallic + reflectance for a polished-aluminium look.
+//   - Gauge face: kept unlit-white (reads as self-lit instrument).
 //
 // Public API:
 //   Interior3dPlugin
@@ -50,32 +55,39 @@ fn attach_interior_once(
 
     // ── Shared materials ──────────────────────────────────────────────────────
 
-    // Dark interior plastic — dashboard, wheel ring, seat body.
+    // Dashboard panel: near-black matte plastic with a whisper of metallic so
+    // it catches light subtly instead of reading as pure flat black.
     let dark_plastic = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.10, 0.10, 0.12),
-        perceptual_roughness: 0.85,
-        ..default()
-    });
-
-    // Steering wheel / trim colour — slightly lighter gray.
-    let wheel_dark = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.15, 0.15, 0.18),
+        base_color: Color::srgb(0.07, 0.07, 0.09),
         perceptual_roughness: 0.80,
+        metallic: 0.08,
         ..default()
     });
 
-    // Chrome hub accent.
+    // Steering wheel grip: warm charcoal leather — low sheen, slightly warm
+    // so it contrasts the cool metallic hub.
+    let wheel_dark = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.14, 0.12, 0.11),
+        perceptual_roughness: 0.78,
+        metallic: 0.03,
+        ..default()
+    });
+
+    // Chrome hub accent: polished aluminium, high metallic and reflectance.
     let chrome = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.78, 0.78, 0.82),
-        metallic: 0.90,
-        perceptual_roughness: 0.10,
+        base_color: Color::srgb(0.82, 0.82, 0.88),
+        metallic: 0.95,
+        perceptual_roughness: 0.08,
+        reflectance: 0.90,
         ..default()
     });
 
-    // Seat upholstery — dark brownish-gray.
+    // Seat upholstery: deeper charcoal leather with a very faint sheen so
+    // the seat reads as fabric/leather rather than flat plastic.
     let seat_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.18, 0.16, 0.14),
-        perceptual_roughness: 0.90,
+        base_color: Color::srgb(0.13, 0.11, 0.10),
+        perceptual_roughness: 0.82,
+        metallic: 0.02,
         ..default()
     });
 
@@ -88,8 +100,8 @@ fn attach_interior_once(
 
     // Gauge needle — small dark rod.
     let needle_mat = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.12, 0.12, 0.14),
-        perceptual_roughness: 0.80,
+        base_color: Color::srgb(0.10, 0.10, 0.12),
+        perceptual_roughness: 0.75,
         ..default()
     });
 
