@@ -77,6 +77,8 @@ use skoffroad::{
     SponsorLiveryPlugin,
     // Sprint 70: environmental realism effects
     RainSplashPlugin, SnowAccumPlugin, FogVolumetricPlugin, WetGroundPlugin, CrittersPlugin,
+    // Sprint 83: higher-quality sky & weather
+    SunsetGradientPlugin,
 };
 
 fn main() {
@@ -457,7 +459,9 @@ fn main() {
             FogVolumetricPlugin,
             WetGroundPlugin,
             CrittersPlugin,
-        ));
+        ))
+        // Sprint 83: sunrise/sunset horizon gradient band.
+        .add_plugins(SunsetGradientPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

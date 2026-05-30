@@ -532,3 +532,7 @@ pub mod wet_ground;
 pub use wet_ground::WetGroundPlugin;
 pub mod critters;
 pub use critters::CrittersPlugin;
+
+// Sprint 83 — higher-quality sky & weather
+pub mod sunset_gradient;
+pub use sunset_gradient::SunsetGradientPlugin;
