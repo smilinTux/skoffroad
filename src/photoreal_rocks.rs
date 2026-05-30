@@ -49,10 +49,15 @@ impl Plugin for PhotorealRocksPlugin {
 // Constants
 // ---------------------------------------------------------------------------
 
-/// Base colour: granite / sandstone sRGB(0.42, 0.40, 0.38).
-const BASE_R: f32 = 0.42;
-const BASE_G: f32 = 0.40;
-const BASE_B: f32 = 0.38;
+/// Base colour: weathered granite sRGB(0.40, 0.38, 0.35).
+/// Slightly warmer and darker than the old flat grey to read as real stone.
+const BASE_R: f32 = 0.40;
+const BASE_G: f32 = 0.38;
+const BASE_B: f32 = 0.35;
+
+/// Colour variation applied per-rock to break uniform appearance.
+/// The hash shifts the rock hue between warm sandstone and cool granite.
+const COLOR_VAR: f32 = 0.08;
 
 /// (offset_xyz, scale) for each of the 5 sub-spheres in the compound.
 const SUB_SPHERES: [(Vec3, f32); 5] = [
@@ -209,28 +214,31 @@ fn upgrade_rocks_once(
         return;
     }
 
-    // Build the boulder material. On Medium+ we sample the CC0 rock PBR pack
-    // shipped under assets/materials/terrain/rock/. On Low we keep the cheap
-    // solid-color StandardMaterial that the original Sprint 40 shipped.
-    let mat = if quality.photoreal_rocks() {
-        materials.add(StandardMaterial {
+    // Build the boulder material.
+    //
+    // Medium+ — samples the CC0 rock PBR pack under assets/materials/terrain/rock/.
+    //           Roughness ~0.95 (weathered stone), reflectance very low (0.15),
+    //           no metallic.
+    //
+    // Low     — cheap solid-color StandardMaterial.  Color is the base granite
+    //           grey; per-rock variation is applied below when spawning children
+    //           so each boulder still looks distinct even without textures.
+    //           Roughness tuned to 0.95 (was 0.92) to match the Medium path.
+    let mat_medium = if quality.photoreal_rocks() {
+        Some(materials.add(StandardMaterial {
             base_color: Color::WHITE,
             base_color_texture: Some(asset_server.load("materials/terrain/rock/albedo.jpg")),
             normal_map_texture: Some(asset_server.load("materials/terrain/rock/normal.jpg")),
             metallic_roughness_texture: Some(
                 asset_server.load("materials/terrain/rock/roughness.jpg"),
             ),
-            perceptual_roughness: 1.0, // multiplied by texture
+            perceptual_roughness: 0.95,
+            reflectance: 0.15,
             metallic: 0.0,
             ..default()
-        })
+        }))
     } else {
-        materials.add(StandardMaterial {
-            base_color: Color::srgb(BASE_R, BASE_G, BASE_B),
-            perceptual_roughness: 0.92,
-            metallic: 0.0,
-            ..default()
-        })
+        None
     };
 
     let mut upgraded = 0usize;
@@ -258,10 +266,33 @@ fn upgrade_rocks_once(
         let mesh = build_compound_mesh(base_radius, seed);
         let mesh_handle = meshes.add(mesh);
 
+        // Per-rock material: Medium+ shares the pre-built textured mat;
+        // Low builds a cheap per-rock solid-color mat with slight hue variation
+        // so rocks don't all look like identical grey blobs.
+        let rock_mat = if let Some(ref m) = mat_medium {
+            m.clone()
+        } else {
+            // Apply per-rock colour variation in [BASE - VAR, BASE + VAR].
+            // seed is in [0,1); map to [-COLOR_VAR, +COLOR_VAR].
+            let shift = (seed * 2.0 - 1.0) * COLOR_VAR;
+            // Warm rocks (seed > 0.5) tilt towards sandy/brown;
+            // cool rocks (seed < 0.5) tilt towards grey/blue-grey.
+            let r = (BASE_R + shift * 1.2).clamp(0.0, 1.0);
+            let g = (BASE_G + shift * 0.6).clamp(0.0, 1.0);
+            let b = (BASE_B - shift * 0.4).clamp(0.0, 1.0);
+            materials.add(StandardMaterial {
+                base_color: Color::srgb(r, g, b),
+                perceptual_roughness: 0.95,
+                reflectance: 0.15,
+                metallic: 0.0,
+                ..default()
+            })
+        };
+
         commands.entity(entity).with_children(|parent| {
             parent.spawn((
                 Mesh3d(mesh_handle),
-                MeshMaterial3d(mat.clone()),
+                MeshMaterial3d(rock_mat),
                 Transform::default(),
                 Visibility::default(),
             ));
