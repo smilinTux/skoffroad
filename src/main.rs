@@ -62,7 +62,7 @@ use skoffroad::{
     WheelieCounterPlugin, WildlifePlugin,
     WindPlugin, WinchPlugin, WorldAudioPlugin, XpPlugin,
     MudDepthPlugin, TerrainLodPlugin, TerrainNormalMapPlugin, TerrainSplatmapPlugin,
-    WaterReflectivePlugin,
+    WaterReflectivePlugin, WaterTexturesPlugin,
     EngineAudioLayeredPlugin, FuelConsumptionRealPlugin, TransferCasePlugin,
     TransmissionPlugin, WinchCablePhysicsPlugin,
     HdrSkyboxPlugin, PhotoHudPlugin, PhotorealRocksPlugin, TerrainDecalsPlugin,
@@ -399,6 +399,9 @@ fn main() {
             MudDepthPlugin,
             WaterReflectivePlugin,
         ))
+        // Sprint 82: procedural water normal + foam textures (Startup, before
+        // WaterReflectivePlugin's PostStartup reads WaterTextures resource).
+        .add_plugins(WaterTexturesPlugin)
         .add_plugins((
             TransmissionPlugin,
             TransferCasePlugin,

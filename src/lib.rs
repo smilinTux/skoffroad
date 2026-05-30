@@ -238,6 +238,8 @@ pub mod vehicle_textures;
 pub use vehicle_textures::{VehicleTexturesPlugin, VehicleTextureSet};
 pub mod water;
 pub mod water_reflective;
+pub mod water_textures;
+pub use water_textures::{WaterTexturesPlugin, WaterTextures};
 pub mod weather_clouds;
 pub mod wheel_detail;
 pub mod wheel_rims;
