@@ -7,6 +7,7 @@ use avian3d::prelude::*;
 use noise::{NoiseFn, Perlin, Fbm};
 
 use crate::graphics_quality::GraphicsQuality;
+use crate::terrain_detail_tex::TerrainDetailTex;
 
 pub struct TerrainPlugin;
 
@@ -60,6 +61,7 @@ fn spawn_terrain(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
     quality: Res<GraphicsQuality>,
+    detail_tex: Option<Res<TerrainDetailTex>>,
 ) {
     let fbm: Fbm<Perlin> = Fbm::<Perlin>::new(42);
 
@@ -102,26 +104,67 @@ fn spawn_terrain(
         }
     }
 
-    // Slope-based vertex colors:
-    //   flat  (slope < 0.15) -> grass green  srgb(0.32, 0.50, 0.20)
-    //   mid   (slope 0.15-0.45) -> dirt brown srgb(0.45, 0.38, 0.25)
-    //   steep (slope > 0.45) -> rock grey    srgb(0.42, 0.42, 0.45)
-    // Smooth-stepped to avoid harsh banding.
-    const GRASS: [f32; 3] = [0.32, 0.50, 0.20];
-    const DIRT:  [f32; 3] = [0.45, 0.38, 0.25];
-    const ROCK:  [f32; 3] = [0.42, 0.42, 0.45];
+    // Improved vertex color blend — slope AND height give 5 distinct biomes:
+    //
+    //   sand   (low elevation, gentle slope) — sandy flats
+    //   grass  (mid elevation, gentle slope) — green rolling hills
+    //   dirt   (any elevation, moderate slope) — exposed bare earth
+    //   rock   (any elevation, steep slope) — grey granite/shale
+    //   snow   (high elevation, gentle/moderate slope) — white snow cap
+    //
+    // All transitions are cubic smoothstep so there are no hard colour bands.
+    // The palette is tuned in linear sRGB to match the daylight post-FX
+    // (TonyMcMapface tonemap + SSAO) introduced in v0.31.1.
+    const SAND:  [f32; 3] = [0.72, 0.63, 0.43]; // sandy/dusty flats
+    const GRASS: [f32; 3] = [0.22, 0.48, 0.15]; // mossy meadow green
+    const DIRT:  [f32; 3] = [0.48, 0.36, 0.22]; // warm reddish-brown earth
+    const ROCK:  [f32; 3] = [0.39, 0.39, 0.41]; // cool grey granite
+    const SNOW:  [f32; 3] = [0.92, 0.93, 0.95]; // slightly blue-tinted snow
+
+    // Minimum height of the terrain across the grid (approximate).  Used to
+    // normalise the height value into a 0..1 elevation factor.  HEIGHT_SCALE
+    // controls the amplitude; the Fbm output sits roughly in [-1, +1] so the
+    // real range is about [-HEIGHT_SCALE, +HEIGHT_SCALE].
+    let h_lo = -HEIGHT_SCALE;
+    let h_hi =  HEIGHT_SCALE;
 
     for i in 0..(vcount * vcount) {
         let [nx, ny, nz] = normals[i];
         let normal = Vec3::new(nx, ny, nz);
-        // slope = 0 on flat ground, 1 on vertical face.
+        // slope = 0 on flat ground (normal points straight up), 1 on vertical.
         let slope = 1.0 - normal.dot(Vec3::Y).clamp(0.0, 1.0);
 
-        // Blend grass->dirt over slope range 0.10..0.25, dirt->rock over 0.30..0.55
-        let t_gd = slope_smooth_step(slope, 0.10, 0.25);
-        let t_dr = slope_smooth_step(slope, 0.30, 0.55);
+        let height = positions[i][1]; // world-space Y
+        // Normalised elevation in [0, 1].
+        let elev = ((height - h_lo) / (h_hi - h_lo)).clamp(0.0, 1.0);
 
-        let c = lerp3(lerp3(GRASS, DIRT, t_gd), ROCK, t_dr);
+        // ---- slope blends -----------------------------------------------
+        // grass -> dirt  0.08..0.22
+        let t_gd = slope_smooth_step(slope, 0.08, 0.22);
+        // dirt  -> rock  0.28..0.52
+        let t_dr = slope_smooth_step(slope, 0.28, 0.52);
+
+        // Slope-derived base colour (identical for all elevations).
+        let slope_col = lerp3(lerp3(GRASS, DIRT, t_gd), ROCK, t_dr);
+
+        // ---- elevation blends -------------------------------------------
+        // Low flats (elev 0..0.30): blend SAND into the slope colour.
+        // Sandy colour is suppressed on steep slopes so sand doesn't appear
+        // on cliff faces; we multiply the sand blend by (1 - slope*2).
+        let sand_weight = slope_smooth_step(1.0 - slope * 2.0, 0.0, 1.0)
+            .min(1.0)
+            .max(0.0);
+        let t_sand = slope_smooth_step(1.0 - elev, 0.70, 1.0) * sand_weight;
+
+        // High peaks (elev 0.70..1.0): blend SNOW.  Steep cliffs stay rocky
+        // (rock already dominates at high slope), so apply only when slope < 0.40.
+        let snow_on_slope = 1.0 - slope_smooth_step(slope, 0.25, 0.40);
+        let t_snow = slope_smooth_step(elev, 0.72, 1.0) * snow_on_slope;
+
+        // Combine: start from slope colour, overlay sand at low elev, snow at high.
+        let mid = lerp3(slope_col, SAND, t_sand);
+        let c   = lerp3(mid, SNOW, t_snow);
+
         colors.push([c[0], c[1], c[2], 1.0]);
     }
 
@@ -146,28 +189,60 @@ fn spawn_terrain(
 
     let mesh_handle = meshes.add(mesh);
 
-    // Branch on quality. Medium+ pulls the dirt PBR pack textures so the
-    // terrain reads as scanned dirt under daylight; the procedural triplanar
-    // pipeline is wired in `terrain_pbr.rs` but disabled at the call site
-    // until we resolve a Bevy 0.18 bind-group layout issue (see PARKING_LOT).
+    // Sprint 79: improved terrain PBR material.
+    //
+    // Low tier  — plain vertex-color material, very cheap.
+    //             High roughness (terrain is never shiny), low reflectance.
+    //
+    // Medium+   — additionally applies the procedural tiling detail-normal
+    //             generated by TerrainDetailTexPlugin.  The normal map adds
+    //             sub-quad surface texture (pebbles/slabs) that reads well
+    //             with SSAO + directional shadows at no extra geometry cost.
+    //             The triplanar asset-server path is kept for future use but
+    //             is gated behind `triplanar_terrain()` as before.
+    //
+    // `base_color WHITE` so vertex colors (ATTRIBUTE_COLOR) are passed through
+    // unmodified — Bevy 0.18 multiplies base_color × vertex_color automatically.
+    // `reflectance 0.2` keeps specular very low (real dirt reflects ~4 % light).
     let material = if quality.triplanar_terrain() {
-        materials.add(StandardMaterial {
+        // Asset-server textures (Medium+ with real dirt PBR pack).
+        let mut mat = StandardMaterial {
             base_color: Color::WHITE,
             base_color_texture: Some(asset_server.load("materials/terrain/dirt/albedo.jpg")),
             normal_map_texture: Some(asset_server.load("materials/terrain/dirt/normal.jpg")),
             metallic_roughness_texture: Some(
                 asset_server.load("materials/terrain/dirt/roughness.jpg"),
             ),
-            perceptual_roughness: 1.0,
+            perceptual_roughness: 0.92,
+            reflectance: 0.18,
             metallic: 0.0,
             ..default()
-        })
+        };
+        // Overlay the procedural detail-normal on top of the asset-server normal
+        // only if no normal is already set and the resource is ready.
+        // (In practice the asset-server normal wins; this is a safe guard.)
+        if mat.normal_map_texture.is_none() {
+            if let Some(ref tex) = detail_tex {
+                mat.normal_map_texture = Some(tex.normal_map.clone());
+            }
+        }
+        materials.add(mat)
     } else {
-        // base_color WHITE so vertex colors aren't tinted (Bevy 0.18 samples
-        // ATTRIBUTE_COLOR automatically when present on the mesh).
+        // Vertex-color only path — used on Low and as headless fallback.
+        // Apply the procedural detail-normal on Medium quality even when
+        // triplanar is disabled (quality.triplanar_terrain() == false on Low).
+        // The detail_tex resource may be None in headless; guard it.
+        let detail_normal = if !matches!(*quality, GraphicsQuality::Low) {
+            detail_tex.as_ref().map(|t| t.normal_map.clone())
+        } else {
+            None
+        };
         materials.add(StandardMaterial {
             base_color: Color::WHITE,
-            perceptual_roughness: 0.9,
+            perceptual_roughness: 0.92,
+            reflectance: 0.18,
+            metallic: 0.0,
+            normal_map_texture: detail_normal,
             ..default()
         })
     };

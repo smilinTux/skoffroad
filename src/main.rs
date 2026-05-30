@@ -67,6 +67,7 @@ use skoffroad::{
     TransmissionPlugin, WinchCablePhysicsPlugin,
     HdrSkyboxPlugin, PhotoHudPlugin, PhotorealRocksPlugin, TerrainDecalsPlugin,
     TerrainGrassBladesPlugin,
+    TerrainDetailTexPlugin,
     PostFxPlugin,
     // Monetization stack: brand-pack-driven sponsor placements, wallet, ad SDK.
     BrandPackPlugin, WalletPlugin, AdSdkPlugin, SponsorScatterPlugin,
@@ -112,7 +113,10 @@ fn main() {
         // attaches camera post-FX in PostStartup after camera.rs spawns
         // the Camera3d. (TerrainPbrPlugin parked while we sort out a
         // Bevy 0.18 bind-group layout issue with the triplanar shader.)
-        .add_plugins((GraphicsQualityPlugin, PostFxPlugin))
+        // TerrainDetailTexPlugin runs in Startup to generate the procedural
+        // detail-normal texture.  It must be registered before TerrainPlugin
+        // whose PostStartup system reads TerrainDetailTex via Option<Res<...>>.
+        .add_plugins((GraphicsQualityPlugin, TerrainDetailTexPlugin, PostFxPlugin))
         // SkyPlugin owns the sky dome + sun + ambient + fog;
         // ClearColor and the old setup_lighting are no longer needed.
         .add_plugins((
