@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use avian3d::prelude::*;
 use skoffroad::{
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
-    BuddyRecoveryPlugin,
+    BuddyRecoveryPlugin, WeatherDirectorPlugin, MoonPlugin, StarGlowPlugin,
     TireRoostPlugin,
     HeadlightBeamsPlugin,
     BrakeGlowPlugin,
@@ -458,7 +458,11 @@ fn main() {
             FogVolumetricPlugin,
             WetGroundPlugin,
             CrittersPlugin,
-        ));
+        ))
+        // Sprint 84: dynamic weather + richer night sky.
+        .add_plugins(WeatherDirectorPlugin)
+        .add_plugins(MoonPlugin)
+        .add_plugins(StarGlowPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the
