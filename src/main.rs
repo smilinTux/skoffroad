@@ -14,6 +14,7 @@ use skoffroad::{
     VehicleTexturesPlugin,
     BrandLogoTexPlugin,
     MapDressingPlugin, PropLodPlugin, BiomeDressingPlugin, WorldScatterPlugin,
+    PropTexturesPlugin, DressingPropsPlugin,
     MissionSelectPlugin, ModeHotkeysPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
     AirtimePlugin, ArrowPlugin, AsciiLogoPlugin, AssetAttributionPlugin,
@@ -379,6 +380,11 @@ fn main() {
         .add_plugins(BiomeDressingPlugin)
         // Sprint 78: World Scatter — natural ground cover across the full 720 m terrain.
         .add_plugins(WorldScatterPlugin)
+        // Sprint 87: Procedural prop surface textures (wood/metal/rock) + extra dressing props.
+        // PropTexturesPlugin runs in Startup; MapDressingPlugin applies them in PostStartup.
+        // DressingPropsPlugin adds tire stacks, hay bales, cones, barriers, drums, pallets.
+        .add_plugins(PropTexturesPlugin)
+        .add_plugins(DressingPropsPlugin)
         .add_plugins((
             TruckBedCargoPlugin,
             WheelRimsPlugin,
