@@ -72,12 +72,28 @@ fn spawn_beam_cones(
             ..default()
         });
 
-        // Cone primitive in Bevy 0.18: apex at +Y, base at -Y, height along Y.
-        // We want the beam to open toward -Z (forward), so rotate -90° around X.
-        let cone_mesh = meshes.add(Cone { radius: 0.6, height: 8.0 });
-        let rot = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
-        let cone_tf = Transform::from_translation(transform.translation)
-            .with_rotation(transform.rotation * rot);
+        // Cone primitive in Bevy 0.18: centred at origin, apex at +Y (+h/2),
+        // base at -Y (-h/2), height along Y.
+        //
+        // A headlight beam must have its NARROW apex at the bulb and widen as
+        // it projects FORWARD (chassis -Z). The old code rotated -90° around X
+        // (apex -> forward, wide base -> +Z = BACKWARD) AND left the cone
+        // centred on the light, so 4 m of the 8 m cone shot backward through
+        // the chassis and poked out the rear — the "beam triangles visible
+        // through the back of the truck" bug.
+        //
+        // Fix: rotate +90° around X so the apex points +Z (toward the bulb)
+        // and the base points -Z (forward), then offset the whole cone forward
+        // by half its height so the apex sits AT the bulb and the base is 8 m
+        // ahead. Nothing extends behind the light. (The cone is a chassis child
+        // and the chassis-local forward is -Z; the spotlight's own local
+        // rotation is ~identity, so we orient directly in chassis space.)
+        const BEAM_H: f32 = 8.0;
+        let cone_mesh = meshes.add(Cone { radius: 0.6, height: BEAM_H });
+        let cone_tf = Transform::from_translation(
+                transform.translation + Vec3::new(0.0, 0.0, -BEAM_H * 0.5),
+            )
+            .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
 
         let cone_id = commands.spawn((
             HeadlightBeamCone,
