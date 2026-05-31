@@ -1,4 +1,5 @@
 // Truck sponsor liveries — Sprint 72.
+// Sprint 85 — logo textures applied to decal plates (Medium+).
 //
 // Applies parody-brand decal plates to body panels, selectable as named livery
 // sets.  Each set is a curated list of (BodyPanel, brand_index) placements.
@@ -13,6 +14,9 @@
 //     RespawnRequest removes the marker, so decals re-attach automatically.
 //   • Hotkey Shift+L — cycles through livery presets and fires RespawnRequest.
 //   • Persistence to platform_storage["livery.json"].
+//   • Sprint 85: on Medium+ quality, the primary decal plate carries the brand
+//     logo texture (base_color_texture) from BrandLogoTextures. The secondary
+//     accent stripe is unchanged. On Low quality, plain color plates remain.
 //
 // Public API:
 //   SponsorLiveryPlugin
@@ -24,11 +28,13 @@
 //   crate::parody_brands::{ParodyBrands, brand_primary_color, brand_secondary_color}
 //   crate::vehicle::{Chassis, DefaultSkin, RespawnRequest, VehicleRoot}
 //   crate::platform_storage::{read_string, write_string}
+//   crate::brand_logo_tex::{BrandLogoTextures, brand_logo_texture}
 
 use bevy::prelude::*;
 use crate::parody_brands::{ParodyBrands, brand_primary_color, brand_secondary_color};
 use crate::vehicle::{Chassis, DefaultSkin, RespawnRequest, VehicleRoot};
 use crate::platform_storage;
+use crate::brand_logo_tex::{BrandLogoTextures, brand_logo_texture};
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -339,6 +345,7 @@ fn attach_livery_decals(
     chassis_q: Query<Entity, (With<Chassis>, Without<LiveryAttached>)>,
     state: Res<SponsorLiveryState>,
     brands: Option<Res<ParodyBrands>>,
+    logo_textures: Option<Res<BrandLogoTextures>>,
 ) {
     // Wait until VehicleRoot and ParodyBrands exist.
     let Some(_vehicle) = vehicle else { return };
@@ -357,12 +364,30 @@ fn attach_livery_decals(
             let secondary_color = brand_secondary_color(&brands, brand_idx);
 
             // Primary (main brand color) decal plate.
+            // On Medium+ quality, apply the brand logo texture.
             let primary_mesh = meshes.add(panel.decal_mesh());
-            let primary_mat = materials.add(StandardMaterial {
-                base_color: primary_color,
-                perceptual_roughness: 0.65,
-                ..default()
-            });
+
+            // Try to get logo texture from BrandLogoTextures resource.
+            let logo_tex = logo_textures
+                .as_ref()
+                .and_then(|lt| brand_logo_texture(lt, brand_idx));
+
+            let primary_mat = if let Some(tex) = logo_tex {
+                materials.add(StandardMaterial {
+                    base_color_texture: Some(tex),
+                    base_color: Color::WHITE,
+                    perceptual_roughness: 0.65,
+                    alpha_mode: AlphaMode::Opaque,
+                    unlit: false,
+                    ..default()
+                })
+            } else {
+                materials.add(StandardMaterial {
+                    base_color: primary_color,
+                    perceptual_roughness: 0.65,
+                    ..default()
+                })
+            };
 
             // Secondary accent stripe: a narrow strip across the bottom third
             // of the panel face, same panel but slightly smaller and forward offset.

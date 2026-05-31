@@ -12,6 +12,7 @@ use skoffroad::{
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
     VehicleTexturesPlugin,
+    BrandLogoTexPlugin,
     MapDressingPlugin, PropLodPlugin, BiomeDressingPlugin, WorldScatterPlugin,
     MissionSelectPlugin, ModeHotkeysPlugin, TrailRidesPlugin, ObstacleCoursePlugin,
     AccessibilityPlugin, AchievementToastPlugin, AiDriverPlugin, AiPathPlugin,
@@ -446,6 +447,10 @@ fn main() {
         // ParodyBrandsPlugin must register before AdSignagePlugin so the
         // ParodyBrands resource exists when Startup sign systems run.
         .add_plugins(ParodyBrandsPlugin)
+        // Sprint 85: Brand logo textures — procedural 256x128 RGBA per brand.
+        // Must register after ParodyBrandsPlugin (reads ParodyBrands resource)
+        // and before AdSignagePlugin + SponsorLiveryPlugin (consume the handles).
+        .add_plugins(BrandLogoTexPlugin)
         .add_plugins(AdSignagePlugin)
         // Sprint 72: Truck sponsor liveries — decal plates on body panels.
         // ParodyBrandsPlugin must already be registered (above) so the
