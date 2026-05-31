@@ -1,4 +1,5 @@
 // Sprint 71 — Ad signage placement.
+// Sprint 85 — Brand logo textures applied to sign panels (Medium+).
 //
 // Places five categories of in-world advertising signs, all drawing from
 // the ParodyBrands catalog.  Placement is fully deterministic (fixed seeds)
@@ -21,11 +22,12 @@
 //
 // Panel geometry:
 //   Post  = Cylinder (r=0.25, h=POST_H)
-//   Panel = Cuboid (PANEL_W × PANEL_H × 0.18)
-//   Accent stripe = thin Cuboid (full width × 0.22 × 0.22) in secondary color
+//   Panel = Cuboid (PANEL_W x PANEL_H x 0.18)  — colored with brand primary
+//   Logo quad = Rectangle (PANEL_W x PANEL_H) 1 mm in front of panel face,
+//               carrying the brand logo texture (Medium+).
+//   Accent stripe = thin Cuboid (full width x 0.22 x 0.22) in secondary color
 //
-// The brand's primary color tints the panel; the secondary color is an
-// emissive accent stripe along the top so signs read at a distance.
+// On Low quality the logo quad is omitted; the plain colored panel remains.
 //
 // Public API:
 //   AdSignagePlugin
@@ -36,6 +38,7 @@ use avian3d::prelude::*;
 use crate::parody_brands::{AdSign, ParodyBrands, brand_hash, pick_brand};
 use crate::terrain::terrain_height_at;
 use crate::sponsor_scatter::SponsorAnalytics;
+use crate::brand_logo_tex::{BrandLogoTextures, brand_logo_texture};
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -95,6 +98,47 @@ const SE_SLAB_H:    f32 = 0.4;
 const ACCENT_H:     f32 = 0.22;
 const ACCENT_D:     f32 = 0.22;
 
+// ---------------------------------------------------------------------------
+// Logo quad helper
+// ---------------------------------------------------------------------------
+//
+// Spawns a thin Rectangle mesh just in front of a panel face.
+// The Rectangle UV layout maps [0,1]x[0,1] onto the full quad, so the brand
+// logo texture fills it cleanly right-side-up.
+// Returns None on Low quality (BrandLogoTextures has no handles).
+
+fn spawn_logo_quad(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+    logo_textures: &BrandLogoTextures,
+    brand_id: usize,
+    width: f32,
+    height: f32,
+    local_y: f32,
+    local_z: f32,
+) -> Option<Entity> {
+    let tex_handle = brand_logo_texture(logo_textures, brand_id)?;
+
+    let quad_mesh = meshes.add(Rectangle::new(width, height));
+    let quad_mat  = materials.add(StandardMaterial {
+        base_color_texture: Some(tex_handle),
+        base_color: Color::WHITE,
+        unlit: false,
+        alpha_mode: AlphaMode::Opaque,
+        perceptual_roughness: 0.65,
+        ..default()
+    });
+
+    // Rectangle faces +Z by default. local_z should be panel_depth/2 + ~0.002
+    // so the quad sits proud of the Cuboid front face with no Z-fight.
+    Some(commands.spawn((
+        Mesh3d(quad_mesh),
+        MeshMaterial3d(quad_mat),
+        Transform::from_xyz(0.0, local_y, local_z),
+    )).id())
+}
+
 // Deterministic salts (each category gets its own so signs don't cluster)
 const SALT_ROAD:    u32 = 0xAD51_6001;
 const SALT_GATE:    u32 = 0xAD51_6002;
@@ -134,6 +178,7 @@ fn spawn_roadside_billboards(
     mut materials: ResMut<Assets<StandardMaterial>>,
     brands: Res<ParodyBrands>,
     mut analytics: ResMut<SponsorAnalytics>,
+    logo_textures: Option<Res<BrandLogoTextures>>,
 ) {
     let post_mesh   = meshes.add(Cylinder::new(BB_POST_R, BB_POST_H));
     let panel_mesh  = meshes.add(Cuboid::new(BB_PANEL_W, BB_PANEL_H, BB_PANEL_D));
@@ -206,7 +251,29 @@ fn spawn_roadside_billboards(
             Transform::from_xyz(0.0, accent_y, BB_PANEL_D * 0.5 + ACCENT_D * 0.5),
         )).id();
 
-        commands.entity(root).add_children(&[post, panel, accent]);
+        let mut children = vec![post, panel, accent];
+
+        // Logo quad: a Rectangle sitting just in front of the panel face (+Z).
+        // The panel root is at (0, BB_PANEL_Y) in root space; the quad is at
+        // the same Y offset relative to root, with Z just past the front face.
+        if let Some(ref logos) = logo_textures {
+            let logo_z = BB_PANEL_D * 0.5 + 0.002;
+            if let Some(logo) = spawn_logo_quad(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                logos,
+                brand_id,
+                BB_PANEL_W,
+                BB_PANEL_H,
+                BB_PANEL_Y,
+                logo_z,
+            ) {
+                children.push(logo);
+            }
+        }
+
+        commands.entity(root).add_children(&children);
 
         // Increment impressions counter
         *analytics.impressions.entry(brand.id.to_string()).or_insert(0) += 1;
@@ -238,6 +305,7 @@ fn spawn_gate_sponsor_banners(
     mut materials: ResMut<Assets<StandardMaterial>>,
     brands: Res<ParodyBrands>,
     mut analytics: ResMut<SponsorAnalytics>,
+    logo_textures: Option<Res<BrandLogoTextures>>,
 ) {
     let banner_mesh = meshes.add(Cuboid::new(GS_BANNER_W, GS_BANNER_H, GS_BANNER_D));
     let accent_mesh = meshes.add(Cuboid::new(GS_BANNER_W, ACCENT_H, ACCENT_D));
@@ -296,7 +364,26 @@ fn spawn_gate_sponsor_banners(
             Transform::from_xyz(0.0, accent_y_local, GS_BANNER_D * 0.5 + ACCENT_D * 0.5),
         )).id();
 
-        commands.entity(root).add_children(&[banner, accent]);
+        let mut children = vec![banner, accent];
+
+        if let Some(ref logos) = logo_textures {
+            let logo_z = GS_BANNER_D * 0.5 + 0.002;
+            if let Some(logo) = spawn_logo_quad(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                logos,
+                brand_id,
+                GS_BANNER_W,
+                GS_BANNER_H,
+                0.0,
+                logo_z,
+            ) {
+                children.push(logo);
+            }
+        }
+
+        commands.entity(root).add_children(&children);
 
         *analytics.impressions.entry(brand.id.to_string()).or_insert(0) += 1;
     }
@@ -338,6 +425,7 @@ fn spawn_trailside_signs(
     mut materials: ResMut<Assets<StandardMaterial>>,
     brands: Res<ParodyBrands>,
     mut analytics: ResMut<SponsorAnalytics>,
+    logo_textures: Option<Res<BrandLogoTextures>>,
 ) {
     let post_mesh   = meshes.add(Cylinder::new(TS_POST_R, TS_POST_H));
     let panel_mesh  = meshes.add(Cuboid::new(TS_PANEL_W, TS_PANEL_H, TS_PANEL_D));
@@ -422,7 +510,26 @@ fn spawn_trailside_signs(
                 Transform::from_xyz(0.0, acc_y, TS_PANEL_D * 0.5 + 0.01),
             )).id();
 
-            commands.entity(root).add_children(&[post, panel, accent]);
+            let mut children = vec![post, panel, accent];
+
+            if let Some(ref logos) = logo_textures {
+                let logo_z = TS_PANEL_D * 0.5 + 0.002;
+                if let Some(logo) = spawn_logo_quad(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    logos,
+                    brand_id,
+                    TS_PANEL_W,
+                    TS_PANEL_H,
+                    TS_PANEL_Y,
+                    logo_z,
+                ) {
+                    children.push(logo);
+                }
+            }
+
+            commands.entity(root).add_children(&children);
             *analytics.impressions.entry(brand.id.to_string()).or_insert(0) += 1;
             total += 1;
         }
@@ -460,6 +567,7 @@ fn spawn_fence_line_banners(
     mut materials: ResMut<Assets<StandardMaterial>>,
     brands: Res<ParodyBrands>,
     mut analytics: ResMut<SponsorAnalytics>,
+    logo_textures: Option<Res<BrandLogoTextures>>,
 ) {
     let banner_mesh = meshes.add(Cuboid::new(FL_BANNER_W, FL_BANNER_H, FL_BANNER_D));
 
@@ -480,16 +588,44 @@ fn spawn_fence_line_banners(
         // Place the banner at a height that fits over the existing fence post (h=1.5)
         let banner_y = ground_y + 1.5 + FL_BANNER_H * 0.5 + 0.1;
 
-        commands.spawn((
+        // Fence banners are spawned as a single entity (no root/child split).
+        // For the logo quad we need a parent; convert to root + child pattern.
+        let root = commands.spawn((
             AdSign { brand_id },
-            Mesh3d(banner_mesh.clone()),
-            MeshMaterial3d(banner_mat),
             Transform::from_xyz(bx, banner_y, bz)
                 .with_rotation(Quat::from_rotation_y(yaw)),
+            Visibility::default(),
             RigidBody::Static,
             Collider::cuboid(FL_BANNER_W * 0.5, FL_BANNER_H * 0.5, FL_BANNER_D * 0.5),
             Name::new(format!("AdFenceBanner[{}]", brand.id)),
-        ));
+        )).id();
+
+        let banner = commands.spawn((
+            Mesh3d(banner_mesh.clone()),
+            MeshMaterial3d(banner_mat),
+            Transform::default(),
+        )).id();
+
+        let mut children = vec![banner];
+
+        if let Some(ref logos) = logo_textures {
+            let logo_z = FL_BANNER_D * 0.5 + 0.002;
+            if let Some(logo) = spawn_logo_quad(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                logos,
+                brand_id,
+                FL_BANNER_W,
+                FL_BANNER_H,
+                0.0,
+                logo_z,
+            ) {
+                children.push(logo);
+            }
+        }
+
+        commands.entity(root).add_children(&children);
 
         *analytics.impressions.entry(brand.id.to_string()).or_insert(0) += 1;
     }
@@ -519,6 +655,7 @@ fn spawn_stadium_expo_boards(
     mut materials: ResMut<Assets<StandardMaterial>>,
     brands: Res<ParodyBrands>,
     mut analytics: ResMut<SponsorAnalytics>,
+    logo_textures: Option<Res<BrandLogoTextures>>,
 ) {
     let slab_mesh  = meshes.add(Cuboid::new(SE_PANEL_W + 0.4, SE_SLAB_H, 0.35));
     let panel_mesh = meshes.add(Cuboid::new(SE_PANEL_W, SE_PANEL_H, SE_PANEL_D));
@@ -560,6 +697,8 @@ fn spawn_stadium_expo_boards(
         let panel_y = ground_y + SE_SLAB_H + SE_PANEL_H * 0.5;
         let acc_y   = panel_y + SE_PANEL_H * 0.5 - ACCENT_H * 0.5;
 
+        let panel_y_local = panel_y - ground_y;
+
         let root = commands.spawn((
             AdSign { brand_id },
             Transform::from_xyz(sx, ground_y, sz)
@@ -568,7 +707,7 @@ fn spawn_stadium_expo_boards(
             RigidBody::Static,
             Collider::cuboid(SE_PANEL_W * 0.5, SE_PANEL_H * 0.5, SE_PANEL_D * 0.5),
             ColliderTransform {
-                translation: Vec3::new(0.0, panel_y - ground_y, 0.0),
+                translation: Vec3::new(0.0, panel_y_local, 0.0),
                 ..default()
             },
             Name::new(format!("AdStadiumBoard[{}]", brand.id)),
@@ -583,7 +722,7 @@ fn spawn_stadium_expo_boards(
         let panel = commands.spawn((
             Mesh3d(panel_mesh.clone()),
             MeshMaterial3d(panel_mat),
-            Transform::from_xyz(0.0, panel_y - ground_y, 0.0),
+            Transform::from_xyz(0.0, panel_y_local, 0.0),
         )).id();
 
         let accent = commands.spawn((
@@ -592,7 +731,26 @@ fn spawn_stadium_expo_boards(
             Transform::from_xyz(0.0, acc_y - ground_y, SE_PANEL_D * 0.5 + 0.01),
         )).id();
 
-        commands.entity(root).add_children(&[slab, panel, accent]);
+        let mut children = vec![slab, panel, accent];
+
+        if let Some(ref logos) = logo_textures {
+            let logo_z = SE_PANEL_D * 0.5 + 0.002;
+            if let Some(logo) = spawn_logo_quad(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                logos,
+                brand_id,
+                SE_PANEL_W,
+                SE_PANEL_H,
+                panel_y_local,
+                logo_z,
+            ) {
+                children.push(logo);
+            }
+        }
+
+        commands.entity(root).add_children(&children);
         *analytics.impressions.entry(brand.id.to_string()).or_insert(0) += 1;
     }
 

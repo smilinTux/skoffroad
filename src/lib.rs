@@ -324,6 +324,13 @@ pub use parody_brands::{
 };
 pub use ad_signage::AdSignagePlugin;
 
+// ---- Sprint 85 — Brand logo textures ----------------------------------------
+// Procedural 256x128 RGBA textures (5x7 bitmap font + geometric mark) baked
+// per brand at Startup. Applied to sign panels and livery decal plates on
+// Medium+ quality. Low quality skips generation (headless-safe).
+pub mod brand_logo_tex;
+pub use brand_logo_tex::{BrandLogoTexPlugin, BrandLogoTextures, brand_logo_texture};
+
 // ---- Sprint 72 — Truck sponsor liveries ------------------------------------
 // Five curated livery presets apply parody-brand decal plates to named body
 // panels.  Shift+L cycles presets; selection persists to platform_storage.
