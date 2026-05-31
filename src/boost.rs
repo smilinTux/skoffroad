@@ -172,8 +172,23 @@ fn apply_boost_force(
     let Some(vehicle) = vehicle else { return };
     let Ok((mut forces, transform)) = chassis_q.get_mut(vehicle.chassis) else { return };
 
-    // Chassis forward: Bevy convention — local -Z is forward.
-    let forward = (transform.rotation * Vec3::NEG_Z).normalize();
+    // Chassis forward: Bevy convention — local -Z is forward. BUT the raw
+    // chassis -Z tilts with the truck's pitch. On the coarse, faceted terrain
+    // (quads grew from ~1.5 m to ~3.75 m after the 200 m→720 m terrain
+    // enlargement) the truck pitches noticeably as it rolls over bumps, so the
+    // raw forward vector often points slightly INTO the ground (downhill /
+    // nose-down) or UP (nose-up). Applying the full boost along that tilted
+    // vector drives the truck into the terrain (huge drag) or launches it
+    // airborne — either way it bleeds speed, which is the reported
+    // "boost slows me down" bug.
+    //
+    // Fix: project forward onto the horizontal ground plane (zero Y) so boost
+    // is always pure forward thrust along the ground, like a turbo, never up
+    // or down. Falls back to no thrust if the truck is pointing straight up
+    // (degenerate).
+    let mut forward = transform.rotation * Vec3::NEG_Z;
+    forward.y = 0.0;
+    let forward = forward.normalize_or_zero();
     forces.apply_force(forward * BOOST_FORCE);
 }
 
