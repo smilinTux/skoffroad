@@ -130,6 +130,11 @@ pub mod map_dressing;
 pub use map_dressing::MapDressingPlugin;
 pub mod prop_lod;
 pub use prop_lod::{PropLod, PropLodPlugin, LOD_DISTANCE};
+// Sprint 87: procedural prop surface textures + extra dressing props
+pub mod prop_textures;
+pub use prop_textures::{PropTexturesPlugin, PropTextures};
+pub mod dressing_props;
+pub use dressing_props::DressingPropsPlugin;
 pub mod map_select;
 pub mod notifications;
 pub mod paint_shop;
