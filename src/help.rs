@@ -1,4 +1,5 @@
 // Help overlay: press Shift+/ (?) to toggle a full-screen keybind reference.
+// Press F1 to open the rebind-controls panel (input_remap.rs).
 //
 // The entire text tree is static — built once at Startup, shown/hidden by flipping
 // the root node's Display.  No per-frame update systems are needed.
@@ -68,8 +69,8 @@ fn spawn_help_overlay(mut commands: Commands) {
     // Title row.
     let title = commands
         .spawn((
-            Text::new("KEYBINDS  —  press ? to close"),
-            TextFont { font_size: 22.0, ..default() },
+            Text::new("KEYBINDS  --  press ? to close  (F1 = rebind controls)"),
+            TextFont { font_size: 19.0, ..default() },
             TextColor(COLOR_TITLE),
             Node { margin: UiRect::bottom(Val::Px(6.0)), ..default() },
         ))
@@ -171,6 +172,7 @@ fn build_column_right(commands: &mut Commands) -> Entity {
         ("Z",              "Toggle wind indicator"),
         ("X",              "Toggle speed-line vignette"),
         ("F8 / F9",        "Perf / fuel toggle"),
+        ("F1",             "Rebind controls panel"),
         ("?",              "This help screen"),
         ("Tab (hold)",     "Stats screen"),
     ];
@@ -186,7 +188,7 @@ fn build_column_right(commands: &mut Commands) -> Entity {
     let sys_rows   = [
         ("Esc",            "Pause / settings overlay"),
         ("F5 / F6 / F7",   "Save to slot 1 / 2 / 3"),
-        ("F1 / F2 / F4",   "Load slot 1 / 2 / 3"),
+        ("F2 / F4",        "Load slot 2 / 3"),
         ("F3",             "Dev inspector (--features dev)"),
     ];
 
@@ -288,7 +290,12 @@ fn toggle_help(
     keys:     Res<ButtonInput<KeyCode>>,
     mut root: Query<&mut Node, With<HelpRoot>>,
 ) {
-    // Shift + Slash = '?' on a standard US layout.
+    // Shift + / = '?' on a standard US layout.
+    // NOTE: '/' alone previously triggered Firefox quick-find; the browser
+    // denylist in index.html preventDefaults '/' so the game sees it cleanly,
+    // but this overlay uses Shift+/ ('?') to avoid any residual ambiguity.
+    // F1 opens the rebind panel (input_remap.rs) — the canonical one-key path
+    // to all keybindings.
     let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
     if shift && keys.just_pressed(KeyCode::Slash) {
         for mut node in &mut root {
