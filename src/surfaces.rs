@@ -16,6 +16,7 @@ use bevy_kira_audio::prelude::{Decibels, StaticSoundData, StaticSoundSettings, F
 use avian3d::prelude::LinearVelocity;
 use std::sync::Arc;
 
+use crate::graphics_quality::GraphicsQuality;
 use crate::terrain::terrain_height_at;
 use crate::vehicle::{Chassis, Wheel, VehicleRoot};
 
@@ -212,9 +213,23 @@ fn modulate_surface_audio(
     vehicle: Option<Res<VehicleRoot>>,
     chassis_q: Query<(&Transform, &LinearVelocity), With<Chassis>>,
     wheel_q: Query<(&Transform, &Wheel)>,
+    quality: Option<Res<GraphicsQuality>>,
 ) {
     let Some(surface_audio) = surface_audio else { return };
     let Some(vehicle) = vehicle else { return };
+
+    // On Low quality, mute all surface layers to save 3 voices.
+    let tier = quality.map(|q| *q).unwrap_or(GraphicsQuality::High);
+    if tier == GraphicsQuality::Low {
+        let silence = linear_to_db(0.0001);
+        let tween = AudioTween::linear(std::time::Duration::from_millis(200));
+        for handle in [&surface_audio.grass, &surface_audio.dirt, &surface_audio.rock] {
+            if let Some(inst) = audio_instances.get_mut(handle) {
+                inst.set_decibels(silence, tween.clone());
+            }
+        }
+        return;
+    }
 
     // Chassis world position and speed.
     let Ok((chassis_tf, lin_vel)) = chassis_q.get(vehicle.chassis) else { return };
