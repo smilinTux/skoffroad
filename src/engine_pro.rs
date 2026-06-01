@@ -48,10 +48,16 @@ struct EnginePro {
 // ---------------------------------------------------------------------------
 
 const SAMPLE_RATE: u32  = 44_100;
-const DURATION_S: f32   = 1.0;
 
 /// Idle RPM converted to Hz: 800 RPM / 60 = 13.33 Hz fundamental.
 const IDLE_RPM_HZ: f32  = 800.0 / 60.0;
+
+// Loop length: 3 seconds = 132300 frames.
+// Phase-continuity: firings_per_sec = 800/60*2 = 80/3 Hz.
+// 3.0 s × (80/3) Hz = 80 whole cycles → loop seam is phase-continuous.
+// Verify float32: (800f32/60f32)*2f32*3f32 = (800f32/60f32)*6f32 = 800f32/10f32 = 80f32
+// 80f32.fract() = 0.0 → no click at the seam.
+const ENGINE_PRO_LOOP_N_FRAMES: usize = 132_300; // 3 s × 44100 Hz
 
 // ---------------------------------------------------------------------------
 // 4-cylinder firing-pulse synthesis
@@ -140,9 +146,10 @@ fn spawn_engine_pro_audio(
     mut audio_sources: ResMut<Assets<AudioSource>>,
     audio: Res<Audio>,
 ) {
-    let n_frames = (SAMPLE_RATE as f32 * DURATION_S) as usize;
+    // Use a phase-aligned loop length to avoid the click at the seam.
+    let n_frames = ENGINE_PRO_LOOP_N_FRAMES;
 
-    // Generate 1 second of PCM at idle RPM; the Update system pitch-shifts it
+    // Generate PCM at idle RPM; the Update system pitch-shifts it
     // to match actual speed every frame, so only the waveform shape matters here.
     let source_handle = build_looped_source(&mut audio_sources, n_frames, |i| {
         let t = i as f32 / SAMPLE_RATE as f32;
@@ -193,7 +200,11 @@ fn modulate_engine_pro_audio(
     let volume_linear = (0.05 + 0.35 * drive.drive.abs()).clamp(0.0, 1.0);
 
     if let Some(instance) = audio_instances.get_mut(&engine_pro.instance) {
-        instance.set_playback_rate(playback_rate, AudioTween::default());
-        instance.set_decibels(linear_to_db(volume_linear), AudioTween::default());
+        // Smooth both pitch and volume changes to eliminate zipper/crackle artifacts.
+        // Pitch tween slightly longer than volume so pitch changes feel gradual.
+        let vol_tween   = AudioTween::linear(std::time::Duration::from_millis(40));
+        let pitch_tween = AudioTween::linear(std::time::Duration::from_millis(60));
+        instance.set_playback_rate(playback_rate, pitch_tween);
+        instance.set_decibels(linear_to_db(volume_linear), vol_tween);
     }
 }

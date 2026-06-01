@@ -32,6 +32,7 @@ use bevy_kira_audio::prelude::{
 use std::sync::Arc;
 
 use crate::engine_torque::EngineState;
+use crate::graphics_quality::GraphicsQuality;
 use crate::settings::SettingsState;
 use crate::wind::WindState;
 
@@ -73,7 +74,18 @@ struct GustLayer {
 // ---------------------------------------------------------------------------
 
 const SAMPLE_RATE: u32 = 44_100;
-const DURATION_S:  f32 = 1.0;
+
+// Loop lengths: all tonal layers use exactly 44100 frames (1 second at 44100 Hz).
+// Phase-continuity requirement: freq_hz * duration_s must be an integer.
+//   idle:    20 Hz × 1 s = 20 whole cycles  ✓
+//   cruise:  80 Hz × 1 s = 80 whole cycles  ✓
+//   redline: 160 Hz × 1 s = 160 whole cycles ✓
+//   (envelope rates 2 Hz × 1 s = 2 cycles; 13 Hz × 1 s = 13 cycles; all whole) ✓
+// Noise (gust) has no tonal content so any length is fine.
+const IDLE_LOOP_N_FRAMES:    usize = 44_100;
+const CRUISE_LOOP_N_FRAMES:  usize = 44_100;
+const REDLINE_LOOP_N_FRAMES: usize = 44_100;
+const GUST_LOOP_N_FRAMES:    usize = 44_100;
 
 // RPM band centres / edges for crossfade (same as engine_audio_layered.rs HUD).
 const IDLE_RPM_FULL:    f32 = 1_200.0;   // below this: idle at 100 %
@@ -220,10 +232,8 @@ fn spawn_rpm_layers(
 ) {
     let (Some(mut audio_sources), Some(audio)) = (audio_sources, audio) else { return };
 
-    let n = (SAMPLE_RATE as f32 * DURATION_S) as usize;
-
-    // --- Idle layer ---
-    let idle_handle = build_looped_source(&mut audio_sources, n, |i| {
+    // --- Idle layer — exact 1 s (20 Hz divides cleanly into 44100) ---
+    let idle_handle = build_looped_source(&mut audio_sources, IDLE_LOOP_N_FRAMES, |i| {
         let t = i as f32 / SAMPLE_RATE as f32;
         idle_sample(t, i as u32)
     });
@@ -234,8 +244,8 @@ fn spawn_rpm_layers(
         .with_playback_rate(1.0_f64)
         .handle();
 
-    // --- Cruise layer ---
-    let cruise_handle = build_looped_source(&mut audio_sources, n, |i| {
+    // --- Cruise layer — phase-aligned to 80 Hz (551 whole cycles) ---
+    let cruise_handle = build_looped_source(&mut audio_sources, CRUISE_LOOP_N_FRAMES, |i| {
         let t = i as f32 / SAMPLE_RATE as f32;
         cruise_sample(t)
     });
@@ -246,8 +256,8 @@ fn spawn_rpm_layers(
         .with_playback_rate(1.0_f64)
         .handle();
 
-    // --- Redline layer ---
-    let redline_handle = build_looped_source(&mut audio_sources, n, |i| {
+    // --- Redline layer — phase-aligned to 160 Hz (same buffer length as cruise) ---
+    let redline_handle = build_looped_source(&mut audio_sources, REDLINE_LOOP_N_FRAMES, |i| {
         let t = i as f32 / SAMPLE_RATE as f32;
         redline_sample(t, i as u32)
     });
@@ -272,9 +282,7 @@ fn spawn_gust_layer(
 ) {
     let (Some(mut audio_sources), Some(audio)) = (audio_sources, audio) else { return };
 
-    let n = (SAMPLE_RATE as f32 * DURATION_S) as usize;
-
-    let gust_handle = build_looped_source(&mut audio_sources, n, |i| {
+    let gust_handle = build_looped_source(&mut audio_sources, GUST_LOOP_N_FRAMES, |i| {
         let t = i as f32 / SAMPLE_RATE as f32;
         gust_sample(t, i as u32)
     });
@@ -315,12 +323,27 @@ fn crossfade_rpm_layers(
     mut audio_instances: ResMut<Assets<AudioInstance>>,
     engine: Option<Res<EngineState>>,
     settings: Option<Res<SettingsState>>,
+    quality: Option<Res<GraphicsQuality>>,
 ) {
     let Some(rpm_layers) = rpm_layers else { return };
 
     let rpm = engine.map(|e| e.rpm).unwrap_or(700.0);
 
     let master = settings.map(|s| s.master_volume).unwrap_or(0.7);
+
+    // On Low quality, silence the extra RPM layers entirely — the base engine
+    // audio from audio.rs is sufficient, reducing concurrent voice count by 3.
+    let tier = quality.map(|q| *q).unwrap_or(GraphicsQuality::High);
+    if tier == GraphicsQuality::Low {
+        let silence = linear_to_db(1e-6);
+        let tween = AudioTween::linear(std::time::Duration::from_millis(200));
+        for handle in [&rpm_layers.idle, &rpm_layers.cruise, &rpm_layers.redline] {
+            if let Some(inst) = audio_instances.get_mut(handle) {
+                inst.set_decibels(silence, tween.clone());
+            }
+        }
+        return;
+    }
 
     // Idle weight: full below IDLE_RPM_FULL, linear ramp-down to zero at IDLE_RPM_ZERO.
     let idle_w = {
@@ -348,11 +371,14 @@ fn crossfade_rpm_layers(
     // Volume scalars: max layer volumes (at 100 % weight × master) tune the
     // overall loudness of each layer so they sit at a good blend.
     // idle gets a slightly lower ceiling to avoid masking the cruise growl.
-    let idle_vol_max    = 0.30_f32;
-    let cruise_vol_max  = 0.45_f32;
-    let redline_vol_max = 0.40_f32;
+    // Medium quality reduces the blend a bit to spare CPU/bus bandwidth.
+    let (idle_vol_max, cruise_vol_max, redline_vol_max) = match tier {
+        GraphicsQuality::Medium => (0.22_f32, 0.35_f32, 0.30_f32),
+        _                       => (0.30_f32, 0.45_f32, 0.40_f32),
+    };
 
-    let tween = AudioTween::linear(std::time::Duration::from_millis(25));
+    let vol_tween   = AudioTween::linear(std::time::Duration::from_millis(30));
+    let pitch_tween = AudioTween::linear(std::time::Duration::from_millis(60));
 
     let layers = [
         (&rpm_layers.idle,    idle_w,    idle_vol_max),
@@ -363,8 +389,9 @@ fn crossfade_rpm_layers(
     for (handle, weight, vol_max) in &layers {
         let vol_linear = (weight * vol_max * master).max(1e-6);
         if let Some(inst) = audio_instances.get_mut(*handle) {
-            inst.set_decibels(linear_to_db(vol_linear), tween.clone());
-            inst.set_playback_rate(playback_rate, AudioTween::default());
+            inst.set_decibels(linear_to_db(vol_linear), vol_tween.clone());
+            // Smooth pitch changes — per-frame instant pitch jumps cause crackle.
+            inst.set_playback_rate(playback_rate, pitch_tween.clone());
         }
     }
 }
@@ -385,8 +412,19 @@ fn modulate_gust_layer(
     mut audio_instances: ResMut<Assets<AudioInstance>>,
     wind: Option<Res<WindState>>,
     settings: Option<Res<SettingsState>>,
+    quality: Option<Res<GraphicsQuality>>,
 ) {
     let Some(gust) = gust else { return };
+
+    // On Low quality, mute the atmospheric gust layer entirely to save a voice.
+    let tier = quality.map(|q| *q).unwrap_or(GraphicsQuality::High);
+    if tier == GraphicsQuality::Low {
+        let tween = AudioTween::linear(std::time::Duration::from_millis(200));
+        if let Some(inst) = audio_instances.get_mut(&gust.instance) {
+            inst.set_decibels(linear_to_db(1e-6), tween);
+        }
+        return;
+    }
 
     let wind_speed = wind.map(|w| w.speed_mps).unwrap_or(3.0);
     let master     = settings.map(|s| s.master_volume).unwrap_or(0.7);
@@ -400,8 +438,8 @@ fn modulate_gust_layer(
     let tween = AudioTween::linear(std::time::Duration::from_millis(120));
 
     if let Some(inst) = audio_instances.get_mut(&gust.instance) {
-        inst.set_decibels(linear_to_db(vol_linear.max(1e-6)), tween);
-        inst.set_playback_rate(rate, AudioTween::default());
+        inst.set_decibels(linear_to_db(vol_linear.max(1e-6)), tween.clone());
+        inst.set_playback_rate(rate, tween);
     }
 }
 

@@ -11,7 +11,7 @@
 
 use bevy::prelude::*;
 use bevy_kira_audio::{Audio, AudioControl, AudioSource};
-use bevy_kira_audio::prelude::{StaticSoundData, StaticSoundSettings, Frame as KiraFrame};
+use bevy_kira_audio::prelude::{Decibels, StaticSoundData, StaticSoundSettings, Frame as KiraFrame};
 use std::sync::Arc;
 
 use crate::events::{EventLog, GameEvent};
@@ -114,46 +114,64 @@ fn spawn_crash_audio(
 // Update: detect new HardImpact events and play crash one-shot
 // ---------------------------------------------------------------------------
 
+// Minimum time between crash sound plays to prevent voice pile-up (seconds).
+const CRASH_COOLDOWN_S: f32 = 0.30;
+
 /// Play the crash sound once per new HardImpact event.
 ///
 /// Uses a `Local<f32>` timestamp watermark (same pattern as mixer.rs) to track
-/// which events have already been handled. Applies a slight per-impact pitch
-/// variation (±10 %) using lcg_noise seeded by the fractional part of the
-/// event timestamp, so each hit sounds subtly different.
+/// which events have already been handled. A hard minimum gap (CRASH_COOLDOWN_S)
+/// between plays prevents simultaneous impact events from spawning unbounded
+/// concurrent instances. Applies a slight per-impact pitch variation (±10 %)
+/// using lcg_noise seeded by the fractional part of the event timestamp.
 fn detect_impact_play_crash(
     crash_audio: Option<Res<CrashAudio>>,
     event_log: Option<Res<EventLog>>,
     audio: Res<Audio>,
+    time: Res<Time>,
     mut last_seen: Local<f32>,
+    mut last_played: Local<f32>,
 ) {
     let (Some(crash_audio), Some(event_log)) = (crash_audio, event_log) else {
         return;
     };
 
+    let now = time.elapsed_secs();
     let mut newest_ts = *last_seen;
 
     for (ts, ev) in &event_log.events {
         if *ts <= *last_seen {
             continue;
         }
-        // Track the newest timestamp seen this frame regardless of event type.
         if *ts > newest_ts {
             newest_ts = *ts;
         }
 
         if let GameEvent::HardImpact { .. } = ev {
-            // Derive a per-impact seed from the timestamp's sub-second bits.
-            // Multiplying by a large prime spreads the fractional part into u32
-            // space so different impacts get distinct noise values.
+            // Enforce cooldown to prevent voice pile-up when many impacts occur
+            // in quick succession (e.g. rolling crash).
+            if now - *last_played < CRASH_COOLDOWN_S {
+                continue;
+            }
+
             let seed = (ts.fract() * 1_000_000.0) as u32;
-            // Map lcg_noise [-1, 1] → playback rate [0.9, 1.1] for variety.
             let rate = 1.0 + lcg_noise(seed) * 0.1;
 
             audio
                 .play(crash_audio.source.clone())
                 .with_playback_rate(rate as f64);
+
+            *last_played = now;
         }
     }
 
     *last_seen = newest_ts;
+}
+
+/// Linear amplitude (0..1) to Decibels, floored at -60 dB.
+#[inline]
+#[allow(dead_code)]
+fn linear_to_db(linear: f32) -> Decibels {
+    let db = 20.0 * linear.max(1e-6).log10();
+    Decibels(db.max(-60.0))
 }

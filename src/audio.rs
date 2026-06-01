@@ -77,8 +77,14 @@ struct ThudSource {
 
 const SAMPLE_RATE: u32 = 44_100;
 const BASE_HZ: f32     = 80.0;  // fundamental frequency at idle RPM
-const DURATION_S: f32  = 1.0;
 const THUD_DURATION_S: f32 = 0.5;
+
+// All loops use exactly 1 second (44100 frames) at 44100 Hz.
+// Phase-continuity: BASE_HZ (80 Hz) × 1 s = 80 whole cycles → seam is
+// click-free.  Sub-bass (40 Hz) × 1 s = 40 whole cycles.  Envelopes at
+// rpm_hz also complete whole cycles over 1 s when rpm_hz is an integer.
+const ENGINE_LOOP_N_FRAMES: usize = 44_100;
+const DURATION_S: f32 = 1.0;
 
 /// One audio sample at time `t` (seconds) for a given fundamental `rpm_hz`.
 /// Mixes sawtooth + octave harmonic + sub-bass, with a combustion-cycle
@@ -220,7 +226,8 @@ fn spawn_engine_audio(
     mut audio_sources: ResMut<Assets<AudioSource>>,
     audio: Res<Audio>,
 ) {
-    let n_frames = (SAMPLE_RATE as f32 * DURATION_S) as usize;
+    // Use the phase-aligned loop length so there is no click at the seam.
+    let n_frames = ENGINE_LOOP_N_FRAMES;
     let source_handle = build_looped_source(&mut audio_sources, n_frames, |i| {
         let t = i as f32 / SAMPLE_RATE as f32;
         engine_sample(t, BASE_HZ)
@@ -331,8 +338,13 @@ fn modulate_engine_audio(
     let volume_linear = (0.2 + 0.4 * drive.drive.abs()).clamp(0.0, 1.0);
 
     if let Some(instance) = audio_instances.get_mut(&engine.instance) {
-        instance.set_playback_rate(playback_rate, AudioTween::default());
-        instance.set_decibels(linear_to_db(volume_linear), AudioTween::default());
+        // Use short linear tweens so per-frame param changes are interpolated
+        // by kira rather than applied as instantaneous jumps (which cause
+        // zipper/crackle artifacts especially on slow hardware or WASM).
+        let vol_tween   = AudioTween::linear(std::time::Duration::from_millis(40));
+        let pitch_tween = AudioTween::linear(std::time::Duration::from_millis(60));
+        instance.set_playback_rate(playback_rate, pitch_tween);
+        instance.set_decibels(linear_to_db(volume_linear), vol_tween);
     }
 }
 
@@ -361,12 +373,13 @@ fn modulate_skid(
     let rate = (1.0 + slip_mps * 0.04) as f64;
 
     if let Some(instance) = audio_instances.get_mut(&skid.instance) {
-        // Use a small linear tween (20 ms) to avoid zipper noise on volume changes.
+        let tween = AudioTween::linear(std::time::Duration::from_millis(30));
         instance.set_decibels(
             linear_to_db(volume.max(0.0001)),
-            AudioTween::linear(std::time::Duration::from_millis(20)),
+            tween.clone(),
         );
-        instance.set_playback_rate(rate, AudioTween::default());
+        // Smooth pitch changes too — unsmoothed pitch is the main crackle source.
+        instance.set_playback_rate(rate, tween);
     }
 }
 
@@ -388,11 +401,9 @@ fn modulate_wind(
     let rate = (0.9 + speed_mps * 0.01) as f64;
 
     if let Some(instance) = audio_instances.get_mut(&wind.instance) {
-        instance.set_decibels(
-            linear_to_db(volume),
-            AudioTween::linear(std::time::Duration::from_millis(60)),
-        );
-        instance.set_playback_rate(rate, AudioTween::default());
+        let tween = AudioTween::linear(std::time::Duration::from_millis(80));
+        instance.set_decibels(linear_to_db(volume), tween.clone());
+        instance.set_playback_rate(rate, tween);
     }
 }
 
