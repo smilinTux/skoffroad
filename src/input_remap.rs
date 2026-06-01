@@ -1,4 +1,4 @@
-// Configurable keybindings: shows a binding panel toggled via a slash key,
+// Configurable keybindings: shows a binding panel toggled via F1,
 // lets player rebind core controls (forward/back/steer/brake/handbrake/boost).
 // Default mappings mirror WASD; persisted in ~/.skoffroad/keybindings.json.
 //
@@ -26,7 +26,7 @@ impl Plugin for InputRemapPlugin {
             .add_systems(
                 Update,
                 (
-                    toggle_with_slash,
+                    toggle_panel,
                     cycle_cursor,
                     capture_new_key,
                     apply_bindings_to_drive_input.after(drive_input_keyboard),
@@ -404,7 +404,20 @@ const ROW_BG_SELECTED: Color = Color::srgba(0.12, 0.12, 0.0, 0.6);
 // ---------------------------------------------------------------------------
 
 fn spawn_remap_panel(mut commands: Commands) {
-    // Full-screen overlay root (hidden until `/` is pressed).
+    // Persistent on-screen hint — always visible, bottom-right corner.
+    commands.spawn((
+        Text::new("F1 = Controls"),
+        TextFont { font_size: 12.0, ..default() },
+        TextColor(Color::srgba(0.7, 0.7, 0.7, 0.65)),
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(8.0),
+            right:  Val::Px(10.0),
+            ..default()
+        },
+    ));
+
+    // Full-screen overlay root (hidden until F1 is pressed).
     let root = commands
         .spawn((
             RemapPanelRoot,
@@ -439,8 +452,8 @@ fn spawn_remap_panel(mut commands: Commands) {
     // Title row.
     let title = commands
         .spawn((
-            Text::new("KEYBINDINGS"),
-            TextFont { font_size: 26.0, ..default() },
+            Text::new("KEYBINDINGS  (F1 to close)"),
+            TextFont { font_size: 24.0, ..default() },
             TextColor(COLOR_TITLE),
         ))
         .id();
@@ -477,7 +490,7 @@ fn spawn_remap_panel(mut commands: Commands) {
     let footer = commands
         .spawn((
             RemapFooterText,
-            Text::new("\u{2191}\u{2193} select   ENTER rebind   / close"),
+            Text::new("Up/Down select   ENTER rebind   F1 close"),
             TextFont { font_size: 13.0, ..default() },
             TextColor(COLOR_FOOTER),
         ))
@@ -488,14 +501,16 @@ fn spawn_remap_panel(mut commands: Commands) {
 }
 
 // ---------------------------------------------------------------------------
-// System: toggle_with_slash — open / close the panel with `/`
+// System: toggle_panel — open / close the keybinding panel with F1.
+// F1 is safe from browser hijacking when the JS denylist in index.html
+// preventDefaults it before the browser's help dialog can fire.
 // ---------------------------------------------------------------------------
 
-fn toggle_with_slash(
+fn toggle_panel(
     keys:      Res<ButtonInput<KeyCode>>,
     mut state: ResMut<InputRemapState>,
 ) {
-    if keys.just_pressed(KeyCode::Slash) {
+    if keys.just_pressed(KeyCode::F1) {
         state.open = !state.open;
         // Cancel any pending rebind when closing.
         if !state.open {
@@ -547,8 +562,8 @@ fn capture_new_key(
 
     // Accept the first non-modifier key pressed.
     for key in keys.get_just_pressed() {
-        // Slash would re-toggle the panel — skip it.
-        if *key == KeyCode::Slash { continue; }
+        // F1 would re-toggle the panel — skip it.
+        if *key == KeyCode::F1 { continue; }
         if is_modifier_only(*key) { continue; }
 
         set_binding(&mut bindings, slot, *key);

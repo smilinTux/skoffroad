@@ -223,6 +223,92 @@ setTimeout(() => splash.classList.add('gone'), 30_000);
 })();
 </script>
 
+<!-- Browser-key denylist: preventDefault game-relevant keys that browsers
+     would otherwise hijack (Firefox quick-find, F5 reload, F12 devtools, etc.).
+     Runs in capture phase so it fires before the browser acts on the event.
+     winit attaches its own keydown listeners to <canvas id="bevy"> directly;
+     this handler sits on window so it runs first (capture beats bubble).
+
+     DELIBERATELY excluded from the denylist:
+       F11  — browser fullscreen (user may genuinely want this)
+       Ctrl+Shift+I / Ctrl+Shift+J — devtools open (developer need)
+       Ctrl+C / Ctrl+V / Ctrl+X / Ctrl+Z / Ctrl+A — clipboard & select-all
+       Ctrl+R / Ctrl+Shift+R  — hard reload (left to user discretion)
+       Ctrl+F  — browser find (game uses bare F for PTT, not Ctrl+F)
+
+     INCLUDED in the denylist (keys the game binds that browsers intercept):
+       /     — Firefox quick-find bar  (game: was panel toggle, JS must still pass it for legacy)
+       '     — Firefox link quick-find (game: settings day-length via settings.rs)
+       F1    — browser help dialog     (game: rebind controls panel)
+       F2..F9, F12 — various browser actions and the F5 reload catastrophe
+       Ctrl+S — browser "Save page"    (game: bare S = reverse; Ctrl+S disrupts)
+       Ctrl+W — browser "Close tab"    (game: bare W = throttle; Ctrl+W kills session)
+       Ctrl+T — browser "New tab"      (game: bare T = time pause; Ctrl+T disrupts)
+       Ctrl+D — browser "Bookmark"     (game: bare D = steer right)
+-->
+<script>
+(function () {
+  'use strict';
+
+  // Keys to block when the game canvas has focus (or is the active page).
+  // We use a Set of KeyboardEvent.code values for O(1) lookup.
+  var BLOCKED_CODES = new Set([
+    // Punctuation keys Firefox hijacks as quick-find triggers
+    'Slash',       // /  — Firefox quick-find
+    'Quote',       // '  — Firefox link quick-find
+
+    // Function keys the game actively uses (F11 deliberately omitted)
+    'F1',          // rebind controls panel  (also: browser help — prevented)
+    'F2',          // load slot 2
+    'F3',          // dev inspector
+    'F4',          // load slot 3
+    'F5',          // CRITICAL: save slot 1 / fast-travel — also browser RELOAD
+    'F6',          // save slot 2
+    'F7',          // save slot 3
+    'F8',          // perf overlay
+    'F9',          // fuel overlay / session summary
+    'F12',         // screenshot / benchmark  (also: browser devtools)
+  ]);
+
+  // Ctrl-key combos that would close/navigate the browser tab.
+  // Only preventDefault when ctrlKey (or metaKey on Mac) is held.
+  var BLOCKED_CTRL_CODES = new Set([
+    'KeyS',        // Ctrl+S — browser "Save page"
+    'KeyW',        // Ctrl+W — browser "Close tab"   (catastrophic)
+    'KeyT',        // Ctrl+T — browser "New tab"
+    'KeyD',        // Ctrl+D — browser "Bookmark page"
+  ]);
+
+  // We only intercept events when the canvas is the active/focused element
+  // OR when no text-input-like element has focus (so rebind typing still works).
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    // Standard text inputs, textareas, contenteditable elements.
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+    if (el.isContentEditable) return true;
+    return false;
+  }
+
+  window.addEventListener('keydown', function (e) {
+    // Never swallow keys while the player is typing in a real input field.
+    if (isTypingTarget(document.activeElement)) return;
+
+    var isCtrl = e.ctrlKey || e.metaKey;
+
+    if (isCtrl) {
+      if (BLOCKED_CTRL_CODES.has(e.code)) {
+        e.preventDefault();
+      }
+    } else {
+      if (BLOCKED_CODES.has(e.code)) {
+        e.preventDefault();
+      }
+    }
+  }, true /* capture phase — fires before browser default handlers */);
+})();
+</script>
+
 <!-- Sprint 52: touch controls JS — assets/ is already copied by Trunk's copy-dir above -->
 <script src="assets/touch-controls.js" defer></script>
 

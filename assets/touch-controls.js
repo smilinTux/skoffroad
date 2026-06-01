@@ -63,6 +63,10 @@
     'Digit0': 48, 'Digit1': 49, 'Digit2': 50, 'Digit3': 51,
     'Digit4': 52, 'Digit5': 53, 'Digit6': 54, 'Digit7': 55,
     'Digit8': 56, 'Digit9': 57,
+    // Function keys — legacy keyCode values (DOM Level 3)
+    'F1': 112, 'F2': 113, 'F3': 114, 'F4': 115,
+    'F5': 116, 'F6': 117, 'F7': 118, 'F8': 119,
+    'F9': 120, 'F10': 121, 'F11': 122, 'F12': 123,
   };
 
   /**
@@ -166,14 +170,15 @@
      * Tapping a row dispatches the keydown event to enter that desktop panel.
      */
     var entries = [
-      ['🔧', 'Vehicle Mods (M)',         'ShiftLeft+KeyM', null, 'ShiftM'],
-      ['🌐', 'Multiplayer (I)',           'KeyI',           'i',  null],
-      ['🏆', 'Hillclimb Leaderboard (H)', 'KeyH',           'h',  null],
-      ['🗺️', 'Custom Map (drag-drop)',    'KeyM',           'm',  null],
-      ['🎤', 'Voice / Webcam (Q)',        'KeyQ',           'q',  null],
-      ['🏗️', 'Garage / Build Rig (Shift+G)', 'KeyG',          'g',  'ShiftG'],
-      ['🎯', 'Mission Select (Shift+Tab)','Tab',            'Tab', 'ShiftTab'],
-      ['❓', 'Help (Esc)',               'Escape',         'Escape', null],
+      ['🔧', 'Vehicle Mods (M)',           'ShiftLeft+KeyM', null,     'ShiftM'],
+      ['🌐', 'Multiplayer (I)',             'KeyI',           'i',      null],
+      ['🏆', 'Hillclimb Leaderboard (H)',   'KeyH',           'h',      null],
+      ['🗺️', 'Custom Map (drag-drop)',      'KeyM',           'm',      null],
+      ['🎤', 'Voice / Webcam (Q)',          'KeyQ',           'q',      null],
+      ['🏗️', 'Garage / Build Rig (Shift+G)', 'KeyG',          'g',      'ShiftG'],
+      ['🎯', 'Mission Select (Shift+Tab)', 'Tab',            'Tab',    'ShiftTab'],
+      ['[K]', 'Controls / Rebind (F1)',    'F1',             'F1',     null],
+      ['❓', 'Help (?)',                   'Slash',          '/',      'ShiftSlash'],
     ];
 
     entries.forEach(function (entry) {
@@ -201,7 +206,8 @@
         e.preventDefault();
         hideMenu();
 
-        // ShiftM / ShiftTab need a two-event sequence (Shift down, key down, key up, Shift up).
+        // ShiftM / ShiftTab / ShiftSlash need a two-event sequence
+        // (Shift down, key down, key up, Shift up).
         // Uses the top-level fireKey() helper so keyCode/which are populated correctly.
         function fireShiftKey(mainCode, mainKey) {
           fireKey('keydown', 'ShiftLeft', 'Shift', { shiftKey: true });
@@ -213,6 +219,8 @@
           fireShiftKey('KeyM', 'M');
         } else if (special === 'ShiftTab') {
           fireShiftKey('Tab', 'Tab');
+        } else if (special === 'ShiftSlash') {
+          fireShiftKey('Slash', '/');
         } else {
           keyDown(code, keyVal || code);
           setTimeout(function () { keyUp(code, keyVal || code); }, 80);
