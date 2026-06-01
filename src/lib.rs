@@ -204,6 +204,8 @@ pub mod stars;
 pub mod stats_screen;
 pub mod storm;
 pub mod stunt_score;
+pub mod startup_stager;
+pub use startup_stager::{StartupStagerPlugin, StartupQueue};
 pub mod surfaces;
 pub mod suspension_arms;
 pub mod terrain;

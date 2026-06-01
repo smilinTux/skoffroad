@@ -35,6 +35,7 @@ use avian3d::prelude::*;
 
 use crate::terrain::terrain_height_at;
 use crate::prop_lod::PropLod;
+use crate::graphics_quality::GraphicsQuality;
 
 // ---------------------------------------------------------------------------
 // Marker component
@@ -185,7 +186,10 @@ pub fn spawn_world_trees(
     mut commands:  Commands,
     mut meshes:    ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality:       Res<GraphicsQuality>,
 ) {
+    // Tier-scale: High=300, Medium=210, Low=120 (rounded from 1.0/0.70/0.40×300)
+    let target_count = (300.0 * quality.scatter_count_mul()).round() as i32;
     // --- Materials ---
     let con_canopy_a = materials.add(StandardMaterial {
         base_color: CON_CANOPY_A,
@@ -229,10 +233,12 @@ pub fn spawn_world_trees(
 
     let mut spawned = 0usize;
 
-    // --- 150 conifers ---
+    let half_target = target_count / 2;
+
+    // --- half_target conifers ---
     let mut attempts = 0i32;
     let mut placed = 0i32;
-    while placed < 150 && attempts < 3000 {
+    while placed < half_target && attempts < (half_target * 20).max(600) {
         let (x, z) = sample_pos(placed, attempts, 0xF101, 0xF102);
         attempts += 1;
         if in_hub(x, z) {
@@ -276,10 +282,10 @@ pub fn spawn_world_trees(
         placed += 1;
     }
 
-    // --- 150 round-canopy (oak/broadleaf) trees ---
+    // --- half_target round-canopy (oak/broadleaf) trees ---
     let mut attempts = 0i32;
     let mut placed = 0i32;
-    while placed < 150 && attempts < 3000 {
+    while placed < half_target && attempts < (half_target * 20).max(600) {
         let (x, z) = sample_pos(placed, attempts + 1000, 0xF201, 0xF202);
         attempts += 1;
         if in_hub(x, z) {
@@ -341,7 +347,11 @@ pub fn spawn_world_boulders(
     mut commands:  Commands,
     mut meshes:    ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality:       Res<GraphicsQuality>,
 ) {
+    // Tier-scale: High=200, Medium=140, Low=80
+    let solitary_target = (120.0 * quality.scatter_count_mul()).round() as i32;
+    let cluster_target  = (20.0  * quality.scatter_count_mul()).round() as i32;
     let boulder_a = materials.add(StandardMaterial {
         base_color: BOULDER_A,
         perceptual_roughness: 0.97,
@@ -359,10 +369,10 @@ pub fn spawn_world_boulders(
 
     let mut spawned = 0usize;
 
-    // 120 solitary boulders
+    // Solitary boulders (tier-scaled)
     let mut attempts = 0i32;
     let mut placed = 0i32;
-    while placed < 120 && attempts < 2400 {
+    while placed < solitary_target && attempts < (solitary_target * 20).max(240) {
         let (x, z) = sample_pos(placed, attempts, 0xF301, 0xF302);
         attempts += 1;
         if in_hub(x, z) {
@@ -395,10 +405,10 @@ pub fn spawn_world_boulders(
         placed += 1;
     }
 
-    // 20 clusters of 3-4 boulders each (up to 80 extra boulders)
+    // Clusters of 3-4 boulders each (tier-scaled)
     let mut attempts = 0i32;
     let mut cluster = 0i32;
-    while cluster < 20 && attempts < 800 {
+    while cluster < cluster_target && attempts < (cluster_target * 40).max(80) {
         let (cx, cz) = sample_pos(cluster, attempts + 2000, 0xF401, 0xF402);
         attempts += 1;
         if in_hub(cx, cz) {
@@ -452,7 +462,10 @@ pub fn spawn_world_grass(
     mut commands:  Commands,
     mut meshes:    ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality:       Res<GraphicsQuality>,
 ) {
+    // Tier-scale: High=500, Medium=350, Low=200
+    let grass_target = (500.0 * quality.scatter_count_mul()).round() as i32;
     let grass_mat_a = materials.add(StandardMaterial {
         base_color: GRASS_A,
         perceptual_roughness: 0.92,
@@ -479,10 +492,10 @@ pub fn spawn_world_grass(
 
     let mut spawned = 0usize;
 
-    // 500 grass / shrub items
+    // Grass / shrub items (tier-scaled)
     let mut attempts = 0i32;
     let mut placed = 0i32;
-    while placed < 500 && attempts < 8000 {
+    while placed < grass_target && attempts < (grass_target * 16).max(800) {
         let (x, z) = sample_pos(placed, attempts, 0xF501, 0xF502);
         attempts += 1;
         if in_hub(x, z) {
@@ -538,7 +551,10 @@ pub fn spawn_world_bushes(
     mut commands:  Commands,
     mut meshes:    ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality:       Res<GraphicsQuality>,
 ) {
+    // Tier-scale: High=100, Medium=70, Low=40
+    let bush_target = (100.0 * quality.scatter_count_mul()).round() as i32;
     let bush_mat_a = materials.add(StandardMaterial {
         base_color: BUSH_A,
         perceptual_roughness: 0.86,
@@ -559,7 +575,7 @@ pub fn spawn_world_bushes(
 
     let mut attempts = 0i32;
     let mut placed = 0i32;
-    while placed < 100 && attempts < 2000 {
+    while placed < bush_target && attempts < (bush_target * 20).max(200) {
         let (x, z) = sample_pos(placed, attempts + 3000, 0xF601, 0xF602);
         attempts += 1;
         if in_hub(x, z) {
@@ -603,7 +619,10 @@ pub fn spawn_world_logs(
     mut commands:  Commands,
     mut meshes:    ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality:       Res<GraphicsQuality>,
 ) {
+    // Tier-scale: High=50, Medium=35, Low=20
+    let log_target = (50.0 * quality.scatter_count_mul()).round() as i32;
     let log_mat = materials.add(StandardMaterial {
         base_color: LOG_COLOR,
         perceptual_roughness: 0.96,
@@ -615,7 +634,7 @@ pub fn spawn_world_logs(
 
     let mut attempts = 0i32;
     let mut placed = 0i32;
-    while placed < 50 && attempts < 1500 {
+    while placed < log_target && attempts < (log_target * 30).max(150) {
         let (x, z) = sample_pos(placed, attempts + 4000, 0xF701, 0xF702);
         attempts += 1;
         if in_hub(x, z) {

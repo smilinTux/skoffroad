@@ -11,6 +11,7 @@ use skoffroad::{
     ChassisMudPlugin,
     CustomMapLoaderPlugin,
     GpxOverlayPlugin,
+    StartupStagerPlugin,
     VehicleTexturesPlugin,
     BrandLogoTexPlugin,
     MapDressingPlugin, PropLodPlugin, BiomeDressingPlugin, WorldScatterPlugin,
@@ -110,17 +111,16 @@ fn main() {
             ..default()
         }))
         .add_plugins(PhysicsPlugins::default())
+        // StartupStagerPlugin must be first so StartupQueue resource exists
+        // when other plugins' Startup systems push work into it.
+        .add_plugins(StartupStagerPlugin)
+        // GraphicsQualityPlugin must register before other plugins so the
+        // GraphicsQuality resource is available in every Startup system.
+        // TerrainDetailTexPlugin runs in Startup to generate the procedural
+        // detail-normal texture; must be before TerrainPlugin (PostStartup).
+        .add_plugins((GraphicsQualityPlugin, TerrainDetailTexPlugin, PostFxPlugin))
         .add_plugins(WaterTexturesPlugin)
         .add_plugins(SunsetGradientPlugin)
-        // GraphicsQualityPlugin must register first so other plugins' Startup
-        // systems can read the GraphicsQuality resource. PostFxPlugin
-        // attaches camera post-FX in PostStartup after camera.rs spawns
-        // the Camera3d. (TerrainPbrPlugin parked while we sort out a
-        // Bevy 0.18 bind-group layout issue with the triplanar shader.)
-        // TerrainDetailTexPlugin runs in Startup to generate the procedural
-        // detail-normal texture.  It must be registered before TerrainPlugin
-        // whose PostStartup system reads TerrainDetailTex via Option<Res<...>>.
-        .add_plugins((GraphicsQualityPlugin, TerrainDetailTexPlugin, PostFxPlugin))
         // SkyPlugin owns the sky dome + sun + ambient + fog;
         // ClearColor and the old setup_lighting are no longer needed.
         .add_plugins((

@@ -11,6 +11,7 @@ use avian3d::prelude::*;
 use noise::{NoiseFn, Perlin};
 
 use crate::terrain::{terrain_height_at, TERRAIN_SEED};
+use crate::graphics_quality::GraphicsQuality;
 
 pub struct ScatterPlugin;
 
@@ -20,12 +21,9 @@ impl Plugin for ScatterPlugin {
     }
 }
 
-const GRID_CELLS: usize = 50;
+// GRID_CELLS is now tier-scaled in spawn_scatter.
+// High=50, Medium=38 (~70%), Low=25 (~50% — matching scatter_count_mul).
 const WORLD_SIZE: f32 = 200.0;
-// Width of one grid cell in world space.
-const CELL_SIZE: f32 = WORLD_SIZE / GRID_CELLS as f32;
-// Maximum random offset within a cell (±0.7 * cell size).
-const JITTER: f32 = CELL_SIZE * 0.7;
 
 // Finite-difference step for slope estimation — matches terrain.rs GRID resolution.
 const SLOPE_STEP: f32 = 1.0;
@@ -62,7 +60,16 @@ fn spawn_scatter(
     mut commands: Commands,
     mut meshes:   ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    quality: Res<GraphicsQuality>,
 ) {
+    // Tier-scaled grid: High=50×50=2500 cells, Medium=38×38≈1444, Low=25×25=625.
+    let grid_cells: usize = match *quality {
+        GraphicsQuality::Low    => 25,
+        GraphicsQuality::Medium => 38,
+        GraphicsQuality::High   => 50,
+    };
+    let cell_size: f32 = WORLD_SIZE / grid_cells as f32;
+    let jitter: f32 = cell_size * 0.7;
     // Separate Perlin instances seeded off TERRAIN_SEED so trees and rocks
     // have independent spatial patterns that differ from the heightmap noise.
     let tree_noise  = Perlin::new(TERRAIN_SEED + 1);
@@ -95,16 +102,14 @@ fn spawn_scatter(
 
     // Spawn-clear radius: skip any cell whose centre is within 8 m of origin
     // so the chassis (and the four wheel anchors at ±1.1 ±1.4) land in clear
-    // ground rather than on top of a tree/rock. Pre-slope-fix this was moot
-    // because trees never spawned anywhere; once the slope check started
-    // passing flat ground a tree landed on the spawn point.
+    // ground rather than on top of a tree/rock.
     const SPAWN_CLEAR: f32 = 8.0;
 
-    for gz in 0..GRID_CELLS {
-        for gx in 0..GRID_CELLS {
+    for gz in 0..grid_cells {
+        for gx in 0..grid_cells {
             // Cell centre in world space.
-            let cx = -half + (gx as f32 + 0.5) * CELL_SIZE;
-            let cz = -half + (gz as f32 + 0.5) * CELL_SIZE;
+            let cx = -half + (gx as f32 + 0.5) * cell_size;
+            let cz = -half + (gz as f32 + 0.5) * cell_size;
 
             if cx * cx + cz * cz < SPAWN_CLEAR * SPAWN_CLEAR {
                 continue;
@@ -124,8 +129,8 @@ fn spawn_scatter(
             // iGPU) → 0.85 (~30-60 trees, world reads as forested but the
             // GPU keeps up).
             if slope < 0.20 && t_val > 0.85 {
-                let jx  = (hash2(gx as i32, gz as i32, 10) * 2.0 - 1.0) * JITTER;
-                let jz  = (hash2(gx as i32, gz as i32, 20) * 2.0 - 1.0) * JITTER;
+                let jx  = (hash2(gx as i32, gz as i32, 10) * 2.0 - 1.0) * jitter;
+                let jz  = (hash2(gx as i32, gz as i32, 20) * 2.0 - 1.0) * jitter;
                 let rot = hash2(gx as i32, gz as i32, 30) * std::f32::consts::TAU;
                 let scale = 0.7 + hash2(gx as i32, gz as i32, 40) * 0.7;
 
@@ -168,8 +173,8 @@ fn spawn_scatter(
             // but the noise threshold is tightened so far fewer rocks spawn.
             let place_rock = (slope > 0.40 && r_val > 0.5) || (slope > 0.25 && r_val > 0.85);
             if place_rock {
-                let jx  = (hash2(gx as i32, gz as i32, 50) * 2.0 - 1.0) * JITTER;
-                let jz  = (hash2(gx as i32, gz as i32, 60) * 2.0 - 1.0) * JITTER;
+                let jx  = (hash2(gx as i32, gz as i32, 50) * 2.0 - 1.0) * jitter;
+                let jz  = (hash2(gx as i32, gz as i32, 60) * 2.0 - 1.0) * jitter;
                 let rot = hash2(gx as i32, gz as i32, 70) * std::f32::consts::TAU;
 
                 // Non-uniform scale for organic squashed/stretched look.
