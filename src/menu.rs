@@ -102,7 +102,7 @@ fn spawn_title_screen(mut commands: Commands) {
     // Version / engine subtitle — auto-pulled from CARGO_PKG_VERSION at build time.
     let subtitle = commands
         .spawn((
-            Text::new(format!("v{}  —  A Bevy + Avian off-road sim", env!("CARGO_PKG_VERSION"))),
+            Text::new(format!("v{}  -  A Bevy + Avian off-road sim", env!("CARGO_PKG_VERSION"))),
             TextFont { font_size: 16.0, ..default() },
             TextColor(COLOR_SUB),
         ))
