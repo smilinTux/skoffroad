@@ -192,7 +192,7 @@ fn spawn_title_screen(mut commands: Commands) {
             Button,
             StartButton,
             Node {
-                width:           Val::Px(260.0),
+                width:           Val::Px(300.0),
                 height:          Val::Px(64.0),
                 align_items:     AlignItems::Center,
                 justify_content: JustifyContent::Center,
@@ -205,8 +205,8 @@ fn spawn_title_screen(mut commands: Commands) {
         .id();
     let start_label = commands
         .spawn((
-            Text::new("▶  TAP / PRESS TO START"),
-            TextFont { font_size: 22.0, ..default() },
+            Text::new(">> TAP / CLICK / PRESS TO DRIVE"),
+            TextFont { font_size: 20.0, ..default() },
             TextColor(Color::srgb(1.0, 0.92, 0.55)),
         ))
         .id();
@@ -215,15 +215,25 @@ fn spawn_title_screen(mut commands: Commands) {
     // Bottom prompt
     let prompt = commands
         .spawn((
-            Text::new("Or press SPACE / W / Enter / Arrow.  Press ? in-game for full keybinds."),
+            Text::new("Space / W / Enter / Arrow key also starts."),
             TextFont { font_size: 14.0, ..default() },
             TextColor(COLOR_HINT),
         ))
         .id();
 
+    // Persistent nav hint — always visible after start, shown here during title
+    let nav_hint = commands
+        .spawn((
+            Text::new("Esc = pause/options   ? = controls   Shift+G = garage   Shift+Tab = missions"),
+            TextFont { font_size: 13.0, ..default() },
+            TextColor(Color::srgb(0.40, 0.60, 0.75)),
+            Node { margin: UiRect::top(Val::Px(6.0)), ..default() },
+        ))
+        .id();
+
     commands
         .entity(root)
-        .add_children(&[title, brand, subtitle, spacer1, kb_root, spacer2, start_btn, prompt]);
+        .add_children(&[title, brand, subtitle, spacer1, kb_root, spacer2, start_btn, prompt, nav_hint]);
 }
 
 /// Build a vertical column of (key, description) rows for the title screen.
@@ -298,6 +308,7 @@ fn dismiss_title_screen(
     let key_pressed = keys.just_pressed(KeyCode::Space)
         || keys.just_pressed(KeyCode::KeyW)
         || keys.just_pressed(KeyCode::Enter)
+        || keys.just_pressed(KeyCode::Escape)
         || keys.just_pressed(KeyCode::ArrowUp)
         || keys.just_pressed(KeyCode::ArrowDown)
         || keys.just_pressed(KeyCode::ArrowLeft)
