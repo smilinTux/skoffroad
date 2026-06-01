@@ -697,6 +697,12 @@ fn open_close_garage(
         ui.open = !ui.open;
         info!("garage_build: toggled (open={})", ui.open);
     }
+
+    // Esc closes the garage (without discarding — same as pressing Shift+G when open).
+    if keys.just_pressed(KeyCode::Escape) && ui.open {
+        ui.open = false;
+        info!("garage_build: closed via Esc");
+    }
 }
 
 // ---------------------------------------------------------------------------

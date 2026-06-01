@@ -512,11 +512,19 @@ fn toggle_mission_select(
     mut vis_q: Query<&mut Visibility, With<MissionSelectRoot>>,
 ) {
     let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
-    if !(shift && keys.just_pressed(KeyCode::Tab)) {
+    let shift_tab = shift && keys.just_pressed(KeyCode::Tab);
+    // Esc closes the overlay if it is currently open.
+    let esc_close = keys.just_pressed(KeyCode::Escape) && open.0;
+
+    if !shift_tab && !esc_close {
         return;
     }
 
-    open.0 = !open.0;
+    if esc_close {
+        open.0 = false;
+    } else {
+        open.0 = !open.0;
+    }
 
     for mut vis in vis_q.iter_mut() {
         *vis = if open.0 { Visibility::Visible } else { Visibility::Hidden };
