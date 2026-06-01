@@ -30,7 +30,7 @@ impl Plugin for MenuPlugin {
 /// Tracks whether the title screen has been dismissed.
 ///
 /// Other systems (audio, input) may read `dismissed` to suppress behaviour
-/// while the title screen is up — though v0.4 does not enforce this yet.
+/// while the title screen is up - though v0.4 does not enforce this yet.
 #[derive(Resource, Default)]
 pub struct MenuState {
     pub dismissed: bool,
@@ -80,7 +80,7 @@ fn spawn_title_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Large game title — lowercase wordmark with the brand subtitle just below.
+    // Large game title - lowercase wordmark with the brand subtitle just below.
     let title = commands
         .spawn((
             Text::new("skoffroad"),
@@ -89,7 +89,7 @@ fn spawn_title_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Brand subtitle — the white-label public-facing name.
+    // Brand subtitle - the white-label public-facing name.
     let brand = commands
         .spawn((
             Text::new("S&K  OFFROAD"),
@@ -99,10 +99,10 @@ fn spawn_title_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Version / engine subtitle — auto-pulled from CARGO_PKG_VERSION at build time.
+    // Version / engine subtitle - auto-pulled from CARGO_PKG_VERSION at build time.
     let subtitle = commands
         .spawn((
-            Text::new(format!("v{}  —  A Bevy + Avian off-road sim", env!("CARGO_PKG_VERSION"))),
+            Text::new(format!("v{}  -  A Bevy + Avian off-road sim", env!("CARGO_PKG_VERSION"))),
             TextFont { font_size: 16.0, ..default() },
             TextColor(COLOR_SUB),
         ))
@@ -161,9 +161,9 @@ fn spawn_title_screen(mut commands: Commands) {
         ("Q",       "Webcam toggle"),
         ("",        ""),
         ("MODE FAST-TRAVEL", ""),
-        ("Alt+H",   "Hillclimb Tiers — Beginner"),
-        ("Alt+R",   "Rock Crawl — Boulder Stairs"),
-        ("Alt+O",   "Obstacle Course — Beginner"),
+        ("Alt+H",   "Hillclimb Tiers - Beginner"),
+        ("Alt+R",   "Rock Crawl - Boulder Stairs"),
+        ("Alt+O",   "Obstacle Course - Beginner"),
         ("Alt+T",   "Trail Rides (first trail)"),
         ("Alt+S",   "Default spawn (origin)"),
         ("",        ""),
@@ -176,8 +176,8 @@ fn spawn_title_screen(mut commands: Commands) {
         ("T  [ ]",  "Pause / scrub time of day"),
         ("Shift+T",  "Pin to day (noon)"),
         ("Ctrl+T",   "Pin to night (midnight)"),
-        ("F5/F6/F7", "Save slots 1/2/3"),
-        ("F1/F2/F4", "Load slots 1/2/3"),
+        ("F5/F6/F7",       "Save slots 1/2/3"),
+        ("Shift+F5/F6/F7", "Load slots 1/2/3"),
         ("Esc",     "Pause / settings"),
     ]);
     commands.entity(kb_root).add_children(&[col_left, col_right]);
@@ -221,7 +221,7 @@ fn spawn_title_screen(mut commands: Commands) {
         ))
         .id();
 
-    // Persistent nav hint — always visible after start, shown here during title
+    // Persistent nav hint - always visible after start, shown here during title
     let nav_hint = commands
         .spawn((
             Text::new("Esc = pause/options   ? = controls   Shift+G = garage   Shift+Tab = missions"),
@@ -300,7 +300,7 @@ fn dismiss_title_screen(
     mut state: ResMut<MenuState>,
     mut roots: Query<&mut Node, With<TitleScreenRoot>>,
 ) {
-    // Already gone — nothing to do.
+    // Already gone - nothing to do.
     if state.dismissed {
         return;
     }

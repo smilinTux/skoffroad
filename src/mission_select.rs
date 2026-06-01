@@ -1,9 +1,9 @@
-// mission_select.rs — Sprint 63
+// mission_select.rs - Sprint 63
 //
 // Unified Mission Select full-screen overlay toggled by Shift+Tab.
 //
 // Layout:
-//   GlobalZIndex(900) — above HUD (z 42–50), below title screen.
+//   GlobalZIndex(900) - above HUD (z 42-50), below title screen.
 //
 // Cards shown:
 //   ── Hillclimb Tiers ──
@@ -28,7 +28,7 @@
 //
 // Public API:
 //   MissionSelectPlugin
-//   MissionSelectOpen (Resource — bool, true while overlay is visible)
+//   MissionSelectOpen (Resource - bool, true while overlay is visible)
 
 use bevy::prelude::*;
 
@@ -50,7 +50,7 @@ use crate::vehicle::{Chassis, VehicleRoot};
 // ---------------------------------------------------------------------------
 
 /// Rock Crawl section names and spawn centres (copied from rock_crawl_trail.rs
-/// public constants — we can't use private consts directly).
+/// public constants - we can't use private consts directly).
 const RC_SECTION_NAMES: [&str; 3] = [
     "Boulder Stairs",
     "Two-Log Bridge",
@@ -64,7 +64,7 @@ const RC_START_Z: [f32; 3] = [0.0, 80.0, -120.0];
 
 const RC_SECTION_DESC: [&str; 3] = [
     "8 stair-step boulders ascending to the finish.",
-    "Two narrow logs spanning a ravine — precision is everything.",
+    "Two narrow logs spanning a ravine - precision is everything.",
     "Alternating banked slabs demand constant steering correction.",
 ];
 
@@ -138,7 +138,7 @@ fn spawn_ui(
     oc_lb:      Res<ObstacleCourseLeaderboard>,
     tr_lb:      Res<TrailLeaderboard>,
 ) {
-    // Background scrim — covers the whole screen.
+    // Background scrim - covers the whole screen.
     let root = commands.spawn((
         MissionSelectRoot,
         Node {
@@ -181,9 +181,9 @@ fn spawn_ui(
         Color::srgb(0.90, 0.30, 0.20),
     ];
     let tier_descs = [
-        "Gentle grades (20°–35°), good for beginners.",
-        "Moderate grades (25°–45°), intermediate challenge.",
-        "Steep grades (30°–55°), expert drivers only.",
+        "Gentle grades (20 deg-35 deg), good for beginners.",
+        "Moderate grades (25 deg-45 deg), intermediate challenge.",
+        "Steep grades (30 deg-55 deg), expert drivers only.",
     ];
 
     for tier in 0..NUM_TIERS {
@@ -254,7 +254,7 @@ fn spawn_ui(
     for (idx, trail) in manifest.trails.iter().enumerate() {
         let pb = read_pb_for_mission(&trail.id);
         let desc = format!(
-            "{}  ·  {:.1} km  ·  {}",
+            "{}  |  {:.1} km  |  {}",
             trail.description, trail.length_km, trail.difficulty
         );
         let mission_id = trail.id.clone();
@@ -286,9 +286,9 @@ fn spawn_ui(
         Color::srgb(0.90, 0.30, 0.20), // Expert: red
     ];
     let oc_descs = [
-        "8 obstacles · ~10 m spacing · 15° ramps. North of spawn.",
-        "12 obstacles · ~7 m spacing · 25° ramps, boulders & chicane gates.",
-        "16 obstacles · ~5 m spacing · 35° ramps, boulder clusters & mud crossings.",
+        "8 obstacles | ~10 m spacing | 15 deg ramps. North of spawn.",
+        "12 obstacles | ~7 m spacing | 25 deg ramps, boulders & chicane gates.",
+        "16 obstacles | ~5 m spacing | 35 deg ramps, boulder clusters & mud crossings.",
     ];
 
     for lvl in 0..OC_NUM_LEVELS {
@@ -380,7 +380,7 @@ fn mission_card(
         BackgroundColor(card_bg),
     )).id();
 
-    // Colour swatch — 16 px square icon at the start of the row (Sprint 68: was 10px thin bar)
+    // Colour swatch - 16 px square icon at the start of the row (Sprint 68: was 10px thin bar)
     let swatch_ent = commands.spawn((
         Node {
             width:      Val::Px(16.0),
@@ -403,7 +403,7 @@ fn mission_card(
 
     // Title + hotkey hint on the same line.
     let title_str = if let Some(ref ft) = fast_travel {
-        format!("{}  ·  {}", title, hotkey_label(ft))
+        format!("{}  |  {}", title, hotkey_label(ft))
     } else {
         title.to_string()
     };
@@ -441,7 +441,7 @@ fn mission_card(
     // Empty placeholder gets a subtle dim-italic hint colour.
     let (top_times_str, top_times_color) = if peer_times.is_empty() {
         (
-            "— no peer times yet —".to_string(),
+            "- no peer times yet -".to_string(),
             Color::srgb(0.40, 0.40, 0.40), // #666 equivalent
         )
     } else {
@@ -449,7 +449,7 @@ fn mission_card(
             let id_str = format!("{pid:?}");
             let short: String = id_str.chars().filter(|c| c.is_alphanumeric()).take(6).collect();
             format!("{}  {}", short, format_time(*t))
-        }).collect::<Vec<_>>().join("  ·  ");
+        }).collect::<Vec<_>>().join("  |  ");
         (s, Color::srgb(0.50, 0.60, 0.80))
     };
     let top_times_ent = commands.spawn((

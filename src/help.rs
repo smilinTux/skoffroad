@@ -187,8 +187,8 @@ fn build_column_right(commands: &mut Commands) -> Entity {
     let sys_header = section_header(commands, "SYSTEM");
     let sys_rows   = [
         ("Esc",            "Pause / settings overlay"),
-        ("F5 / F6 / F7",   "Save to slot 1 / 2 / 3"),
-        ("F2 / F4",        "Load slot 2 / 3"),
+        ("F5 / F6 / F7",       "Save to slot 1 / 2 / 3"),
+        ("Shift+F5 / F6 / F7", "Load slot 1 / 2 / 3"),
         ("F3",             "Dev inspector (--features dev)"),
     ];
 

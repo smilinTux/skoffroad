@@ -243,6 +243,9 @@ fn autosave_on_app_exit(
 }
 
 // ---- Update: manual save (F5 = slot 1, F6 = slot 2, F7 = slot 3) -----------
+//
+// Bare F5/F6/F7 save; Shift+F5/F6/F7 load (see manual_load). We require NO shift
+// here so a Shift+F5 (load) press doesn't also trigger a save on the same frame.
 
 fn manual_save(
     keys: Res<ButtonInput<KeyCode>>,
@@ -251,6 +254,8 @@ fn manual_save(
     tod: Res<TimeOfDay>,
     stats: Option<Res<SessionStats>>,
 ) {
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    if shift { return; }
     let slot = if keys.just_pressed(KeyCode::F5) {
         1
     } else if keys.just_pressed(KeyCode::F6) {
@@ -268,10 +273,11 @@ fn manual_save(
     write_save(&save, slot);
 }
 
-// ---- Update: manual load (F1 = slot 1, F2 = slot 2, F4 = slot 3) -----------
+// ---- Update: manual load (Shift+F5/F6/F7 = slot 1/2/3) ---------------------
 //
-// F3 is intentionally skipped: main.rs binds F3 to the dev inspector toggle
-// when compiled with `--features dev`. Using F4 here avoids the conflict.
+// Load moved off the bare F1/F2/F4 keys: F1 now opens the controls/rebind panel
+// (input_remap.rs), and pressing F1 must NOT also reload a save. Load now mirrors
+// the save bindings with Shift held: Shift+F5 = load slot 1, etc.
 
 fn manual_load(
     keys: Res<ButtonInput<KeyCode>>,
@@ -280,11 +286,13 @@ fn manual_load(
     mut tod: ResMut<TimeOfDay>,
     mut stats: Option<ResMut<SessionStats>>,
 ) {
-    let slot = if keys.just_pressed(KeyCode::F1) {
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+    if !shift { return; }
+    let slot = if keys.just_pressed(KeyCode::F5) {
         1
-    } else if keys.just_pressed(KeyCode::F2) {
+    } else if keys.just_pressed(KeyCode::F6) {
         2
-    } else if keys.just_pressed(KeyCode::F4) {
+    } else if keys.just_pressed(KeyCode::F7) {
         3
     } else {
         return;
