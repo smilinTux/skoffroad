@@ -25,6 +25,7 @@ use bevy::{
 
 use crate::graphics_quality::GraphicsQuality;
 use crate::parody_brands::{BrandCategory, ParodyBrands};
+use crate::startup_stager::StartupQueue;
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -34,7 +35,7 @@ pub struct BrandLogoTexPlugin;
 
 impl Plugin for BrandLogoTexPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, generate_brand_logos);
+        app.add_systems(Startup, queue_brand_logos);
     }
 }
 
@@ -59,22 +60,26 @@ pub fn brand_logo_texture(
 }
 
 // ---------------------------------------------------------------------------
-// Texture dimensions
+// Texture dimensions — tier-scaled, maintaining 2:1 aspect ratio
 // ---------------------------------------------------------------------------
 
-/// Landscape plate: 256 wide x 128 tall. Matches sign panel aspect (2:1).
-const TEX_W: usize = 256;
-const TEX_H: usize = 128;
+/// Landscape plate dimensions at a given quality tier.
+/// Returns (width, height) maintaining the 2:1 aspect.
+fn plate_dims(quality: GraphicsQuality) -> (usize, usize) {
+    let tex_n = quality.proc_tex_size(); // 128 / 192 / 256
+    (tex_n, tex_n / 2)
+}
 
 // ---------------------------------------------------------------------------
-// Startup system
+// Startup system — enqueue generation into the stagger queue
+// (one brand per frame — 12 brands = 12 frames ≈ 0.2 s at 60 fps)
 // ---------------------------------------------------------------------------
 
-fn generate_brand_logos(
+fn queue_brand_logos(
     mut commands: Commands,
-    mut images: ResMut<Assets<Image>>,
     brands: Res<ParodyBrands>,
     quality: Res<GraphicsQuality>,
+    mut queue: ResMut<StartupQueue>,
 ) {
     // Low quality / headless: insert empty resource so callers get None handles.
     if *quality == GraphicsQuality::Low {
@@ -83,25 +88,38 @@ fn generate_brand_logos(
         return;
     }
 
-    let mut handles: Vec<Handle<Image>> = Vec::with_capacity(brands.len());
+    let (tex_w, tex_h) = plate_dims(*quality);
 
-    for brand in brands.iter() {
-        let img = build_logo_plate(
-            brand.primary,
-            brand.secondary,
-            brand.display_name,
-            brand.category,
-        );
-        handles.push(images.add(img));
-    }
+    // Collect brand data into owned Vecs so closures can be 'static + Send.
+    let brand_data: Vec<([f32; 3], [f32; 3], String, BrandCategory)> = brands
+        .iter()
+        .map(|b| (b.primary, b.secondary, b.display_name.to_string(), b.category))
+        .collect();
 
+    let n = brand_data.len();
     info!(
-        "brand_logo_tex: generated {} logo-plate textures ({}x{})",
-        handles.len(),
-        TEX_W,
-        TEX_H
+        "brand_logo_tex: queuing {} logo-plate textures ({}x{}, staggered)",
+        n, tex_w, tex_h
     );
-    commands.insert_resource(BrandLogoTextures { handles });
+
+    // Insert an empty resource immediately so callers see a valid (empty)
+    // BrandLogoTextures from the first frame onward.
+    commands.insert_resource(BrandLogoTextures::default());
+
+    // One closure per brand — each runs in its own frame.
+    for (primary, secondary, display_name, category) in brand_data {
+        queue.push(move |world: &mut bevy::ecs::world::World| {
+            let img = build_logo_plate(primary, secondary, &display_name, category, tex_w, tex_h);
+            let handle = world
+                .resource_mut::<bevy::asset::Assets<Image>>()
+                .add(img);
+            // Append to the existing BrandLogoTextures resource.
+            world
+                .resource_mut::<BrandLogoTextures>()
+                .handles
+                .push(handle);
+        });
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -113,8 +131,10 @@ fn build_logo_plate(
     secondary: [f32; 3],
     display_name: &str,
     category: BrandCategory,
+    tex_w: usize,
+    tex_h: usize,
 ) -> Image {
-    let mut data: Vec<u8> = vec![0u8; TEX_W * TEX_H * 4];
+    let mut data: Vec<u8> = vec![0u8; tex_w * tex_h * 4];
 
     // Convert float colors to u8 RGBA.
     let bg = to_rgba8(primary[0], primary[1], primary[2], 1.0);
@@ -126,16 +146,16 @@ fn build_logo_plate(
     }
 
     // 2. Draw logo mark (left-side of plate, vertically centered).
-    //    Mark occupies a 40x40 region at (10, 44).
-    let mark_x = 10usize;
-    let mark_y = 44usize;
-    let mark_size = 40usize;
-    draw_mark(&mut data, category, mark_x, mark_y, mark_size, &fg);
+    //    Mark occupies a region sized ~30% of tex_h, centered vertically.
+    let mark_size = (tex_h * 5 / 8).max(8);
+    let mark_x = 5usize;
+    let mark_y = (tex_h.saturating_sub(mark_size)) / 2;
+    draw_mark(&mut data, category, mark_x, mark_y, mark_size, &fg, tex_w, tex_h);
 
     // 3. Draw brand name in 5x7 bitmap font.
-    //    Scale factor 2: each glyph renders as 10x14 pixels.
-    //    Name area: x >= 60, leaving 8px margin on right.
-    let scale = 2usize;
+    //    Scale is proportional to tex_h so glyphs remain readable at all sizes.
+    //    Name area starts after the mark region, leaving margin on right.
+    let scale = (tex_h / 16).max(1);
     let char_w = 5 * scale; // 10 px per char
     let char_h = 7 * scale; // 14 px per char
     let gap    = 2usize;    // gap between chars in pixels
@@ -146,28 +166,29 @@ fn build_logo_plate(
     } else {
         name_bytes.len() * (char_w + gap) - gap
     };
-    let name_area_x = 60usize;
-    let name_area_w = TEX_W.saturating_sub(name_area_x + 8);
+    // Mark occupies left ~30% of width; text starts after it.
+    let name_area_x = mark_x + mark_size + 4;
+    let name_area_w = tex_w.saturating_sub(name_area_x + 8);
     let name_start_x = if total_name_w < name_area_w {
         name_area_x + (name_area_w - total_name_w) / 2
     } else {
         name_area_x
     };
     // Vertically centre the text in the plate.
-    let name_start_y = (TEX_H.saturating_sub(char_h)) / 2;
+    let name_start_y = (tex_h.saturating_sub(char_h)) / 2;
 
     let mut cx = name_start_x;
     for &b in name_bytes {
-        if cx + char_w > TEX_W { break; }
+        if cx + char_w > tex_w { break; }
         let glyph = glyph_for(b);
-        draw_glyph(&mut data, &glyph, cx, name_start_y, scale, &fg);
+        draw_glyph(&mut data, &glyph, cx, name_start_y, scale, &fg, tex_w, tex_h);
         cx += char_w + gap;
     }
 
     Image::new(
         Extent3d {
-            width:               TEX_W as u32,
-            height:              TEX_H as u32,
+            width:               tex_w as u32,
+            height:              tex_h as u32,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
@@ -188,6 +209,8 @@ fn draw_mark(
     oy: usize,
     size: usize,
     color: &[u8; 4],
+    tex_w: usize,
+    tex_h: usize,
 ) {
     match category {
         // Mountain triangle — Tires
@@ -199,7 +222,7 @@ fn draw_mark(
                 let left  = mid.saturating_sub(half_w);
                 let right = (mid + half_w + 1).min(ox + size);
                 for col in left..right {
-                    set_pixel(data, col, oy + row, color);
+                    set_pixel(data, col, oy + row, color, tex_w, tex_h);
                 }
             }
         }
@@ -213,14 +236,14 @@ fn draw_mark(
                     let lx = ox + i / 2 + t;
                     let ly = oy + i;
                     if lx < ox + size {
-                        set_pixel(data, lx, ly, color);
+                        set_pixel(data, lx, ly, color, tex_w, tex_h);
                     }
                     // Right arm: mirror.
                     if ox + size > 0 {
                         let rx_base = ox + size - 1 - i / 2;
                         let rx = rx_base.saturating_sub(t);
                         if rx >= ox {
-                            set_pixel(data, rx, ly, color);
+                            set_pixel(data, rx, ly, color, tex_w, tex_h);
                         }
                     }
                 }
@@ -238,7 +261,7 @@ fn draw_mark(
                     let x = ox + size - 1 - i + t;
                     let y = oy + i;
                     if x < ox + size {
-                        set_pixel(data, x.min(ox + size - 1), y, color);
+                        set_pixel(data, x.min(ox + size - 1), y, color, tex_w, tex_h);
                     }
                 }
             }
@@ -248,7 +271,7 @@ fn draw_mark(
                     let x = ox + half - i + t;
                     let y = oy + half + i;
                     if x < ox + size {
-                        set_pixel(data, x.min(ox + size - 1), y, color);
+                        set_pixel(data, x.min(ox + size - 1), y, color, tex_w, tex_h);
                     }
                 }
             }
@@ -270,7 +293,7 @@ fn draw_mark(
                     // Diagonal slash (dx + dy = 0 line), thickness = ring.
                     let on_slash = (dx + dy).abs() <= ring && d2 <= r * r;
                     if on_ring || on_slash {
-                        set_pixel(data, ox + col, oy + row, color);
+                        set_pixel(data, ox + col, oy + row, color, tex_w, tex_h);
                     }
                 }
             }
@@ -286,7 +309,7 @@ fn draw_mark(
                     let dx = (ox + col) as i32 - cx_i;
                     let dy = (oy + row) as i32 - cy_i;
                     if in_hex(dx, dy, r) && !in_hex(dx, dy, (r - ring).max(0)) {
-                        set_pixel(data, ox + col, oy + row, color);
+                        set_pixel(data, ox + col, oy + row, color, tex_w, tex_h);
                     }
                 }
             }
@@ -301,7 +324,7 @@ fn draw_mark(
                 let w = (row + 1) * half_w / top_h.max(1);
                 let mid = ox + half_w;
                 for col in mid.saturating_sub(w)..(mid + w).min(ox + size) {
-                    set_pixel(data, col, oy + row, color);
+                    set_pixel(data, col, oy + row, color, tex_w, tex_h);
                 }
             }
             // Rectangle body: full width until bottom-quarter where it tapers.
@@ -315,7 +338,7 @@ fn draw_mark(
                 };
                 let mid = ox + half_w;
                 for col in mid.saturating_sub(w)..(mid + w).min(ox + size) {
-                    set_pixel(data, col, oy + row, color);
+                    set_pixel(data, col, oy + row, color, tex_w, tex_h);
                 }
             }
         }
@@ -447,6 +470,8 @@ fn draw_glyph(
     oy: usize,
     scale: usize,
     color: &[u8; 4],
+    tex_w: usize,
+    tex_h: usize,
 ) {
     for (row, &byte) in glyph.iter().enumerate() {
         for col in 0..5usize {
@@ -454,7 +479,7 @@ fn draw_glyph(
             if bit == 0 { continue; }
             for dy in 0..scale {
                 for dx in 0..scale {
-                    set_pixel(data, ox + col * scale + dx, oy + row * scale + dy, color);
+                    set_pixel(data, ox + col * scale + dx, oy + row * scale + dy, color, tex_w, tex_h);
                 }
             }
         }
@@ -466,9 +491,9 @@ fn draw_glyph(
 // ---------------------------------------------------------------------------
 
 #[inline]
-fn set_pixel(data: &mut [u8], x: usize, y: usize, color: &[u8; 4]) {
-    if x >= TEX_W || y >= TEX_H { return; }
-    let idx = (y * TEX_W + x) * 4;
+fn set_pixel(data: &mut [u8], x: usize, y: usize, color: &[u8; 4], tex_w: usize, tex_h: usize) {
+    if x >= tex_w || y >= tex_h { return; }
+    let idx = (y * tex_w + x) * 4;
     data[idx]     = color[0];
     data[idx + 1] = color[1];
     data[idx + 2] = color[2];

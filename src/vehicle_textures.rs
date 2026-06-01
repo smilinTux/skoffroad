@@ -28,6 +28,8 @@ use bevy::{
 };
 use noise::{NoiseFn, Perlin};
 
+use crate::graphics_quality::GraphicsQuality;
+use crate::startup_stager::StartupQueue;
 use crate::vehicle::DefaultSkin;
 use crate::variants::VariantSkin;
 
@@ -39,7 +41,7 @@ pub struct VehicleTexturesPlugin;
 
 impl Plugin for VehicleTexturesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, generate_vehicle_textures)
+        app.add_systems(Startup, queue_vehicle_textures)
            .add_systems(Update, apply_vehicle_textures);
     }
 }
@@ -57,31 +59,67 @@ pub struct VehicleTextureSet {
 }
 
 // ---------------------------------------------------------------------------
-// Constants
+// Startup: enqueue generation into the stagger queue (one texture per frame)
 // ---------------------------------------------------------------------------
 
-const TEX_N: usize = 256;
-
-// ---------------------------------------------------------------------------
-// Startup: generate all three textures
-// ---------------------------------------------------------------------------
-
-fn generate_vehicle_textures(
-    mut commands: Commands,
-    mut images:   ResMut<Assets<Image>>,
+fn queue_vehicle_textures(
+    quality: Res<GraphicsQuality>,
+    mut queue: ResMut<StartupQueue>,
 ) {
-    let paint_normal    = images.add(build_paint_normal());
-    let paint_roughness = images.add(build_paint_roughness());
-    let dirt_streak     = images.add(build_dirt_streak());
+    let tex_n = quality.proc_tex_size();
+    info!(
+        "vehicle_textures: queuing 3 x {}x{} PBR maps (staggered)",
+        tex_n, tex_n
+    );
 
-    commands.insert_resource(VehicleTextureSet {
-        paint_normal,
-        paint_roughness,
-        dirt_streak,
+    // Paint normal — slot 1.
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let img = build_paint_normal(tex_n);
+        let h = world.resource_mut::<bevy::asset::Assets<Image>>().add(img);
+        world.insert_resource(VehTexStageNormal { h });
+        info!("vehicle_textures: paint normal generated ({}x{})", tex_n, tex_n);
     });
 
-    info!("vehicle_textures: generated 3 × 256×256 PBR maps for vehicle paint");
+    // Paint roughness — slot 2.
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let img = build_paint_roughness(tex_n);
+        let h = world.resource_mut::<bevy::asset::Assets<Image>>().add(img);
+        world.insert_resource(VehTexStageRoughness { h });
+        info!("vehicle_textures: paint roughness generated ({}x{})", tex_n, tex_n);
+    });
+
+    // Dirt streak — slot 3: assembles the final resource.
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let img = build_dirt_streak(tex_n);
+        let dirt_streak = world.resource_mut::<bevy::asset::Assets<Image>>().add(img);
+        let paint_normal = world
+            .remove_resource::<VehTexStageNormal>()
+            .map(|s| s.h);
+        let paint_roughness = world
+            .remove_resource::<VehTexStageRoughness>()
+            .map(|s| s.h);
+        if let (Some(paint_normal), Some(paint_roughness)) = (paint_normal, paint_roughness) {
+            world.insert_resource(VehicleTextureSet {
+                paint_normal,
+                paint_roughness,
+                dirt_streak,
+            });
+            info!("vehicle_textures: VehicleTextureSet resource ready");
+        } else {
+            warn!("vehicle_textures: stage resources missing; skipping VehicleTextureSet");
+        }
+    });
 }
+
+// ---------------------------------------------------------------------------
+// Staging resources (internal)
+// ---------------------------------------------------------------------------
+
+#[derive(Resource)]
+struct VehTexStageNormal { h: Handle<Image> }
+
+#[derive(Resource)]
+struct VehTexStageRoughness { h: Handle<Image> }
 
 // ---------------------------------------------------------------------------
 // Update (once): apply textures to paint materials on vehicle meshes
@@ -162,8 +200,7 @@ fn apply_vehicle_textures(
 ///
 /// Stored as `Rgba8Unorm` (not sRGB) — Bevy interprets normal maps in linear
 /// space.  R = X tangent, G = Y tangent, B = Z (up), A = 255.
-fn build_paint_normal() -> Image {
-    let n = TEX_N;
+fn build_paint_normal(n: usize) -> Image {
     let perlin = Perlin::new(0xDEAD_BEEF);
     let mut data: Vec<u8> = Vec::with_capacity(n * n * 4);
 
@@ -214,8 +251,7 @@ fn build_paint_normal() -> Image {
 /// Stored as `Rgba8Unorm`.  Bevy's metallic_roughness_texture reads:
 ///   B channel → metallic (we set 0)
 ///   G channel → roughness
-fn build_paint_roughness() -> Image {
-    let n = TEX_N;
+fn build_paint_roughness(n: usize) -> Image {
     let perlin = Perlin::new(0xC0FFEE);
     let mut data: Vec<u8> = Vec::with_capacity(n * n * 4);
 
@@ -250,8 +286,7 @@ fn build_paint_roughness() -> Image {
 /// Stored as `Rgba8UnormSrgb`.  When set as `base_color_texture`, Bevy
 /// multiplies it against `base_color`.  Values near (1,1,1,1) are invisible;
 /// darker values tint the paint.
-fn build_dirt_streak() -> Image {
-    let n = TEX_N;
+fn build_dirt_streak(n: usize) -> Image {
     let perlin = Perlin::new(0x0FF_0AD);
     let mut data: Vec<u8> = Vec::with_capacity(n * n * 4);
 

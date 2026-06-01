@@ -8,7 +8,13 @@
 // Selection order at startup (first match wins):
 //   1. CLI flag:          `--quality=low|medium|high`
 //   2. Persisted config:  ~/.skoffroad/config.json -> "graphics_quality"
-//   3. Default:           High
+//   3. Auto-detect:       on WASM read navigator.hardwareConcurrency; <= 2
+//                         cores defaults to Low, 3-5 Medium, 6+ High.
+//                         On native, default is High.
+//
+// config.rs applies the persisted value in its own Startup system. The
+// GraphicsQualityPlugin only handles CLI + auto-detect so that config.rs
+// can override the resource if a saved value is present.
 //
 // Subsequent commits in this sprint read capability accessors on the resource
 // (e.g. `q.triplanar_terrain()`, `q.ssao()`) rather than matching on the enum
@@ -24,13 +30,59 @@ pub struct GraphicsQualityPlugin;
 
 impl Plugin for GraphicsQualityPlugin {
     fn build(&self, app: &mut App) {
-        // Read CLI flag here so the resource is correct from the very first
-        // frame — every other plugin's Startup system will see the right tier.
-        let quality = parse_cli_quality().unwrap_or_default();
-        info!("graphics_quality: active tier = {}", quality.as_str());
+        // Priority: CLI flag > auto-detect heuristic.
+        // The persisted config (config.rs) runs its own Startup system later
+        // and will overwrite this resource if a saved value is present.
+        let quality = parse_cli_quality().unwrap_or_else(auto_detect_quality);
+        info!("graphics_quality: active tier = {} (pre-config)", quality.as_str());
         app.insert_resource(quality);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Auto-detect heuristic
+// ---------------------------------------------------------------------------
+
+/// Infer a quality tier for first-run / no-saved-config users.
+///
+/// On WASM: read `navigator.hardwareConcurrency`.
+///   <= 2 logical CPUs  → Low    (light laptop / Chromebook tier)
+///   3-5 logical CPUs   → Medium
+///   >= 6 logical CPUs  → High
+///
+/// On native: default High (player can tune in settings).
+fn auto_detect_quality() -> GraphicsQuality {
+    #[cfg(target_arch = "wasm32")]
+    {
+        let cores = wasm_hardware_concurrency();
+        let tier = if cores <= 2 {
+            GraphicsQuality::Low
+        } else if cores <= 5 {
+            GraphicsQuality::Medium
+        } else {
+            GraphicsQuality::High
+        };
+        info!(
+            "graphics_quality: auto-detect WASM navigator.hardwareConcurrency={} -> {}",
+            cores,
+            tier.as_str()
+        );
+        tier
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        GraphicsQuality::High
+    }
+}
+
+/// Read `navigator.hardwareConcurrency` on WASM; returns 0 on failure.
+#[cfg(target_arch = "wasm32")]
+fn wasm_hardware_concurrency() -> u32 {
+    web_sys::window()
+        .map(|w| w.navigator().hardware_concurrency() as u32)
+        .unwrap_or(0)
+}
+
 
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum GraphicsQuality {
@@ -141,6 +193,47 @@ impl GraphicsQuality {
             Self::High => 1.4,
         }
     }
+
+    // ---- NEW Sprint 90 load-performance accessors ----------------------------
+
+    /// Terrain grid vertices per side.
+    ///
+    /// Low   →  96 verts → ~18 k tris   (5× cheaper than High)
+    /// Medium → 144 verts → ~41 k tris
+    /// High  → 192 verts → ~74 k tris   (original)
+    pub fn terrain_grid(self) -> usize {
+        match self {
+            Self::Low    =>  96,
+            Self::Medium => 144,
+            Self::High   => 192,
+        }
+    }
+
+    /// Resolution (width = height) for procedurally-generated textures.
+    ///
+    /// Low  → 128 px  (4× fewer pixels than High — significant CPU savings)
+    /// Med  → 192 px
+    /// High → 256 px  (original)
+    pub fn proc_tex_size(self) -> usize {
+        match self {
+            Self::Low    => 128,
+            Self::Medium => 192,
+            Self::High   => 256,
+        }
+    }
+
+    /// Target count multiplier for world-scatter props (trees, boulders, etc.).
+    ///
+    /// Low  → 0.40  (40% of High counts)
+    /// Med  → 0.70
+    /// High → 1.00
+    pub fn scatter_count_mul(self) -> f32 {
+        match self {
+            Self::Low    => 0.40,
+            Self::Medium => 0.70,
+            Self::High   => 1.00,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -193,5 +286,20 @@ mod tests {
         assert!(m.splat_layers() <= h.splat_layers());
         assert!(!l.ssao() && !m.ssao() && h.ssao());
         assert!(!l.bloom() && m.bloom() && h.bloom());
+    }
+
+    #[test]
+    fn tier_params_scale_monotonically() {
+        let l = GraphicsQuality::Low;
+        let m = GraphicsQuality::Medium;
+        let h = GraphicsQuality::High;
+        assert!(l.terrain_grid() < m.terrain_grid());
+        assert!(m.terrain_grid() < h.terrain_grid());
+        assert!(l.proc_tex_size() < m.proc_tex_size());
+        assert!(m.proc_tex_size() < h.proc_tex_size());
+        assert!(l.scatter_count_mul() < m.scatter_count_mul());
+        assert!(m.scatter_count_mul() < h.scatter_count_mul());
+        // Low terrain grid must produce a reasonable (non-zero) mesh.
+        assert!(l.terrain_grid() >= 32);
     }
 }

@@ -1,8 +1,18 @@
-// terrain_detail_tex.rs — Sprint 79
+// terrain_detail_tex.rs — Sprint 79 / Sprint 90 (load-perf)
 //
-// Generates a 256×256 tiling detail-normal texture at Startup using the `noise`
-// crate.  The texture simulates coarse rocky/gravelly ground detail: a mix of
+// Generates a tiling detail-normal texture at Startup using the `noise` crate.
+// The texture simulates coarse rocky/gravelly ground detail: a mix of
 // low-frequency Perlin "slab" bumps and high-frequency hash "pebble" grain.
+//
+// Sprint 90: resolution is tier-scaled (Low=128, Med=192, High=256) and
+// generation is staggered via StartupQueue so it runs in a dedicated frame
+// instead of blocking the Startup burst.
+//
+// IMPORTANT: terrain.rs PostStartup reads TerrainDetailTex via
+// Option<Res<TerrainDetailTex>>.  The stagger queue processes its FIRST item
+// before PostStartup runs (Bevy schedule order: Update → PostUpdate → ...
+// but PostStartup runs before first Update; we therefore generate the terrain
+// detail texture SYNCHRONOUSLY in Startup so it is available in PostStartup).
 //
 // The handle is stored in `TerrainDetailTex` (Resource) so terrain.rs can
 // assign it to the `StandardMaterial::normal_map_texture` field on Medium+.
@@ -18,6 +28,8 @@ use bevy::{
 };
 use noise::{NoiseFn, Perlin};
 
+use crate::graphics_quality::GraphicsQuality;
+
 // ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
@@ -26,6 +38,8 @@ pub struct TerrainDetailTexPlugin;
 
 impl Plugin for TerrainDetailTexPlugin {
     fn build(&self, app: &mut App) {
+        // Must run SYNCHRONOUSLY in Startup so the handle is available in
+        // PostStartup (spawn_terrain reads it via Option<Res<TerrainDetailTex>>).
         app.add_systems(Startup, generate_terrain_detail_tex);
     }
 }
@@ -44,15 +58,18 @@ pub struct TerrainDetailTex {
 // Startup system
 // ---------------------------------------------------------------------------
 
-const TEX_N: usize = 256;
-
 fn generate_terrain_detail_tex(
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
+    quality: Res<GraphicsQuality>,
 ) {
-    let normal_map = images.add(build_terrain_detail_normal());
+    let tex_n = quality.proc_tex_size();
+    let normal_map = images.add(build_terrain_detail_normal(tex_n));
     commands.insert_resource(TerrainDetailTex { normal_map });
-    info!("terrain_detail_tex: generated 256x256 tiling detail-normal texture");
+    info!(
+        "terrain_detail_tex: generated {}x{} tiling detail-normal texture",
+        tex_n, tex_n
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -64,8 +81,7 @@ fn generate_terrain_detail_tex(
 /// Height field = 70% low-freq Perlin "slab" + 30% high-freq hash "pebble".
 /// Stored as `Rgba8Unorm` (linear, not sRGB) — Bevy interprets normal maps
 /// in linear space.  R = X, G = Y, B = Z (pointing up), A = 255.
-fn build_terrain_detail_normal() -> Image {
-    let n = TEX_N;
+fn build_terrain_detail_normal(n: usize) -> Image {
     // Two Perlin samplers at different seeds for variety.
     let perlin_slab   = Perlin::new(0x5EED_FACE);
     let perlin_detail = Perlin::new(0xCAFE_BEEF);

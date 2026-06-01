@@ -33,7 +33,13 @@ pub struct ProceduralTerrainMarker;
 // underneath (it floated over the void and couldn't get traction). 720 m
 // (±360) covers all of them with margin. GRID bumped to keep ~3.75 m quads so
 // the stretched terrain still drives well; the trimesh collider scales with it.
-const GRID: usize = 192; // vertices per side (192x192 = ~74k tris)
+// GRID is now tier-scaled. The per-tier values come from GraphicsQuality:
+//   High   → 192 vertices per side (~74 k tris)
+//   Medium → 144 vertices per side (~41 k tris)
+//   Low    →  96 vertices per side (~18 k tris)
+// The module-level constant is only used by terrain_height_at (pure maths,
+// no mesh) which always resamples the noise at any (x, z), so it is
+// resolution-independent. Runtime mesh building reads quality.terrain_grid().
 const SIZE: f32 = 720.0; // world-space width/depth in metres (spans [-360, +360])
 const HEIGHT_SCALE: f32 = 12.0;
 pub const TERRAIN_SEED: u32 = 42;
@@ -63,9 +69,12 @@ fn spawn_terrain(
     quality: Res<GraphicsQuality>,
     detail_tex: Option<Res<TerrainDetailTex>>,
 ) {
+    // Tier-scaled grid resolution: High=192, Medium=144, Low=96.
+    let grid: usize = quality.terrain_grid();
+
     let fbm: Fbm<Perlin> = Fbm::<Perlin>::new(42);
 
-    let vcount = GRID + 1; // vertices per edge
+    let vcount = grid + 1; // vertices per edge
     let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vcount * vcount);
     let mut normals:   Vec<[f32; 3]> = Vec::with_capacity(vcount * vcount);
     let mut uvs:       Vec<[f32; 2]> = Vec::with_capacity(vcount * vcount);
@@ -76,12 +85,12 @@ fn spawn_terrain(
 
     for z in 0..vcount {
         for x in 0..vcount {
-            let nx = x as f64 / GRID as f64;
-            let nz = z as f64 / GRID as f64;
+            let nx = x as f64 / grid as f64;
+            let nz = z as f64 / grid as f64;
             let h = sample_height(&fbm, nx, nz);
 
-            let px = (x as f32 / GRID as f32 - 0.5) * SIZE;
-            let pz = (z as f32 / GRID as f32 - 0.5) * SIZE;
+            let px = (x as f32 / grid as f32 - 0.5) * SIZE;
+            let pz = (z as f32 / grid as f32 - 0.5) * SIZE;
 
             positions.push([px, h, pz]);
             normals.push([0.0, 1.0, 0.0]); // overwritten below
@@ -96,7 +105,7 @@ fn spawn_terrain(
             let h  = heights[z * vcount + x];
             let hx = if x + 1 < vcount { heights[z * vcount + x + 1] } else { h };
             let hz = if z + 1 < vcount { heights[(z + 1) * vcount + x] } else { h };
-            let step = SIZE / GRID as f32;
+            let step = SIZE / grid as f32;
             let nx_v = Vec3::new(step, hx - h, 0.0).normalize();
             let nz_v = Vec3::new(0.0, hz - h, step).normalize();
             let n = nx_v.cross(nz_v).normalize();
@@ -168,9 +177,9 @@ fn spawn_terrain(
         colors.push([c[0], c[1], c[2], 1.0]);
     }
 
-    let mut indices: Vec<u32> = Vec::with_capacity(GRID * GRID * 6);
-    for z in 0..GRID {
-        for x in 0..GRID {
+    let mut indices: Vec<u32> = Vec::with_capacity(grid * grid * 6);
+    for z in 0..grid {
+        for x in 0..grid {
             let tl = (z * vcount + x) as u32;
             let tr = tl + 1;
             let bl = ((z + 1) * vcount + x) as u32;

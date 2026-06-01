@@ -30,6 +30,7 @@ use bevy::{
 use noise::{NoiseFn, Perlin};
 
 use crate::graphics_quality::GraphicsQuality;
+use crate::startup_stager::StartupQueue;
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -59,15 +60,12 @@ pub struct PropTextures {
 }
 
 // ---------------------------------------------------------------------------
-// Startup system
+// Startup system — enqueue generation into the stagger queue
 // ---------------------------------------------------------------------------
 
-const TEX_N: usize = 256;
-
 fn generate_prop_textures(
-    mut commands: Commands,
-    mut images:   ResMut<Assets<Image>>,
     quality:      Res<GraphicsQuality>,
+    mut queue:    ResMut<StartupQueue>,
 ) {
     // Low tier: skip texture generation entirely.
     // Props will use plain-color StandardMaterials (existing behaviour).
@@ -77,18 +75,52 @@ fn generate_prop_textures(
         return;
     }
 
-    let wood_grain      = images.add(build_wood_grain());
-    let weathered_metal = images.add(build_weathered_metal());
-    let rough_rock      = images.add(build_rough_rock());
+    let tex_n = quality.proc_tex_size();
+    info!(
+        "prop_textures: queuing 3 x {}x{} tileable prop surface textures (staggered)",
+        tex_n, tex_n
+    );
 
-    commands.insert_resource(PropTextures {
-        wood_grain,
-        weathered_metal,
-        rough_rock,
+    // Wood grain — slot 1.
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let img = build_wood_grain(tex_n);
+        let h = world.resource_mut::<bevy::asset::Assets<Image>>().add(img);
+        world.insert_resource(PropTexStageWood { h });
+        info!("prop_textures: wood grain generated ({}x{})", tex_n, tex_n);
     });
 
-    info!("prop_textures: generated 3 x 256x256 tileable prop surface textures (wood/metal/rock)");
+    // Weathered metal — slot 2.
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let img = build_weathered_metal(tex_n);
+        let h = world.resource_mut::<bevy::asset::Assets<Image>>().add(img);
+        world.insert_resource(PropTexStageMetal { h });
+        info!("prop_textures: weathered metal generated ({}x{})", tex_n, tex_n);
+    });
+
+    // Rough rock — slot 3: assembles the final resource.
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let img = build_rough_rock(tex_n);
+        let rough_rock = world.resource_mut::<bevy::asset::Assets<Image>>().add(img);
+        let wood_grain = world.remove_resource::<PropTexStageWood>().map(|s| s.h);
+        let weathered_metal = world.remove_resource::<PropTexStageMetal>().map(|s| s.h);
+        if let (Some(wood_grain), Some(weathered_metal)) = (wood_grain, weathered_metal) {
+            world.insert_resource(PropTextures { wood_grain, weathered_metal, rough_rock });
+            info!("prop_textures: PropTextures resource ready");
+        } else {
+            warn!("prop_textures: stage resources missing; skipping PropTextures");
+        }
+    });
 }
+
+// ---------------------------------------------------------------------------
+// Staging resources (internal)
+// ---------------------------------------------------------------------------
+
+#[derive(Resource)]
+struct PropTexStageWood { h: Handle<Image> }
+
+#[derive(Resource)]
+struct PropTexStageMetal { h: Handle<Image> }
 
 // ---------------------------------------------------------------------------
 // Texture builders
@@ -101,8 +133,7 @@ fn generate_prop_textures(
 ///   - High-freq along Y (18 waves) = tight grain lines running length-wise.
 /// Knot detail: extra Perlin at 6x adds occasional dark swirls.
 /// Colour ramp: dark oak (0.28, 0.18, 0.10) to light birch (0.70, 0.52, 0.32).
-fn build_wood_grain() -> Image {
-    let n            = TEX_N;
+fn build_wood_grain(n: usize) -> Image {
     let perlin_plank = Perlin::new(0xBEEF_CAFE);
     let perlin_grain = Perlin::new(0xF00D_FACE);
     let mut data: Vec<u8> = Vec::with_capacity(n * n * 4);
@@ -148,8 +179,7 @@ fn build_wood_grain() -> Image {
 ///   - Medium-freq Perlin (1.5/12 Hz anisotropic) = panel seam lines.
 ///   - Per-texel hash = fine scratches.
 /// Rust overlay blended in where Perlin > 0.25 (orange-brown shift).
-fn build_weathered_metal() -> Image {
-    let n            = TEX_N;
+fn build_weathered_metal(n: usize) -> Image {
     let perlin_rust  = Perlin::new(0xDEAD_C0DE);
     let perlin_panel = Perlin::new(0x0ACE_BEEF);
     let mut data: Vec<u8> = Vec::with_capacity(n * n * 4);
@@ -202,8 +232,7 @@ fn build_weathered_metal() -> Image {
 /// Three Perlin octaves (3/8/20 Hz) summed with diminishing amplitude give a
 /// convincing fractal stone appearance. Brightness mapped to cool grey-blue
 /// granite palette.
-fn build_rough_rock() -> Image {
-    let n        = TEX_N;
+fn build_rough_rock(n: usize) -> Image {
     let perlin_a = Perlin::new(0xCAFE_BABE);
     let perlin_b = Perlin::new(0x1234_5678);
     let perlin_c = Perlin::new(0xABCD_EF01);

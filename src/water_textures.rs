@@ -1,7 +1,6 @@
-// water_textures.rs — Sprint 82
+// water_textures.rs — Sprint 82 / Sprint 90 (load-perf)
 //
-// Generates two 256×256 procedural textures at Startup for the enhanced
-// water surface:
+// Generates two procedural textures at Startup for the enhanced water surface:
 //
 //   water_normal  — tiling tangent-space normal map simulating rolling water
 //                   ripples.  Two Perlin layers: low-freq broad swells +
@@ -10,6 +9,10 @@
 //   water_foam    — white foam texture used at the shoreline.  Near-white with
 //                   low-freq noise giving a bubbly edge appearance.
 //                   Stored as Rgba8UnormSrgb (for base_color use).
+//
+// Sprint 90: texture resolution is now tier-scaled (Low=128, Med=192, High=256)
+// and generation is staggered via StartupQueue so it runs across two frames
+// rather than all at once in the Startup burst.
 //
 // Both handles are stored in the WaterTextures resource.
 // Used by water_reflective.rs (Medium+ quality gate).
@@ -25,6 +28,9 @@ use bevy::{
 };
 use noise::{NoiseFn, Perlin};
 
+use crate::graphics_quality::GraphicsQuality;
+use crate::startup_stager::StartupQueue;
+
 // ---------------------------------------------------------------------------
 // Plugin
 // ---------------------------------------------------------------------------
@@ -33,7 +39,7 @@ pub struct WaterTexturesPlugin;
 
 impl Plugin for WaterTexturesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, generate_water_textures);
+        app.add_systems(Startup, queue_water_textures);
     }
 }
 
@@ -50,24 +56,62 @@ pub struct WaterTextures {
 }
 
 // ---------------------------------------------------------------------------
-// Constants
+// Startup system — enqueue generation into the stagger queue
 // ---------------------------------------------------------------------------
 
-const TEX_N: usize = 256;
-
-// ---------------------------------------------------------------------------
-// Startup system
-// ---------------------------------------------------------------------------
-
-fn generate_water_textures(
-    mut commands: Commands,
-    mut images: ResMut<Assets<Image>>,
+fn queue_water_textures(
+    quality: Res<GraphicsQuality>,
+    mut queue: ResMut<StartupQueue>,
 ) {
-    let normal_map = images.add(build_water_normal());
-    let foam       = images.add(build_water_foam());
+    let tex_n = quality.proc_tex_size();
+    info!(
+        "water_textures: queuing 2 x {}x{} procedural water maps (staggered)",
+        tex_n, tex_n
+    );
 
-    commands.insert_resource(WaterTextures { normal_map, foam });
-    info!("water_textures: generated 2 × 256×256 procedural water maps");
+    // Normal map — first slot (runs frame 1 of stagger).
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let normal_img = build_water_normal(tex_n);
+        let normal_map = world
+            .resource_mut::<bevy::asset::Assets<Image>>()
+            .add(normal_img);
+        // If WaterTextures resource already exists (foam already inserted),
+        // update it; otherwise store partial (foam will be set next frame).
+        // We use a staging resource to coordinate the two-frame split.
+        world.insert_resource(WaterTexNormalStage { normal_map });
+        info!("water_textures: normal map generated ({}x{})", tex_n, tex_n);
+    });
+
+    // Foam — second slot (runs frame 2 of stagger).
+    queue.push(move |world: &mut bevy::ecs::world::World| {
+        let foam_img = build_water_foam(tex_n);
+        let foam = world
+            .resource_mut::<bevy::asset::Assets<Image>>()
+            .add(foam_img);
+        // Retrieve the normal map handle stored in the first stage.
+        let normal_map = world
+            .remove_resource::<WaterTexNormalStage>()
+            .map(|s| s.normal_map);
+        if let Some(normal_map) = normal_map {
+            world.insert_resource(WaterTextures { normal_map, foam });
+            info!("water_textures: foam generated; WaterTextures resource ready");
+        } else {
+            // Fallback: both should always be available, but be defensive.
+            warn!("water_textures: normal stage resource missing; inserting foam-only placeholder");
+            // Insert a duplicate foam handle as normal_map so the resource
+            // is always present (materials guard with Option<Res<...>>).
+            world.insert_resource(WaterTextures { normal_map: foam.clone(), foam });
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Staging resource (internal — coordinates the two-frame split)
+// ---------------------------------------------------------------------------
+
+#[derive(Resource)]
+struct WaterTexNormalStage {
+    normal_map: Handle<Image>,
 }
 
 // ---------------------------------------------------------------------------
@@ -81,8 +125,7 @@ fn generate_water_textures(
 ///
 /// Stored as Rgba8Unorm (linear space) — Bevy interprets normal_map_texture
 /// in linear space.  R = X tangent, G = Y tangent, B = Z (up), A = 255.
-fn build_water_normal() -> Image {
-    let n = TEX_N;
+fn build_water_normal(n: usize) -> Image {
     let swell  = Perlin::new(0xA1B2_C3D4);
     let chop   = Perlin::new(0xD4C3_B2A1);
     let step   = 1.0 / n as f64;
@@ -143,8 +186,7 @@ fn height_at(swell: &Perlin, chop: &Perlin, fx: f64, fy: f64) -> f32 {
 /// Stored as Rgba8UnormSrgb (set as base_color_texture on the foam quads).
 /// Values are near (255,255,255) with subtle low-freq noise to break up the
 /// uniformity and simulate natural bubble clusters.
-fn build_water_foam() -> Image {
-    let n = TEX_N;
+fn build_water_foam(n: usize) -> Image {
     let perlin = Perlin::new(0xF0A4_5E3D);
     let mut data: Vec<u8> = Vec::with_capacity(n * n * 4);
 
