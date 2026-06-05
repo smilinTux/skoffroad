@@ -1,7 +1,7 @@
-// water_reflective.rs — Sprint 82
+// water_reflective.rs — Sprint 82 / Sprint B4 Enhanced
 //
-// Upgrades the water plane with convincing reflective/refractive appearance
-// and adds shoreline foam, quality-gated to Medium+.
+// Upgrades the water plane with convincing reflective/refractive appearance,
+// shoreline foam, animated caustic emissive glint, and quality gating.
 //
 // ── Reflection approach (FAKE — no custom shader) ────────────────────────────
 // Uses StandardMaterial with:
@@ -10,7 +10,8 @@
 //   - metallic = 0.0 (dielectric Fresnel — correct for water)
 //   - alpha_mode = Blend, base_color blue-green tint (A=0.75)
 //   - normal_map_texture = procedural water normal (Medium+)
-//   - emissive: subtle blue-white glint to fake sky reflections on Low
+//   - emissive: subtle blue-white glint to fake sky reflections on Low;
+//               animated caustic pulse on High.
 //
 // UV scroll is driven by animate_water_uvs which offsets a UV attribute on
 // the WaterMesh each frame, simulating the normal map scrolling across the
@@ -23,10 +24,15 @@
 // is placed at WATER_LEVEL + 0.02 m and uses a near-white emissive material
 // to fake a frothy waterline.  Low tier: no foam.
 //
+// ── Caustic emissive pulse (Sprint B4) ───────────────────────────────────────
+// On High quality, animate_caustic_emissive pulses the water material's
+// emissive channel with a sinusoidal waveform to simulate sun caustics
+// dancing on the surface.
+//
 // ── Quality gating ───────────────────────────────────────────────────────────
-// Low    → simple flat blue plane, no normal map, no foam
+// Low    → simple flat blue plane, no normal map, no foam, no caustics
 // Medium → normal-map texture (scrolling), reflectance=0.7, foam quads
-// High   → same + slightly lower roughness
+// High   → same + lower roughness + caustic emissive pulse
 //
 // Public API
 //   WaterReflectivePlugin
@@ -69,7 +75,10 @@ pub struct WaterReflectivePlugin;
 impl Plugin for WaterReflectivePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostStartup, (setup_water_material, spawn_shoreline_foam))
-           .add_systems(Update, animate_water_uvs.after(crate::water::animate_water));
+           .add_systems(Update, (
+               animate_water_uvs.after(crate::water::animate_water),
+               animate_caustic_emissive,
+           ));
     }
 }
 
@@ -289,4 +298,33 @@ fn build_foam_quad() -> Mesh {
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.insert_indices(indices);
     mesh
+}
+
+// ── Update: caustic emissive pulse (High quality only) ───────────────────────
+
+/// Animates the water surface emissive channel to simulate sunlight caustics.
+/// Uses two overlapping sine waves at different frequencies for a natural,
+/// non-repeating shimmer pattern. Low/Medium: no-op.
+fn animate_caustic_emissive(
+    quality:   Res<GraphicsQuality>,
+    time:      Res<Time>,
+    water_q:   Query<&MeshMaterial3d<StandardMaterial>, With<WaterSurface>>,
+    mut mats:  ResMut<Assets<StandardMaterial>>,
+) {
+    if *quality != GraphicsQuality::High { return; }
+
+    let t = time.elapsed_secs();
+    // Two overlapping sine waves for organic shimmer.
+    let shimmer = (t * 0.8).sin() * 0.5 + (t * 1.35).sin() * 0.3;
+    // Map from [-0.8, 0.8] → [0.0, 1.0] and scale to a subtle emissive range.
+    let intensity = ((shimmer + 0.8) / 1.6).clamp(0.0, 1.0);
+    // Caustic tint: bright blue-white when active.
+    let e_r = 0.03 + intensity * 0.05;
+    let e_g = 0.07 + intensity * 0.10;
+    let e_b = 0.18 + intensity * 0.18;
+
+    let Ok(mat_handle) = water_q.single() else { return };
+    if let Some(mat) = mats.get_mut(&mat_handle.0) {
+        mat.emissive = LinearRgba::new(e_r, e_g, e_b, 1.0);
+    }
 }

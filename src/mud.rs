@@ -1,16 +1,44 @@
+// mud.rs — Sprint B4 Enhanced
+//
+// Additions over the original Sprint 65 implementation:
+//
+// 1. MUD SHEEN — the mud patch material gains a wet specular sheen that
+//    brightens when it rains (WeatherState.intensity > 0) and dims in clear
+//    weather.  This is achieved by live-editing the mud StandardMaterial's
+//    perceptual_roughness and emissive each frame (Medium+ only).
+//
+// 2. MUD SPRAY — when the chassis enters a mud zone at speed >= MIN_SPRAY_MPS,
+//    small billboard quads are spawned in a fan behind the chassis simulating
+//    mud splash.  They are pooled in a VecDeque capped at MUD_SPRAY_CAP.
+//
+// Tier gating:
+//   Low    — no sheen updates, no mud spray.
+//   Medium — sheen updates; mud spray capped at MUD_SPRAY_CAP_MED.
+//   High   — sheen + mud spray capped at MUD_SPRAY_CAP_HIGH.
+
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use noise::{NoiseFn, Perlin};
+use std::collections::VecDeque;
 
 use crate::terrain::{terrain_height_at, TERRAIN_SEED};
 use crate::vehicle::{Chassis, VehicleRoot};
+use crate::graphics_quality::GraphicsQuality;
+use crate::weather_director::WeatherState;
 
 pub struct MudPlugin;
 
 impl Plugin for MudPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MudActive>()
+           .init_resource::<MudSheenState>()
+           .init_resource::<MudSprayPool>()
            .add_systems(Startup, spawn_mud_patches)
+           .add_systems(Update, (
+               update_mud_sheen,
+               emit_mud_spray,
+               fade_mud_spray,
+           ))
            .add_systems(PhysicsSchedule,
                apply_mud_drag
                    .after(PhysicsStepSystems::NarrowPhase)
@@ -37,9 +65,41 @@ pub struct MudZone {
     pub radius: f32,
 }
 
+/// Tracks last-baked sheen value so we don't update materials every frame.
+#[derive(Resource, Default)]
+struct MudSheenState {
+    last_roughness: f32,
+}
+
+/// Marks each mud-spray splash entity.
+#[derive(Component)]
+struct MudSplash {
+    life:     f32,
+    lifetime: f32,
+}
+
+/// Ring-buffer pool for mud splash entities.
+#[derive(Resource, Default)]
+struct MudSprayPool {
+    entities:   VecDeque<Entity>,
+    dist_accum: f32,
+    last_pos:   Vec3,
+    has_pos:    bool,
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
+
+// --- Spray ---
+const MUD_SPRAY_CAP_MED:  usize = 40;
+const MUD_SPRAY_CAP_HIGH: usize = 80;
+const MUD_SPRAY_INTERVAL_M: f32 = 0.4;
+const MUD_SPRAY_LIFETIME:   f32 = 1.2;
+const MUD_SPRAY_HALF:       f32 = 0.28;
+const MUD_SPRAY_ALPHA_MAX:  f32 = 0.65;
+const MUD_SPRAY_DRIFT_Y:    f32 = 1.2;
+const MIN_SPRAY_MPS:        f32 = 1.8;
 
 const WORLD_HALF: f32 = 90.0;
 // Minimum XZ distance from origin so we don't drown the spawn point.
@@ -182,6 +242,169 @@ fn apply_mud_drag(
         // burying the wheels.
         forces.apply_force(Vec3::new(0.0, -CHASSIS_MASS * 0.3 * submersion, 0.0));
     }
+}
+
+// ---------------------------------------------------------------------------
+// Sprint B4: mud sheen + mud spray
+// ---------------------------------------------------------------------------
+
+/// Update the mud patch material roughness to simulate wet shine after rain.
+/// Reads WeatherState (optional — gracefully absent in headless harness).
+/// Medium+: updates roughness from 0.95 (dry) → 0.55 (soaked).
+fn update_mud_sheen(
+    quality:    Res<GraphicsQuality>,
+    weather:    Option<Res<WeatherState>>,
+    mud_zones:  Query<&MeshMaterial3d<StandardMaterial>, With<MudZone>>,
+    mut mats:   ResMut<Assets<StandardMaterial>>,
+    mut state:  ResMut<MudSheenState>,
+) {
+    if *quality == GraphicsQuality::Low { return; }
+
+    let weather_intensity = weather.as_deref().map_or(0.0, |ws| ws.intensity);
+
+    // Roughness: 0.95 dry → 0.55 fully wet. Emissive: adds subtle wet glint.
+    let target_roughness = 0.95 - weather_intensity * 0.40;
+    let emissive_scale   = weather_intensity * 0.06;
+
+    // Only update if the change is meaningful.
+    if (target_roughness - state.last_roughness).abs() < 0.01 { return; }
+    state.last_roughness = target_roughness;
+
+    for mat_handle in &mud_zones {
+        if let Some(mat) = mats.get_mut(&mat_handle.0) {
+            mat.perceptual_roughness = target_roughness;
+            // Wet mud glints slightly under diffuse light.
+            mat.emissive = LinearRgba::new(
+                0.04 + emissive_scale,
+                0.025 + emissive_scale * 0.6,
+                0.008 + emissive_scale * 0.3,
+                1.0,
+            );
+        }
+    }
+}
+
+/// Emit mud splash billboards when in a mud zone at speed.
+fn emit_mud_spray(
+    mut commands:  Commands,
+    mut meshes:    ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    quality:       Res<GraphicsQuality>,
+    vehicle:       Option<Res<VehicleRoot>>,
+    chassis_q:     Query<&Transform, With<Chassis>>,
+    mud_active:    Res<MudActive>,
+    mut pool:      ResMut<MudSprayPool>,
+    time:          Res<Time>,
+) {
+    let cap = match *quality {
+        GraphicsQuality::Low    => return,
+        GraphicsQuality::Medium => MUD_SPRAY_CAP_MED,
+        GraphicsQuality::High   => MUD_SPRAY_CAP_HIGH,
+    };
+
+    if !mud_active.in_mud { return; }
+
+    let Some(vr) = vehicle else { return };
+    let Ok(chassis_tf) = chassis_q.get(vr.chassis) else { return };
+    let chassis_pos = chassis_tf.translation;
+
+    let dt = time.delta_secs();
+    if dt <= 0.0 { return; }
+
+    let speed_mps = if pool.has_pos {
+        (chassis_pos - pool.last_pos).length() / dt
+    } else {
+        0.0
+    };
+    pool.last_pos = chassis_pos;
+    pool.has_pos  = true;
+
+    if speed_mps < MIN_SPRAY_MPS { return; }
+
+    pool.dist_accum += speed_mps * dt;
+    if pool.dist_accum < MUD_SPRAY_INTERVAL_M { return; }
+    pool.dist_accum -= MUD_SPRAY_INTERVAL_M;
+
+    // Spray spawns slightly behind the chassis at ground level.
+    let rear_local = Vec3::new(0.0, 0.05, 1.4);
+    let spawn_pos  = chassis_pos + chassis_tf.rotation * rear_local;
+
+    let alpha = (MUD_SPRAY_ALPHA_MAX * mud_active.max_submersion).clamp(0.15, MUD_SPRAY_ALPHA_MAX);
+    let mud_color = Color::srgba(0.25, 0.17, 0.09, alpha);
+
+    let mesh = meshes.add(build_spray_quad());
+    let mat  = materials.add(StandardMaterial {
+        base_color:   mud_color,
+        alpha_mode:   AlphaMode::Blend,
+        unlit:        true,
+        double_sided: true,
+        cull_mode:    None,
+        ..default()
+    });
+
+    if pool.entities.len() >= cap {
+        if let Some(old) = pool.entities.pop_front() {
+            commands.entity(old).despawn();
+        }
+    }
+
+    let entity = commands.spawn((
+        MudSplash { life: MUD_SPRAY_LIFETIME, lifetime: MUD_SPRAY_LIFETIME },
+        Mesh3d(mesh),
+        MeshMaterial3d(mat),
+        Transform::from_translation(spawn_pos),
+    )).id();
+    pool.entities.push_back(entity);
+}
+
+/// Fade and drift mud splash upward over their lifetime.
+fn fade_mud_spray(
+    mut commands:  Commands,
+    mut splashes:  Query<(Entity, &mut MudSplash, &mut Transform, &MeshMaterial3d<StandardMaterial>)>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    time:          Res<Time>,
+) {
+    let dt = time.delta_secs();
+    for (entity, mut splash, mut tf, mat_handle) in &mut splashes {
+        splash.life -= dt;
+        if splash.life <= 0.0 {
+            commands.entity(entity).despawn();
+            continue;
+        }
+        tf.translation.y += MUD_SPRAY_DRIFT_Y * dt;
+        let alpha = (splash.life / splash.lifetime).clamp(0.0, 1.0) * MUD_SPRAY_ALPHA_MAX;
+        if let Some(mat) = materials.get_mut(&mat_handle.0) {
+            let base = mat.base_color.to_srgba();
+            mat.base_color = Color::srgba(base.red, base.green, base.blue, alpha);
+        }
+    }
+}
+
+fn build_spray_quad() -> Mesh {
+    use bevy::mesh::{Indices, PrimitiveTopology};
+    use bevy::asset::RenderAssetUsages;
+
+    let h = MUD_SPRAY_HALF;
+    let positions: Vec<[f32; 3]> = vec![
+        [-h, 0.0, -h],
+        [ h, 0.0, -h],
+        [ h, 0.0,  h],
+        [-h, 0.0,  h],
+    ];
+    let normals: Vec<[f32; 3]> = vec![[0.0, 1.0, 0.0]; 4];
+    let uvs: Vec<[f32; 2]> = vec![
+        [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0],
+    ];
+    let indices = Indices::U32(vec![0, 1, 2, 0, 2, 3]);
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD,
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(indices);
+    mesh
 }
 
 // ---------------------------------------------------------------------------

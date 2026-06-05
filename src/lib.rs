@@ -554,3 +554,9 @@ pub mod wet_ground;
 pub use wet_ground::WetGroundPlugin;
 pub mod critters;
 pub use critters::CrittersPlugin;
+
+// Sprint B4 — Ground & Atmosphere Realism
+pub mod tire_tracks;
+pub use tire_tracks::TireTracksPlugin;
+pub mod dust;
+pub use dust::AmbientDustPlugin;

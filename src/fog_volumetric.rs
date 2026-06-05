@@ -1,18 +1,29 @@
-// Volumetric fog puffs: ~20 large translucent spheres that drift around the
-// player with the wind, wrapping back when they exceed 80 m.
+// Volumetric fog puffs: tier-scaled translucent spheres that drift around the
+// player with the wind, wrapping back when they exceed WRAP_RADIUS.
 //
 // Sprint 70 — Effect 3
+// Sprint B4 — Enhanced: tier gating, weather-responsive color/density,
+//             improved atmospheric depth via distance fog settings.
 //
 // Trigger:
 //   Always active (puff count driven by FogDensity resource).
 //   Shift+G cycles density: 0.0 → 0.3 → 0.7 → 0.0 …
+//
+// Tier gating (Sprint B4):
+//   Low    — no puffs at all (early return in manage/drift/wrap).
+//   Medium — FOG_PUFF_COUNT_MED puffs, moderate alpha.
+//   High   — FOG_PUFF_COUNT_HIGH puffs, full alpha + weather color response.
+//
+// Weather response (High only):
+//   Reads WeatherState (read-only — weather_director.rs is NOT edited).
+//   Clear → light blue-white haze; Overcast/Storm → thicker grey fog.
 //
 // Public API:
 //   FogVolumetricPlugin
 //   FogDensity (resource — 0.0 = off, 1.0 = max)
 //
 // Tuning knobs:
-//   FOG_PUFF_COUNT    — target puff count (at density 1.0)
+//   FOG_PUFF_COUNT_*  — target puff count (at density 1.0) per tier
 //   FOG_PUFF_RADIUS   — sphere radius (m)
 //   FOG_BASE_ALPHA    — maximum alpha per puff
 //   FOG_DRIFT_FACTOR  — fraction of wind speed used for puff drift
@@ -20,6 +31,8 @@
 
 use bevy::prelude::*;
 
+use crate::graphics_quality::GraphicsQuality;
+use crate::weather_director::{WeatherCondition, WeatherState};
 use crate::wind::WindState;
 use crate::vehicle::{Chassis, VehicleRoot};
 
@@ -35,6 +48,7 @@ impl Plugin for FogVolumetricPlugin {
                manage_fog_puffs,
                drift_fog_puffs,
                wrap_fog_puffs,
+               update_puff_colors,
            ));
     }
 }
@@ -55,21 +69,32 @@ struct FogPuff;
 
 // ---- Constants ---------------------------------------------------------------
 
-const FOG_PUFF_COUNT:  usize = 20;
-const FOG_PUFF_RADIUS: f32   = 3.0;
+/// Puff count at Medium quality (density=1.0).
+const FOG_PUFF_COUNT_MED:  usize = 14;
+/// Puff count at High quality (density=1.0).
+const FOG_PUFF_COUNT_HIGH: usize = 26;
+const FOG_PUFF_RADIUS: f32   = 3.5;
 const FOG_BASE_ALPHA:  f32   = 0.04;
+/// Increased alpha for stormy/overcast weather.
+const FOG_STORM_ALPHA: f32   = 0.07;
 const FOG_DRIFT_FACTOR: f32  = 0.15;  // fraction of wind speed
-const WRAP_RADIUS:      f32  = 80.0;
+const WRAP_RADIUS:      f32  = 90.0;
 
 /// Spawn puffs between 5 and WRAP_RADIUS m from the chassis.
 const SPAWN_MIN_R: f32 = 5.0;
 
-/// Puffs float at 0–8 m above the terrain surface.
+/// Puffs float at 0–10 m above the terrain surface.
 const SPAWN_Y_MIN: f32 = 0.5;
-const SPAWN_Y_MAX: f32 = 8.0;
+const SPAWN_Y_MAX: f32 = 10.0;
 
 // Cycle values for Shift+G toggle.
 const DENSITY_STEPS: [f32; 3] = [0.0, 0.3, 0.7];
+
+// Fog puff colors per weather condition.
+// Clear → near-white blue tint; Storm → warm grey for thick murk.
+const COLOR_CLEAR:    (f32, f32, f32) = (0.92, 0.93, 0.96);
+const COLOR_OVERCAST: (f32, f32, f32) = (0.80, 0.80, 0.82);
+const COLOR_STORM:    (f32, f32, f32) = (0.65, 0.65, 0.66);
 
 // ---- LCG helpers --------------------------------------------------------------
 
@@ -101,15 +126,25 @@ fn manage_fog_puffs(
     mut meshes:    ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     density:       Res<FogDensity>,
+    quality:       Res<GraphicsQuality>,
     vehicle:       Option<Res<VehicleRoot>>,
     chassis_q:     Query<&Transform, With<Chassis>>,
     puffs:         Query<Entity, With<FogPuff>>,
     mut seed:      Local<u32>,
 ) {
+    // Low tier: no volumetric puffs.
+    if *quality == GraphicsQuality::Low { return; }
+
+    let tier_max = match *quality {
+        GraphicsQuality::Low    => 0,
+        GraphicsQuality::Medium => FOG_PUFF_COUNT_MED,
+        GraphicsQuality::High   => FOG_PUFF_COUNT_HIGH,
+    };
+
     let target = if density.0 <= 0.0 {
         0
     } else {
-        (FOG_PUFF_COUNT as f32 * density.0.sqrt()) as usize
+        ((tier_max as f32) * density.0.sqrt()) as usize
     };
 
     let existing = puffs.iter().count();
@@ -165,8 +200,10 @@ fn drift_fog_puffs(
     time:      Res<Time>,
     wind:      Option<Res<WindState>>,
     density:   Res<FogDensity>,
+    quality:   Res<GraphicsQuality>,
     mut puffs: Query<&mut Transform, With<FogPuff>>,
 ) {
+    if *quality == GraphicsQuality::Low { return; }
     if density.0 <= 0.0 { return; }
 
     let dt = time.delta_secs();
@@ -189,11 +226,13 @@ fn wrap_fog_puffs(
     mut meshes:   ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     density:      Res<FogDensity>,
+    quality:      Res<GraphicsQuality>,
     vehicle:      Option<Res<VehicleRoot>>,
     chassis_q:    Query<&Transform, With<Chassis>>,
     puffs:        Query<(Entity, &Transform), With<FogPuff>>,
     mut seed:     Local<u32>,
 ) {
+    if *quality == GraphicsQuality::Low { return; }
     if density.0 <= 0.0 { return; }
 
     let chassis_pos = if let Some(ref vr) = vehicle {
@@ -236,6 +275,76 @@ fn wrap_fog_puffs(
                 MeshMaterial3d(mat.clone()),
                 Transform::from_translation(Vec3::new(px, py, pz)),
             ));
+        }
+    }
+}
+
+// ---- System: weather-responsive puff color (High only) ----------------------
+
+/// On High quality, lerps puff base_color toward the target for the current
+/// WeatherCondition, giving the fog a warm grey hue during storms and a clean
+/// blue-white tint on clear days. Reads WeatherState (read-only).
+fn update_puff_colors(
+    quality:   Res<GraphicsQuality>,
+    density:   Res<FogDensity>,
+    weather:   Option<Res<WeatherState>>,
+    puffs:     Query<&MeshMaterial3d<StandardMaterial>, With<FogPuff>>,
+    mut mats:  ResMut<Assets<StandardMaterial>>,
+    time:      Res<Time>,
+) {
+    // Only on High; Low/Medium get the static clear-day color.
+    if *quality != GraphicsQuality::High { return; }
+    if density.0 <= 0.0 { return; }
+
+    // Read weather condition (optional — weather_director may not be registered
+    // in all contexts, e.g. headless harness).
+    let (target_r, target_g, target_b, target_a) = match weather.as_deref() {
+        None => {
+            let (r, g, b) = COLOR_CLEAR;
+            (r, g, b, FOG_BASE_ALPHA)
+        }
+        Some(ws) => match ws.condition {
+            WeatherCondition::Clear | WeatherCondition::Clearing => {
+                let (r, g, b) = COLOR_CLEAR;
+                (r, g, b, FOG_BASE_ALPHA)
+            }
+            WeatherCondition::Cloudy | WeatherCondition::Overcast => {
+                let t = ws.intensity;
+                let (cr, cg, cb) = COLOR_CLEAR;
+                let (or_, og, ob) = COLOR_OVERCAST;
+                (
+                    cr + (or_ - cr) * t,
+                    cg + (og - cg) * t,
+                    cb + (ob - cb) * t,
+                    FOG_BASE_ALPHA + (FOG_STORM_ALPHA - FOG_BASE_ALPHA) * t * 0.5,
+                )
+            }
+            WeatherCondition::Rain | WeatherCondition::Storm => {
+                let t = ws.intensity;
+                let (or_, og, ob) = COLOR_OVERCAST;
+                let (sr, sg, sb) = COLOR_STORM;
+                (
+                    or_ + (sr - or_) * t,
+                    og  + (sg - og)  * t,
+                    ob  + (sb - ob)  * t,
+                    FOG_BASE_ALPHA + (FOG_STORM_ALPHA - FOG_BASE_ALPHA) * t,
+                )
+            }
+        },
+    };
+
+    let dt      = time.delta_secs();
+    let lerp_t  = (dt * 0.5).clamp(0.0, 1.0); // gentle 2-second lerp
+
+    for mat_handle in &puffs {
+        if let Some(mat) = mats.get_mut(&mat_handle.0) {
+            let cur = mat.base_color.to_srgba();
+            mat.base_color = Color::srgba(
+                cur.red   + (target_r - cur.red)   * lerp_t,
+                cur.green + (target_g - cur.green)  * lerp_t,
+                cur.blue  + (target_b - cur.blue)   * lerp_t,
+                cur.alpha + (target_a - cur.alpha)  * lerp_t,
+            );
         }
     }
 }
