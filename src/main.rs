@@ -2,6 +2,7 @@ use bevy::ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bevy::prelude::*;
 use avian3d::prelude::*;
 use skoffroad::{
+    LoadSignalPlugin,
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin, WeatherDirectorPlugin, MoonPlugin, StarGlowPlugin,
     TireRoostPlugin,
@@ -473,7 +474,10 @@ fn main() {
         // Sprint 84: dynamic weather + richer night sky.
         .add_plugins(WeatherDirectorPlugin)
         .add_plugins(MoonPlugin)
-        .add_plugins(StarGlowPlugin);
+        .add_plugins(StarGlowPlugin)
+        // Loading-screen ready signal: fires window.skoffroadReady() once
+        // VehicleRoot exists and several frames have rendered.
+        .add_plugins(LoadSignalPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

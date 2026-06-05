@@ -554,3 +554,8 @@ pub mod wet_ground;
 pub use wet_ground::WetGroundPlugin;
 pub mod critters;
 pub use critters::CrittersPlugin;
+
+// Loading-screen ready signal — fires window.skoffroadReady() once the world
+// is up so index.html can hide the splash at the right moment.
+pub mod load_signal;
+pub use load_signal::LoadSignalPlugin;
