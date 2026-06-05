@@ -123,12 +123,63 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
   margin-bottom: 2px;
   text-shadow: 0 4px 24px rgba(217, 119, 6, 0.25);
 }
+/* Mascot bounces gently while loading */
 #splash .mascot {
   width: clamp(220px, 32vw, 360px);
   margin-bottom: 14px;
   filter: drop-shadow(0 8px 22px rgba(217, 119, 6, 0.18));
+  animation: mascot-bounce 1.8s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+@keyframes mascot-bounce {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
 }
 #splash p { color: var(--steel); font-size: 16px; margin-bottom: 24px; }
+
+/* Status line — text is cycled by JS */
+#splash-status {
+  font-size: 13px;
+  color: var(--mud-500);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+  min-height: 18px;
+  transition: opacity 0.35s ease;
+}
+
+/* Spinner + shimmer bar stacked */
+.loader-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+/* Animated dots spinner */
+.spinner {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.spinner span {
+  display: block;
+  width: 9px;
+  height: 9px;
+  background: var(--mud-500);
+  border-radius: 50%;
+  animation: dot-pulse 1.4s ease-in-out infinite;
+}
+.spinner span:nth-child(2) { animation-delay: 0.2s; background: var(--mud-300); }
+.spinner span:nth-child(3) { animation-delay: 0.4s; }
+.spinner span:nth-child(4) { animation-delay: 0.6s; background: var(--mud-300); }
+.spinner span:nth-child(5) { animation-delay: 0.8s; }
+@keyframes dot-pulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%            { transform: scale(1.2); opacity: 1; }
+}
+
 #splash .bar {
   width: 240px; height: 6px;
   background: rgba(217, 119, 6, 0.2);
@@ -146,14 +197,18 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
 }
+
+/* Tip rotator — one tip visible at a time */
 .tip {
   margin-top: 24px;
   font-size: 13px;
   color: var(--steel);
   font-family: 'JetBrains Mono', monospace;
   text-align: center;
+  transition: opacity 0.4s ease;
 }
 .tip strong { color: var(--mud-300); }
+.tip.tip-hidden { opacity: 0; }
 .warn {
   margin-top: 16px;
   padding: 8px 14px;
@@ -173,19 +228,21 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
   <img class="mascot" src="assets/penguin-mascot.svg" alt="skoffroad mascot — penguin driving a tricked-out Skrambler" />
   <h1>skoffroad</h1>
   <p style="color: var(--mud-300); font-size: 18px; margin-top: -4px; margin-bottom: 14px; letter-spacing: 0.18em;">S&amp;K&nbsp;OFFROAD</p>
-  <p>fetching ~30 MB of off-road sandbox...</p>
-  <div class="bar"></div>
-  <div class="tip">
-    <strong>WASD</strong> drive · <strong>Space</strong> brake · <strong>R</strong> reset · <strong>1–6</strong> paint · <strong>V</strong> camera · <strong>Esc</strong> menu
+  <div id="splash-status">Downloading...</div>
+  <div class="loader-group">
+    <div class="spinner">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="bar"></div>
   </div>
-  <div class="tip">
-    <strong>I</strong> multiplayer · <strong>F</strong> push-to-talk voice · <strong>Shift+F</strong> always-on mic · <strong>Q</strong> webcam
+  <div class="tip" id="splash-tip-rotate">
+    <strong>WASD</strong> drive &middot; <strong>Space</strong> brake &middot; <strong>R</strong> reset &middot; <strong>1&ndash;6</strong> paint &middot; <strong>V</strong> camera &middot; <strong>Esc</strong> menu
   </div>
   <div class="tip" id="splash-touch-tip" style="display:none">
-    <strong>Touch device detected</strong> — on-screen controls will appear after loading
+    <strong>Touch device detected</strong> &mdash; on-screen controls will appear after loading
   </div>
   <div class="warn">
-    if the canvas stays black, your browser may not support WebGPU yet —
+    if the canvas stays black, your browser may not support WebGPU yet &mdash;
     try Chrome / Brave / Edge.
   </div>
 </div>
@@ -196,29 +253,97 @@ html, body { height: 100%; background: var(--dirt-900); color: var(--bone);
 <div id="voice-tiles"></div>
 
 <script>
-// Hide splash once the canvas reports a non-zero size — Bevy starts
-// rendering as soon as it has a target, so this is a reasonable proxy for
-// "game booted".
-const canvas = document.getElementById('bevy');
-const splash = document.getElementById('splash');
-const ro = new ResizeObserver(() => {
-  if (canvas.width > 0 && canvas.height > 0) {
-    splash.classList.add('gone');
-    ro.disconnect();
-  }
-});
-ro.observe(canvas);
-// Fallback: hide after 30 s no matter what.
-setTimeout(() => splash.classList.add('gone'), 30_000);
-
-// Sprint 52: show touch tip on the splash if this is a touch device.
 (function () {
-  const params = new URLSearchParams(window.location.search);
-  const isTouch = params.has('force-touch') ||
+  'use strict';
+
+  var splash = document.getElementById('splash');
+  var statusEl = document.getElementById('splash-status');
+
+  // ── Timers (declared early so hideSplash can reference them) ────────────
+  var fallbackTimer = null;
+  var phaseTimers = [];
+  var tipTimerHandle = null;
+
+  function clearAllTimers() {
+    clearTimeout(fallbackTimer);
+    phaseTimers.forEach(function (t) { clearTimeout(t); });
+    clearTimeout(tipTimerHandle);
+  }
+
+  // ── Helper: hide splash (idempotent) ─────────────────────────────────────
+  var hidden = false;
+  function hideSplash() {
+    if (hidden) return;
+    hidden = true;
+    if (splash) splash.classList.add('gone');
+    clearAllTimers();
+  }
+
+  // ── Bevy-side ready signal ────────────────────────────────────────────────
+  // load_signal.rs calls window.skoffroadReady() once VehicleRoot exists and
+  // several real frames have rendered.  This is the primary dismiss trigger.
+  window.skoffroadReady = function () { hideSplash(); };
+
+  // Safety fallback: hide after 60 s regardless, so the splash can never get
+  // stuck permanently if something goes wrong before the Rust signal fires.
+  fallbackTimer = setTimeout(hideSplash, 60000);
+
+  // ── Phased status text ────────────────────────────────────────────────────
+  // Pure timer-driven phases — Trunk doesn't expose real download progress,
+  // so we approximate phases based on typical load time.
+  var phases = [
+    { text: 'Downloading...',      delay: 0     },
+    { text: 'Compiling shaders...', delay: 8000  },
+    { text: 'Building terrain...',  delay: 16000 },
+    { text: 'Starting engine...',   delay: 24000 },
+    { text: 'Almost there...',      delay: 34000 },
+  ];
+  phases.forEach(function (p) {
+    var t = setTimeout(function () {
+      if (!statusEl || hidden) return;
+      statusEl.style.opacity = '0';
+      setTimeout(function () {
+        if (!statusEl || hidden) return;
+        statusEl.textContent = p.text;
+        statusEl.style.opacity = '1';
+      }, 180);
+    }, p.delay);
+    phaseTimers.push(t);
+  });
+
+  // ── Rotating tips ─────────────────────────────────────────────────────────
+  var tips = [
+    '<strong>WASD</strong> drive &middot; <strong>Space</strong> brake &middot; <strong>R</strong> reset &middot; <strong>1&ndash;6</strong> paint &middot; <strong>V</strong> camera &middot; <strong>Esc</strong> menu',
+    '<strong>I</strong> multiplayer &middot; <strong>F</strong> push-to-talk voice &middot; <strong>Shift+F</strong> always-on mic &middot; <strong>Q</strong> webcam',
+    '<strong>Shift+G</strong> garage build screen &middot; <strong>Shift+L</strong> cycle sponsor liveries',
+    '<strong>F8</strong> perf overlay &middot; <strong>F9</strong> fuel/session summary &middot; <strong>F12</strong> screenshot',
+    '<strong>H</strong> hillclimb leaderboard &middot; <strong>Shift+Tab</strong> mission select',
+    '<strong>M</strong> custom map &middot; drag-drop a heightmap PNG to replace terrain',
+    '<strong>Ctrl+W</strong> blocked on purpose &mdash; it would close your tab!',
+  ];
+  var tipIdx = 0;
+  var tipEl = document.getElementById('splash-tip-rotate');
+  function rotateTip() {
+    if (!tipEl || hidden) return;
+    tipEl.classList.add('tip-hidden');
+    setTimeout(function () {
+      if (!tipEl || hidden) return;
+      tipIdx = (tipIdx + 1) % tips.length;
+      tipEl.innerHTML = tips[tipIdx];
+      tipEl.classList.remove('tip-hidden');
+    }, 420);
+    tipTimerHandle = setTimeout(rotateTip, 5000);
+  }
+  tipTimerHandle = setTimeout(rotateTip, 5000);
+
+  // ── Touch-device tip ──────────────────────────────────────────────────────
+  // Sprint 52: show touch tip on the splash if this is a touch device.
+  var params = new URLSearchParams(window.location.search);
+  var isTouch = params.has('force-touch') ||
     'ontouchstart' in window || navigator.maxTouchPoints > 0;
   if (isTouch) {
-    const tip = document.getElementById('splash-touch-tip');
-    if (tip) tip.style.display = '';
+    var touchTip = document.getElementById('splash-touch-tip');
+    if (touchTip) touchTip.style.display = '';
   }
 })();
 </script>
@@ -369,6 +494,8 @@ setTimeout(() => splash.classList.add('gone'), 30_000);
 @media (prefers-reduced-motion: reduce) {
   #mobile-start { animation: none; }
   #splash .bar::after { animation: none; }
+  #splash .mascot { animation: none; }
+  .spinner span { animation: none; opacity: 0.7; }
 }
 </style>
 <button id="mobile-start" type="button">▶ TAP TO START</button>
