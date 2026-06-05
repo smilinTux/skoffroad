@@ -5,6 +5,7 @@ use skoffroad::{
     LoadSignalPlugin,
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin, WeatherDirectorPlugin, MoonPlugin, StarGlowPlugin,
+    ContactShadowPlugin,
     TireRoostPlugin,
     HeadlightBeamsPlugin,
     BrakeGlowPlugin,
@@ -477,7 +478,10 @@ fn main() {
         .add_plugins(StarGlowPlugin)
         // Loading-screen ready signal: fires window.skoffroadReady() once
         // VehicleRoot exists and several frames have rendered.
-        .add_plugins(LoadSignalPlugin);
+        .add_plugins(LoadSignalPlugin)
+        // Sprint 90: contact/blob shadow under the chassis (Medium+ only).
+        // Separate add_plugins call per spec; tier-gated in the plugin itself.
+        .add_plugins(ContactShadowPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

@@ -39,15 +39,26 @@ struct Headlight;
 
 // ---- Constants --------------------------------------------------------------
 
-// Bevy 0.18 SpotLight intensity is in lumens. Off-road night driving needs
-// genuinely bright cones — these are tuned to throw a clearly-lit corridor
-// 100+ m ahead of the truck so the player can actually see where they're going.
-// (Previous 200_000 lm read as soft amber on the ground; 1_500_000 lm reads
-// as proper LED-pod off-road lights.)
-const HL_INTENSITY:   f32 = 1_500_000.0;
-const HL_RANGE:       f32 = 150.0;
-const HL_OUTER_ANGLE: f32 = 0.610_865; // 35°  (was 25°) — wider cone
-const HL_INNER_ANGLE: f32 = 0.383_972; // 22°  (was 15°)
+// Bevy 0.18 SpotLight intensity is in lumens.
+//
+// Sprint 90 realism pass:
+//   Real Jeep/off-road LED pods: ~50 000–200 000 lm per pod.
+//   1 500 000 lm was way beyond any real light and caused bloom blowout even
+//   with the new restrained bloom settings.
+//   180 000 lm gives a strong but believable LED-pod throw (~80 m corridor).
+//
+//   Cone geometry: real narrow-beam LED pods have a tight hot spot
+//   (inner ~10°) and a well-defined edge (outer ~28°).  The wide 35° outer
+//   that was here previously spilled too much light sideways — unrealistic.
+//
+//   Soft edge: inner/outer ratio 0.36/1.0 → cosine falloff gives a smooth
+//   penumbra without a hard cutoff.
+const HL_INTENSITY:   f32 = 180_000.0;
+const HL_RANGE:       f32 = 120.0;
+// outer 28° ≈ 0.4887 rad — tight beam, realistic LED pod spread
+const HL_OUTER_ANGLE: f32 = 0.488_692;
+// inner 12° ≈ 0.2094 rad — narrow hot spot, smooth penumbra to outer
+const HL_INNER_ANGLE: f32 = 0.209_440;
 
 // ---- Systems ----------------------------------------------------------------
 
