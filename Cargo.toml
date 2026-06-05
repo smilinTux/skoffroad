@@ -9,6 +9,10 @@ license = "GPL-3.0-or-later"
 
 [features]
 default = []
+# Sample-based engine audio (VNS-style RPM crossfade) instead of the synth.
+# Enables bevy_kira_audio's wav loader for the starter engine loops.
+# See src/engine_samples.rs + docs/ASSETS.md.
+engine_samples = ["bevy_kira_audio/wav"]
 dev = ["bevy/dynamic_linking", "dep:bevy-inspector-egui"]
 
 [lib]

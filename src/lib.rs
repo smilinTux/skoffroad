@@ -568,3 +568,7 @@ pub mod tire_tracks;
 pub use tire_tracks::TireTracksPlugin;
 pub mod dust;
 pub use dust::AmbientDustPlugin;
+
+// Asset pipeline: sample-based engine audio (feature `engine_samples`).
+pub mod engine_samples;
+pub use engine_samples::{EngineSamplesPlugin, EngineSamplesActive};
