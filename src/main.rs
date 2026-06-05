@@ -82,6 +82,8 @@ use skoffroad::{
     SponsorLiveryPlugin,
     // Sprint 70: environmental realism effects
     RainSplashPlugin, SnowAccumPlugin, FogVolumetricPlugin, WetGroundPlugin, CrittersPlugin,
+    // Sprint B4: ground & atmosphere realism
+    TireTracksPlugin, AmbientDustPlugin,
 };
 
 fn main() {
@@ -481,7 +483,11 @@ fn main() {
         .add_plugins(LoadSignalPlugin)
         // Sprint 90: contact/blob shadow under the chassis (Medium+ only).
         // Separate add_plugins call per spec; tier-gated in the plugin itself.
-        .add_plugins(ContactShadowPlugin);
+        .add_plugins(ContactShadowPlugin)
+        // Sprint B4: persistent tire tracks (ring-buffer pooled, terrain-surface placed).
+        .add_plugins(TireTracksPlugin)
+        // Sprint B4: ambient dust haze + ground dust wake (mesh-based, WASM-safe).
+        .add_plugins(AmbientDustPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

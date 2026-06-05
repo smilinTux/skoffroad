@@ -562,3 +562,9 @@ pub use critters::CrittersPlugin;
 // is up so index.html can hide the splash at the right moment.
 pub mod load_signal;
 pub use load_signal::LoadSignalPlugin;
+
+// Sprint B4 — Ground & Atmosphere Realism
+pub mod tire_tracks;
+pub use tire_tracks::TireTracksPlugin;
+pub mod dust;
+pub use dust::AmbientDustPlugin;
