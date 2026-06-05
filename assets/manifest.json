@@ -1,11 +1,11 @@
 {
   "vehicles": [
     {
-      "name": "Toy Car (CC0 sample)",
-      "glb_path": "vehicles/toycar.glb",
+      "name": "Off-Road Pickup (CC0)",
+      "glb_path": "vehicles/pickup_truck.glb",
       "mass_kg": 1500.0,
       "license": "CC0-1.0",
-      "author": "Guido Odendahl & Eric Chadwick (Khronos glTF Sample Assets)"
+      "author": "Quaternius (via Poly Pizza)"
     }
   ],
   "maps": [

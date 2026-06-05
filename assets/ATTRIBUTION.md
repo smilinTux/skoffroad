@@ -4,10 +4,10 @@ All bundled starter assets are public domain / CC0 unless noted. Add new entries
 here when you drop in assets; honor attribution for any CC-BY content.
 
 ## Vehicles
-- `vehicles/toycar.glb` — **ToyCar**, Khronos glTF Sample Assets.
+- `vehicles/pickup_truck.glb` — **Pickup Truck** by Quaternius.
   License: **CC0 1.0 Universal** (public domain, no attribution required).
-  Credit (courtesy): Guido Odendahl (model) & Eric Chadwick (extensions/scene).
-  Source: https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ToyCar
+  Source: https://poly.pizza/m/qn4grQgHm8 (Poly Pizza) — Quaternius CC0 vehicle pack.
+  Used as the drivable body when built with `--features vehicle_skin`.
 
 ## Maps
 - `maps/trail1.png` — procedurally generated starter heightmap.

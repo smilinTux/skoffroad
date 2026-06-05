@@ -75,7 +75,8 @@ entry, drop the file in `assets/vehicles/`, done:
   "mass_kg": 1800.0, "license": "CC0-1.0", "author": "..." }
 ```
 
-Shipped starter: `assets/vehicles/toycar.glb` — Khronos **ToyCar**, CC0-1.0.
+Shipped starter: `assets/vehicles/pickup_truck.glb` — Quaternius **Pickup Truck**,
+CC0-1.0 (via Poly Pizza).
 
 ### Where to get CC0 vehicles (glTF-ready)
 - **Kenney Car Kit** (45+ vehicles, CC0): https://opengameart.org/content/car-kit
@@ -90,11 +91,29 @@ Model in **Blender** → export glTF `.glb` → drop in + manifest entry. The
 **Blenvy** addon lets you define Bevy components inside Blender:
 https://github.com/kaosat-dev/Blenvy
 
-> **Note (current limitation):** loaded GLBs are currently *browsable* (Asset
-> Browser) but not yet swapped in as the drivable physics chassis — the player
-> vehicle is still the procedural rig in `vehicle.rs`. Wiring a GLB body onto the
-> physics chassis (visual mesh parented to the chassis + a low-poly collider) is
-> the next step; this scaffolding gets the assets loading and catalogued first.
+### Drivable glTF body (`vehicle_skin` feature)
+
+`src/vehicle_skin.rs` parents a manifest GLB onto the physics `Chassis` and hides
+the procedural body (`DefaultSkin`), so a dropped-in glTF truck becomes the
+vehicle you drive. Physics (collider, mass, wheels) is unchanged — it's a visual
+shell swap.
+
+```bash
+cargo run --features vehicle_skin
+cargo run --features "vehicle_skin engine_samples"   # drivable truck + real engine
+```
+
+Off by default (the procedural rig is used). Which GLB + the fit-up transform are
+set by consts at the top of `vehicle_skin.rs`:
+- `SKIN_STEM`     — glb file stem to use (default `pickup_truck`)
+- `SKIN_SCALE`    — uniform scale
+- `SKIN_OFFSET`   — chassis-local position (Y seats the body on the wheels)
+- `SKIN_YAW_DEG`  — set to `180` if the model faces the wrong way (game fwd = -Z)
+
+> Tune those to your model — most glTF cars need only a yaw of 0/180 and a small
+> Y offset. The physics wheels still render/spin; if your GLB includes its own
+> wheels you may want to offset/scale so they line up (a future enhancement could
+> auto-fit via the scene AABB).
 
 ---
 

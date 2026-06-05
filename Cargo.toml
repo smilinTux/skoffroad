@@ -13,6 +13,9 @@ default = []
 # Enables bevy_kira_audio's wav loader for the starter engine loops.
 # See src/engine_samples.rs + docs/ASSETS.md.
 engine_samples = ["bevy_kira_audio/wav"]
+# Drivable glTF body: parent a manifest GLB onto the physics chassis, hide the
+# procedural body. Off by default. See src/vehicle_skin.rs + docs/ASSETS.md.
+vehicle_skin = []
 dev = ["bevy/dynamic_linking", "dep:bevy-inspector-egui"]
 
 [lib]

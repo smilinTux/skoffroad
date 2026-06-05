@@ -572,3 +572,7 @@ pub use dust::AmbientDustPlugin;
 // Asset pipeline: sample-based engine audio (feature `engine_samples`).
 pub mod engine_samples;
 pub use engine_samples::{EngineSamplesPlugin, EngineSamplesActive};
+
+// Asset pipeline: drivable glTF vehicle body (feature `vehicle_skin`).
+pub mod vehicle_skin;
+pub use vehicle_skin::VehicleSkinPlugin;

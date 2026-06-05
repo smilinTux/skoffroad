@@ -4,6 +4,7 @@ use avian3d::prelude::*;
 use skoffroad::{
     LoadSignalPlugin,
     EngineSamplesPlugin,
+    VehicleSkinPlugin,
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin, WeatherDirectorPlugin, MoonPlugin, StarGlowPlugin,
     ContactShadowPlugin,
@@ -492,7 +493,10 @@ fn main() {
         // Asset pipeline: sample-based engine audio (no-op unless built with
         // --features engine_samples; then it mutes the synth and crossfades
         // recorded engine loops by RPM). See docs/ASSETS.md.
-        .add_plugins(EngineSamplesPlugin);
+        .add_plugins(EngineSamplesPlugin)
+        // Asset pipeline: drivable glTF body (no-op unless built with
+        // --features vehicle_skin; then it skins the chassis with a GLB).
+        .add_plugins(VehicleSkinPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the
