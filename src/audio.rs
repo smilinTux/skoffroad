@@ -144,8 +144,8 @@ const AMBIENT_LOOP_S: f32 = 1.0;
 // Idle: 800 RPM / 60 s = 13.33 rev/s; 2 firings/rev → 26.67 Hz firing rate.
 // 3 s × 26.667 Hz = 80.0 whole cycles → seam is exactly phase-continuous.
 // Confirmed: (800f32/60f32)*2f32*3f32 = 80.0 → fract() = 0.0 ✓
-const ENGINE_LOOP_DURATION_S: f32 = 3.0;
-const ENGINE_LOOP_N_FRAMES: usize = (SAMPLE_RATE as usize) * 3; // 132_300
+// Duration = 3.0 s → 132300 frames.
+const ENGINE_LOOP_N_FRAMES: usize = (SAMPLE_RATE as usize) * 3; // 3 s × 44100 Hz
 
 // Idle RPM used to bake the buffer. Runtime RPM shifts pitch via playback_rate.
 const IDLE_RPM: f32 = 800.0;
@@ -155,7 +155,7 @@ const IDLE_RPM: f32 = 800.0;
 // High-RPM: at 6500 RPM firing_hz = 216.7 Hz; harmonic 24 = 5200 Hz — still safe.
 const MAX_HARMONICS_HIGH: usize = 24;
 const MAX_HARMONICS_MED:  usize = 16;
-const MAX_HARMONICS_LOW:  usize = 8;
+const MAX_HARMONICS_LOW:  usize =  8;
 
 // ---------------------------------------------------------------------------
 // ── Biquad bandpass filter (second-order IIR) ─────────────────────────────
