@@ -53,9 +53,11 @@ struct RoostChunk;
 
 // ---- Constants --------------------------------------------------------------
 
-const SLIP_THRESHOLD:    f32 = 0.4;
-const MAX_ACTIVE_CHUNKS: usize = 80;
-const CHUNK_LIFETIME:    f32 = 2.0; // seconds
+// Sprint 90: raised threshold 0.4 → 0.5 — only genuine wheel-spin produces roost.
+const SLIP_THRESHOLD:    f32 = 0.5;
+const MAX_ACTIVE_CHUNKS: usize = 60;
+// Sprint 90: shorter lifetime 1.5 s — chunks hit the ground faster (realistic arc).
+const CHUNK_LIFETIME:    f32 = 1.5;
 const GRAVITY:           f32 = 9.81;
 
 // Rear wheel offsets in chassis local space (matches vehicle.rs; index 2=RL, 3=RR).
@@ -80,13 +82,14 @@ fn ensure_roost_material(
     if vehicle.is_none() {
         return;
     }
-    // Brown dirt tone for v1 (single colour; surface-detection API not trivial).
+    // Sprint 90: slightly lighter/more varied dirt tone — mix of sandy dirt.
+    // Slightly smaller chunks (0.04 m) for a grittier, more realistic roost.
     roost.mat_handle = Some(materials.add(StandardMaterial {
-        base_color: Color::srgb(0.38, 0.26, 0.14),
-        perceptual_roughness: 0.9,
+        base_color: Color::srgb(0.42, 0.32, 0.18),
+        perceptual_roughness: 0.95,
         ..default()
     }));
-    roost.mesh_handle = Some(meshes.add(Cuboid::new(0.05, 0.05, 0.05)));
+    roost.mesh_handle = Some(meshes.add(Cuboid::new(0.04, 0.04, 0.04)));
 }
 
 // ---- Spawn system -----------------------------------------------------------
@@ -113,10 +116,10 @@ fn spawn_roost_chunks(
         return;
     }
 
-    // Rate-limit: spawn only on every ~6th frame.
+    // Rate-limit: spawn only on every ~8th frame (was 6th) — slightly less frequent.
     let elapsed = time.elapsed_secs();
     let spawn_frame = (elapsed * 10.0) as u32;
-    if spawn_frame % 6 != 0 {
+    if spawn_frame % 8 != 0 {
         return;
     }
 
@@ -135,8 +138,9 @@ fn spawn_roost_chunks(
         ((v >> 16) as f32 / 65535.0) * 2.0 - 1.0   // [-1, 1]
     };
 
-    // Spawn 2-4 chunks for each rear wheel (index 2=RL, 3=RR).
-    let count = 2 + (rng(99).abs() * 2.0) as usize; // 2-4
+    // Slip factor drives chunk count: low slip → 1 chunk, full slip → 3.
+    let count = 1 + ((slip_factor - SLIP_THRESHOLD) / (1.0 - SLIP_THRESHOLD) * 2.0).clamp(0.0, 2.0) as usize;
+
     for wi in 2..4usize {
         let wheel_local = WHEEL_OFFSETS[wi];
         let wheel_world = chassis_pos + chassis_rot * wheel_local;
@@ -147,12 +151,13 @@ fn spawn_roost_chunks(
             }
             let i = (wi as u32) * 10 + ci as u32;
 
-            // Velocity: backward along chassis forward (-3 to -5 m/s) + spread.
-            let back_speed = 3.0 + rng(i).abs() * 2.0;   // 3–5 m/s
-            let spread_x   = rng(i + 1) * 1.5;            // ±1.5 m/s
-            let spread_z   = rng(i + 2) * 1.5;            // ±1.5 m/s
+            // Sprint 90: velocity arc — chunks launch more backward (4-7 m/s)
+            // with a lower upward component (1.5-2.5) for a flatter, realistic arc.
+            let back_speed = 4.0 + rng(i).abs() * 3.0;   // 4–7 m/s backward
+            let spread_x   = rng(i + 1) * 1.2;            // ±1.2 m/s lateral
+            let up_speed   = 1.5 + rng(i + 3).abs() * 1.0; // 1.5-2.5 m/s up
             let vel = chassis_fwd * (-back_speed)
-                + chassis_rot * Vec3::new(spread_x, 3.0, spread_z);
+                + chassis_rot * Vec3::new(spread_x, up_speed, rng(i + 2) * 0.8);
 
             let entity = commands.spawn((
                 RoostChunk,

@@ -64,25 +64,30 @@ const GOLDEN_HORIZON:[f32; 4] = [1.00, 0.50, 0.30, 1.0];
 fn setup_sun(mut commands: Commands, mut ambient: ResMut<GlobalAmbientLight>) {
     commands.spawn((
         DirectionalLight {
-            illuminance: 22_000.0,
-            // Shadows disabled — Intel iGPUs render this scene at ~5 FPS with
-            // shadow mapping enabled because of the ~700 dynamic-mesh entity
-            // count (trees + rocks + obstacles + scatter + variants + scatter
-            // children). The night-time scene reads fine without them, and a
-            // brighter ambient floor compensates for the loss of contact
-            // shadows.
+            // Sprint 90 realism: noon sunlight on a clear day is ~100 000 lx
+            // outdoors; Bevy's lux scale treats 1 lux = 1 illuminance unit.
+            // 32 000 gives a believable bright-noon look with AgX tonemapping
+            // without blowing out the terrain the way 22 000 did with the old
+            // AcesFitted + heavy bloom.  The day/night system in update_sun
+            // scales this down smoothly toward 50 lx at midnight.
+            illuminance: 32_000.0,
+            // Shadows disabled for broad GPU compatibility (iGPUs struggle
+            // with 700+ dynamic entities + shadow maps).  post_fx.rs re-enables
+            // shadows at High tier via pin_tonemapping_and_shadows().
             shadows_enabled: false,
-            color: Color::srgb(1.0, 0.97, 0.88),
+            // Slightly warmer noon colour — outdoor sunlight reads ~5500 K.
+            color: Color::srgb(1.0, 0.96, 0.84),
             ..default()
         },
         Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.9, 0.5, 0.0)),
     ));
 
-    // Very high ambient floor so terrain in non-direct-light areas reads
-    // clearly. Was 200 (then 500); 1500 makes the world genuinely bright at
-    // noon. The day/night system in update_ambient still scales this.
-    ambient.color      = Color::srgb(0.85, 0.87, 0.92);
-    ambient.brightness = 2400.0;
+    // Sprint 90: pull ambient down from 2400 → 1400 at noon.
+    // The sky dome + sun already provide plenty of fill; 2400 was washing out
+    // shadow contrast.  The day/night system lerps 600 → 1400 so night is dark
+    // but readable and noon is punchy without over-brightening.
+    ambient.color      = Color::srgb(0.82, 0.85, 0.92);
+    ambient.brightness = 1400.0;
 }
 
 fn spawn_sky_dome(
@@ -164,8 +169,11 @@ fn update_sun(
     let golden = smooth_step((1.0 - (sin_el.abs() / 0.18).min(1.0)).max(0.0));
 
     let illuminance = {
-        let base = lerp(50.0, 10_000.0, smooth_step(above));
-        lerp(base, 3_000.0, golden) // pull toward 3 000 lx at golden hour
+        // Sprint 90: raise noon ceiling 10 000 → 32 000 lx to match the
+        // initial illuminance set in setup_sun.  Golden hour pulls down to
+        // 8 000 lx (warm, lower-key).  Night floor stays 50 lx (moon bounce).
+        let base = lerp(50.0, 32_000.0, smooth_step(above));
+        lerp(base, 8_000.0, golden) // pull toward 8 000 lx at golden hour
     };
 
     let night_c:  [f32; 3] = [0.40, 0.50, 0.70];
@@ -230,11 +238,12 @@ fn update_ambient(tod: Res<TimeOfDay>, mut ambient: ResMut<GlobalAmbientLight>) 
     let sin_el = elevation_rad.sin();
     let above  = smooth_step(sin_el.max(0.0));
 
-    // Wide range so night is visible but noon is genuinely bright on a
-    // shadow-less DirectionalLight setup. 800 floor / 2400 ceiling.
-    ambient.brightness = lerp(800.0, 2400.0, above);
-    let night: [f32; 3] = [0.45, 0.52, 0.70];
-    let day:   [f32; 3] = [0.85, 0.87, 0.92];
+    // Sprint 90: tighter ambient range for better shadow contrast.
+    // 600 floor (night is still readable but genuinely dark) / 1400 ceiling
+    // (noon feels bright without washing out PBR shadow detail).
+    ambient.brightness = lerp(600.0, 1400.0, above);
+    let night: [f32; 3] = [0.40, 0.48, 0.68];
+    let day:   [f32; 3] = [0.82, 0.85, 0.92];
     let c = lerp_color3(&night, &day, above);
     ambient.color = Color::srgb(c[0], c[1], c[2]);
 }

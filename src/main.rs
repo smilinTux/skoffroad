@@ -4,6 +4,7 @@ use avian3d::prelude::*;
 use skoffroad::{
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin, WeatherDirectorPlugin, MoonPlugin, StarGlowPlugin,
+    ContactShadowPlugin,
     TireRoostPlugin,
     HeadlightBeamsPlugin,
     BrakeGlowPlugin,
@@ -473,7 +474,10 @@ fn main() {
         // Sprint 84: dynamic weather + richer night sky.
         .add_plugins(WeatherDirectorPlugin)
         .add_plugins(MoonPlugin)
-        .add_plugins(StarGlowPlugin);
+        .add_plugins(StarGlowPlugin)
+        // Sprint 90: contact/blob shadow under the chassis (Medium+ only).
+        // Separate add_plugins call per spec; tier-gated in the plugin itself.
+        .add_plugins(ContactShadowPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

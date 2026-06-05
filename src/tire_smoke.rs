@@ -18,27 +18,34 @@ use crate::vehicle::{Chassis, Wheel, VehicleRoot};
 // ---- Constants ---------------------------------------------------------------
 
 /// Lateral velocity threshold (m/s) above which tire smoke spawns.
-const SLIP_THRESHOLD: f32 = 4.0;
-/// Cadence: one spawn check per 0.1 s (≈ 10 spawns/sec max).
-const SPAWN_INTERVAL: f32 = 0.1;
+/// Sprint 90: raised 4 → 5 m/s — only genuine hard slides, not every corner.
+const SLIP_THRESHOLD: f32 = 5.0;
+/// Cadence: one spawn check per 0.13 s (≈ 7 spawns/sec max, was 10 Hz).
+/// Slightly slower rate for a more natural rolling cloud appearance.
+const SPAWN_INTERVAL: f32 = 0.13;
 /// Maximum live puff entities.
-const MAX_PUFFS: usize = 80;
+const MAX_PUFFS: usize = 60;
 /// Visual radius of each puff sphere.
-const PUFF_RADIUS: f32 = 0.18;
-/// Starting alpha.
-const INITIAL_ALPHA: f32 = 0.7;
+/// Sprint 90: slightly larger start — smoke blooms out from the contact patch.
+const PUFF_RADIUS: f32 = 0.22;
+/// Starting alpha.  Reduced slightly for a thinner, more natural smoke wisps.
+const INITIAL_ALPHA: f32 = 0.55;
 /// Full lifetime of a puff in seconds.
-const LIFETIME: f32 = 1.0;
+/// Sprint 90: 1.4 s — lingers a little longer like real tire smoke.
+const LIFETIME: f32 = 1.4;
 /// Scale growth per second (multiplicative).
-const SCALE_GROWTH: f32 = 0.7;
+/// Slower growth — 0.45 vs 0.7 — so the puff expands more gradually.
+const SCALE_GROWTH: f32 = 0.45;
 
 // ---- Components / Resources --------------------------------------------------
 
 /// Per-puff state.
 #[derive(Component)]
 pub struct TireSmokePuff {
-    pub age_s: f32,
-    pub vel:   Vec3,
+    pub age_s:       f32,
+    pub vel:         Vec3,
+    /// Starting alpha (varies by slip magnitude so heavier slides produce denser smoke).
+    pub start_alpha: f32,
 }
 
 /// Ordered queue of live puff entities; front = oldest.
@@ -130,22 +137,30 @@ fn spawn_slip_puffs(
         seed_offset += 10.0;
         let s = seed_base + seed_offset + wheel.index as f32 * 100.0;
 
+        // Slip magnitude drives puff density / opacity.
+        // At SLIP_THRESHOLD the puff is thin; at 3× threshold it's near-opaque.
+        let slip_ratio = ((lateral.abs() - SLIP_THRESHOLD) / (SLIP_THRESHOLD * 2.0)).clamp(0.0, 1.0);
+        let start_alpha = INITIAL_ALPHA * (0.4 + slip_ratio * 0.6);
+
         // Random drift velocity for puff.
+        // Rise speed scales with slip so heavy slides produce taller columns.
+        let rise = 0.35 + slip_ratio * 0.55;
         let vel = Vec3::new(
-            pseudo_rand(s)       * 0.3,
-            0.5,
-            pseudo_rand(s + 1.0) * 0.3,
+            pseudo_rand(s)       * 0.4,
+            rise,
+            pseudo_rand(s + 1.0) * 0.4,
         );
 
-        // Each puff gets its own material so alpha can be mutated independently.
+        // Puff colour: white-grey smoke.  Slightly warmer (0.87 R) so it
+        // doesn't read as blue-white noise against bright sky.
         let mat = materials.add(StandardMaterial {
-            base_color: Color::srgba(0.85, 0.85, 0.88, INITIAL_ALPHA),
+            base_color: Color::srgba(0.87, 0.86, 0.84, start_alpha),
             alpha_mode: AlphaMode::Blend,
             ..default()
         });
 
         let entity = commands.spawn((
-            TireSmokePuff { age_s: 0.0, vel },
+            TireSmokePuff { age_s: 0.0, vel, start_alpha },
             Mesh3d(mesh_handle.clone()),
             MeshMaterial3d(mat),
             Transform::from_translation(wheel_world_pos),
@@ -188,12 +203,12 @@ fn tick_puffs(
         // Grow scale multiplicatively.
         transform.scale *= 1.0 + dt * SCALE_GROWTH;
 
-        // Decay alpha: INITIAL_ALPHA → 0 linearly over LIFETIME seconds.
+        // Decay alpha: start_alpha → 0 linearly over LIFETIME seconds.
         let t = (puff.age_s / LIFETIME).clamp(0.0, 1.0);
-        let alpha = INITIAL_ALPHA * (1.0 - t);
+        let alpha = puff.start_alpha * (1.0 - t);
 
         if let Some(mat) = materials.get_mut(&mat_handle.0) {
-            mat.base_color = Color::srgba(0.85, 0.85, 0.88, alpha);
+            mat.base_color = Color::srgba(0.87, 0.86, 0.84, alpha);
         }
     }
 

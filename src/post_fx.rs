@@ -85,14 +85,19 @@ fn attach_post_fx(
     // pin_tonemapping_and_shadows system below re-applies it in PostUpdate.
     commands.entity(cam).insert(Tonemapping::AgX);
 
-    // Subtle filmic colour grading at Medium+ (Low keeps plain AgX).
+    // Filmic colour grading at Medium+ (Low keeps plain AgX, no grading).
+    // Sprint 90: slightly negative exposure pulls the scene away from
+    // blowout now that sun illuminance is 32 000 lx.  Raises contrast in
+    // shadows and midtones to restore punch lost by the lower ambient.
     if *quality != GraphicsQuality::Low {
         let mut grading = ColorGrading::default();
-        grading.global.exposure        = 0.0;
-        grading.global.post_saturation = 1.06;
-        grading.shadows.contrast       = 1.05;
-        grading.midtones.contrast      = 1.03;
-        grading.highlights.contrast    = 1.02;
+        // −0.35 EV darkens highlights without touching shadows —
+        // equivalent to stopping down ~1/3 of a stop on a real camera.
+        grading.global.exposure        = -0.35;
+        grading.global.post_saturation = 1.08;   // slightly richer colours
+        grading.shadows.contrast       = 1.08;   // deeper shadow toe
+        grading.midtones.contrast      = 1.05;   // punchy midrange
+        grading.highlights.contrast    = 1.03;   // gentle highlight roll-off
         commands.entity(cam).insert(grading);
     }
 

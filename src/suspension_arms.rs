@@ -28,9 +28,10 @@ const ATTACH_POINTS: [Vec3; 4] = [
     Vec3::new( 0.4, -0.35,  1.4),
 ];
 
-// Arm cuboid dimensions: long in X (lateral), thin in Y and Z.
+// Arm dimensions: long in X (lateral), thin in Y and Z.
+// Sprint 90: slightly thicker (0.07 → 0.09) so the arms read at chase distance.
 const ARM_LEN:  f32 = 0.8;
-const ARM_DIM:  f32 = 0.08;
+const ARM_DIM:  f32 = 0.09;
 
 // ---- Components ----
 
@@ -66,9 +67,13 @@ fn attach_arms_once(
     let Some(vehicle) = vehicle else { return };
 
     let arm_mesh = meshes.add(Cuboid::new(ARM_LEN, ARM_DIM, ARM_DIM));
+    // Sprint 90: steely dark-grey arm with metallic sheen — matches axle tubes.
+    // Slightly metallic + lower roughness so it catches light and reads clearly
+    // from the wheel-cam without being as flat as the old 0.7-roughness dark cube.
     let arm_mat  = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.20, 0.20, 0.22),
-        perceptual_roughness: 0.7,
+        base_color: Color::srgb(0.22, 0.22, 0.26),
+        perceptual_roughness: 0.50,
+        metallic: 0.70,
         ..default()
     });
 

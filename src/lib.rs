@@ -311,6 +311,9 @@ pub use terrain_pbr::{TerrainPbrAssets, TerrainPbrPlugin, TriplanarTerrainExt, T
 pub mod post_fx;
 pub use post_fx::PostFxPlugin;
 
+pub mod contact_shadow;
+pub use contact_shadow::ContactShadowPlugin;
+
 // ---- Monetization stack -----------------------------------------------------
 // Brand-pack-driven sponsor scatter, player wallet/inventory, and ad SDK bridge.
 // All four are additive plugins; none mutate the base game's behaviour unless
