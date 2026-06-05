@@ -85,3 +85,5 @@ node_modules/
 tasks.json
 tasks/ .claude/worktrees/
 legacy/tasks/
+.claude/worktrees/
+.claude/scheduled_tasks.lock
