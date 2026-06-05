@@ -550,6 +550,9 @@ fn modulate_engine_audio(
     drive: Res<DriveInput>,
     chassis_q: Query<&LinearVelocity, With<Chassis>>,
     engine_state: Option<Res<EngineState>>,
+    // Present only when the sample-based engine (engine_samples.rs) is active;
+    // when it is, we silence this synthesized voice so the two never overlap.
+    engine_samples_active: Option<Res<crate::engine_samples::EngineSamplesActive>>,
 ) {
     let Some(engine_audio) = engine_audio else { return };
 
@@ -581,7 +584,12 @@ fn modulate_engine_audio(
     let throttle = drive.drive.abs();
     let is_overrun = throttle < 0.05 && speed_mps > 1.0;
     let base = if is_overrun { 0.15 } else { 0.25 };
-    let volume_linear = (base + 0.60 * throttle).clamp(0.0, 1.0);
+    // Mute the synth engine entirely when the sample-based engine is driving.
+    let volume_linear = if engine_samples_active.is_some() {
+        0.0
+    } else {
+        (base + 0.60 * throttle).clamp(0.0, 1.0)
+    };
 
     if let Some(instance) = audio_instances.get_mut(&engine_audio.instance) {
         // Short tweens for prompt responsiveness without zipper noise.

@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use avian3d::prelude::*;
 use skoffroad::{
     LoadSignalPlugin,
+    EngineSamplesPlugin,
     MultiplayerPlugin, VoicePlugin, spectate::SpectatePlugin,
     BuddyRecoveryPlugin, WeatherDirectorPlugin, MoonPlugin, StarGlowPlugin,
     ContactShadowPlugin,
@@ -487,7 +488,11 @@ fn main() {
         // Sprint B4: persistent tire tracks (ring-buffer pooled, terrain-surface placed).
         .add_plugins(TireTracksPlugin)
         // Sprint B4: ambient dust haze + ground dust wake (mesh-based, WASM-safe).
-        .add_plugins(AmbientDustPlugin);
+        .add_plugins(AmbientDustPlugin)
+        // Asset pipeline: sample-based engine audio (no-op unless built with
+        // --features engine_samples; then it mutes the synth and crossfades
+        // recorded engine loops by RPM). See docs/ASSETS.md.
+        .add_plugins(EngineSamplesPlugin);
 
     // Multiple plugins (vehicle suspension, water buoyancy, mud drag,
     // trampoline bounce, wind) all add commutative external forces to the

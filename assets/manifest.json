@@ -1,18 +1,19 @@
 {
   "vehicles": [
     {
-      "name": "Custom Truck",
-      "glb_path": "vehicles/truck.glb",
+      "name": "Toy Car (CC0 sample)",
+      "glb_path": "vehicles/toycar.glb",
       "mass_kg": 1500.0,
-      "license": "CC0",
-      "author": "Quaternius"
+      "license": "CC0-1.0",
+      "author": "Guido Odendahl & Eric Chadwick (Khronos glTF Sample Assets)"
     }
   ],
   "maps": [
     {
-      "name": "Trail 1",
+      "name": "Trail 1 (starter heightmap)",
       "heightmap_path": "maps/trail1.png",
-      "license": "CC0"
+      "license": "CC0-1.0",
+      "author": "skoffroad (procedurally generated starter)"
     }
   ],
   "mods": [
